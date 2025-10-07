@@ -298,12 +298,6 @@ pub trait Hook: Send + Sync + 'static {
     }
 }
 
-/// 默认实现的钩子，应该可以应对大部分场景
-#[allow(dead_code)]
-pub struct DefaultHook;
-
-impl Hook for DefaultHook {}
-
 static HOOK_INSTANCE: OnceCell<Box<dyn Hook>> = OnceCell::new();
 
 /// 设置全局钩子实例
@@ -326,16 +320,16 @@ pub fn hook_instance() -> &'static dyn Hook {
 #[allow(dead_code)]
 pub fn enable_text_hooks() {
     unsafe {
-        crate::hook::HOOK_CREATE_FONT.enable().unwrap();
-        crate::hook::HOOK_CREATE_FONT_INDIRECT.enable().unwrap();
-        crate::hook::HOOK_GET_GLYPH_OUTLINE.enable().unwrap();
-        crate::hook::HOOK_TEXT_OUT.enable().unwrap();
-        crate::hook::HOOK_GET_TEXT_EXTENT_POINT_32.enable().unwrap();
+        HOOK_CREATE_FONT.enable().unwrap();
+        HOOK_CREATE_FONT_INDIRECT.enable().unwrap();
+        HOOK_GET_GLYPH_OUTLINE.enable().unwrap();
+        HOOK_TEXT_OUT.enable().unwrap();
+        HOOK_GET_TEXT_EXTENT_POINT_32.enable().unwrap();
     }
 
     #[cfg(feature = "enum_font_families")]
     unsafe {
-        crate::hook::HOOK_ENUM_FONT_FAMILIES_EX.enable().unwrap();
+        HOOK_ENUM_FONT_FAMILIES_EX.enable().unwrap();
     }
     crate::debug!("Text Hooked!");
 }
@@ -344,9 +338,9 @@ pub fn enable_text_hooks() {
 #[allow(dead_code)]
 pub fn enable_file_hooks() {
     unsafe {
-        crate::hook::HOOK_CREATE_FILE.enable().unwrap();
-        crate::hook::HOOK_READ_FILE.enable().unwrap();
-        crate::hook::HOOK_CLOSE_HANDLE.enable().unwrap();
+        HOOK_CREATE_FILE.enable().unwrap();
+        HOOK_READ_FILE.enable().unwrap();
+        HOOK_CLOSE_HANDLE.enable().unwrap();
     }
 
     crate::debug!("File Hooked!");

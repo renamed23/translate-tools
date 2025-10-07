@@ -184,7 +184,7 @@ pub fn generate_detours(_attr: TokenStream, item: TokenStream) -> TokenStream {
                     #[cfg_attr(feature = "export_hooks", unsafe(no_mangle))]
                     pub unsafe extern #calling_convention fn #export_ident( #(#param_pairs_iter),* ) -> #ret_type {
                        unsafe {
-                            crate::hook::hook_instance().#method_ident( #(#call_args_iter),* )
+                            hook_instance().#method_ident( #(#call_args_iter),* )
                         }
                     }
 

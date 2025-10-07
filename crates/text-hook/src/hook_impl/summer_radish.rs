@@ -2,7 +2,8 @@ use translate_macros::ffi_catch_unwind;
 use winapi::shared::minwindef::{BOOL, DWORD, FALSE, HMODULE, LPVOID, TRUE};
 
 use crate::debug;
-use crate::hook::{DefaultHook, set_hook_instance};
+use crate::hook::set_hook_instance;
+use crate::hook_impl::default_hook_impl::DefaultHook;
 use crate::hook_utils::iat_patch::patch_iat;
 use crate::panic_utils::set_debug_panic_hook;
 
