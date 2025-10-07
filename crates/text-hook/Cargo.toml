@@ -1,0 +1,84 @@
+[package]
+name = "text-hook"
+version = "1.0.0"
+edition = "2024"
+build = "build.rs"
+
+[lib]
+crate-type = ["cdylib"]
+
+[features]
+# 调试输出
+debug_output = []
+# 调试输出映射文本
+debug_text_mapping = ["debug_output"]
+# 调试文件输出的HOOK实现，可用于调试
+debug_file_hook_impl = ["debug_output"]
+
+# 截获并替换patch数据
+patch = []
+# 默认的patch导出函数实现
+default_patch_impl = ["patch"]
+# 内嵌原文->译文字典
+embedded_dict = []
+# 使用VNTEXT的映射表
+shift_bin = []
+# 默认的HOOK实现，使用`DefaultHook`，并启动`set_debug_panic_hook`
+# 会拦截所有与字体相关的GDI函数
+default_hook_impl = []
+# 当该feature开启时，create_font系列函数不再固定字体
+# 并且会创建一个detour
+enum_font_families = []
+# 是否导出钩子函数，实际上如果用detour的话，不需要导出
+export_hooks = []
+# 自定义字体，会使用`AddFontMemResourceEx`让GDI识别
+custom_font = []
+
+# impl -------------------------------------------------------
+snow_radish = ["patch"]
+bleed = []
+sukisuki = ["default_hook_impl"]
+ao_vo = ["patch", "default_hook_impl"]
+noise = ["patch", "default_hook_impl"]
+lusts = ["default_hook_impl"]
+summer_radish = []
+lucky_crosse = ["patch", "shift_bin", "default_hook_impl", "default_patch_impl"]
+cosmos = ["patch", "default_patch_impl", "default_hook_impl", "shift_bin"]
+# 非C社的c4
+c4 = ["patch", "default_hook_impl", "enum_font_families"]
+
+[dependencies]
+translate-macros.workspace = true
+translate-utils.workspace = true
+encoding_rs.workspace = true
+anyhow.workspace = true
+once_cell.workspace = true
+
+winapi = { version = "0.3", features = [
+    "winuser",
+    "wingdi",
+    "libloaderapi",
+    "memoryapi",
+    "debugapi",
+    "processthreadsapi",
+    "winbase",
+    "stringapiset",
+    "consoleapi",
+    "errhandlingapi",
+] }
+include-flate = "0.3"
+sha2 = "0.10"
+retour = "0.4.0-alpha.4"
+dynasmrt = "4.0.1"
+
+[build-dependencies]
+sha2 = "0.10"
+anyhow.workspace = true
+translate-utils.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+encoding_rs.workspace = true
+
+[lints.clippy]
+missing_safety_doc = "allow"
+too_many_arguments = "allow"

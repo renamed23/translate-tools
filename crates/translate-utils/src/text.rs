@@ -1,0 +1,152 @@
+use anyhow::{Context, Result};
+use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
+use std::fs;
+use std::path::Path;
+
+/// 单条条目
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+pub struct Item {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    pub message: String,
+}
+
+impl Item {
+    pub fn new(contents: impl Into<String>) -> Self {
+        Self {
+            name: None,
+            message: contents.into(),
+        }
+    }
+
+    pub fn with_name(name: impl Into<String>, contents: impl Into<String>) -> Self {
+        Self {
+            name: Some(name.into()),
+            message: contents.into(),
+        }
+    }
+}
+
+/// 封装文本内容的数组
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub struct Text {
+    pub items: Vec<Item>,
+}
+
+impl Text {
+    /// 新建空容器
+    pub fn new() -> Self {
+        Self { items: Vec::new() }
+    }
+
+    /// 从 JSON 字符串解析（期待 JSON array of objects）
+    pub fn from_string(s: &str) -> Result<Self> {
+        serde_json::from_str::<Vec<Item>>(s)
+            .map(|items| Self { items })
+            .context("解析 Text 字符串失败")
+    }
+
+    /// 从文件路径读取并解析
+    pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self> {
+        let s = fs::read_to_string(&path)
+            .with_context(|| format!("读取文件失败 {:?}", path.as_ref()))?;
+        Self::from_string(&s)
+    }
+
+    /// 序列化为 pretty JSON 字符串
+    pub fn to_string(&self) -> Result<String> {
+        serde_json::to_string_pretty(&self.items).context("序列化 Text 失败")
+    }
+
+    /// 序列化并写入指定路径（覆盖）
+    pub fn write_to_path<P: AsRef<Path>>(&self, path: P) -> Result<()> {
+        let s = self.to_string()?;
+        fs::write(&path, s).with_context(|| format!("写入 Text 失败 {:?}", path.as_ref()))?;
+        Ok(())
+    }
+
+    /// 追加一个只有 message 的条目（name = None）
+    pub fn add(&mut self, message: impl Into<String>) {
+        let item = Item::new(message);
+        self.items.push(item);
+    }
+
+    /// 追加一个带 name 的条目
+    pub fn add_with_name(&mut self, name: impl Into<String>, message: impl Into<String>) {
+        let item = Item::with_name(name, message);
+        self.items.push(item);
+    }
+
+    /// 获取指定位置的内容文本
+    pub fn get_message(&self, index: usize) -> Option<&String> {
+        self.items.get(index).map(|i| &i.message)
+    }
+
+    /// 获取指定位置的 Item
+    pub fn get(&self, index: usize) -> Option<&Item> {
+        self.items.get(index)
+    }
+
+    /// 获取指定位置的可变 Item
+    pub fn get_mut(&mut self, index: usize) -> Option<&mut Item> {
+        self.items.get_mut(index)
+    }
+
+    /// 根据 (name, message) 去重，保留首次出现的顺序
+    ///
+    /// name 为 None 与 Some("") 被视为不同（Option 区分）
+    pub fn dedup(&mut self) {
+        let mut seen = HashSet::new();
+        let mut out = Vec::with_capacity(self.items.len());
+        for item in self.items.drain(..) {
+            let key = (item.name.clone(), item.message.clone());
+            if seen.insert(key) {
+                out.push(item);
+            }
+        }
+        self.items = out;
+    }
+
+    /// 根据 message 去重，忽略 name，保留首次出现的顺序
+    pub fn dedup_by_message(&mut self) {
+        let mut seen = HashSet::new();
+        let mut out = Vec::with_capacity(self.items.len());
+        for item in self.items.drain(..) {
+            if seen.insert(item.message.clone()) {
+                out.push(item);
+            }
+        }
+        self.items = out;
+    }
+
+    /// 返回当前条目数量
+    pub fn len(&self) -> usize {
+        self.items.len()
+    }
+
+    /// 是否为空
+    pub fn is_empty(&self) -> bool {
+        self.items.is_empty()
+    }
+
+    /// 生成新的文本，对每个 value 应用映射函数（保持 pairs 的顺序）
+    pub fn generate_text<F>(&self, mut mapper: F) -> Result<Self>
+    where
+        F: FnMut(&Option<String>, &String) -> Result<(Option<String>, String)>,
+    {
+        let mut items = Vec::with_capacity(self.len());
+
+        for Item { name, message } in &self.items {
+            let (name, message) = mapper(name, message)?;
+            items.push(Item { name, message });
+        }
+
+        Ok(Self { items })
+    }
+
+    /// 将序列添加到文本中
+    pub fn add_text(&mut self, text: Self) {
+        self.items.extend(text.items);
+    }
+}

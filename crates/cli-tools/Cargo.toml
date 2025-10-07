@@ -1,0 +1,15 @@
+[package]
+name = "cli-tools"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+translate-utils.workspace = true
+anyhow.workspace = true
+encoding_rs.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+clap.workspace = true
+regex.workspace = true
+
+xmltree = "0.11"

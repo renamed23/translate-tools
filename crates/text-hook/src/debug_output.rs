@@ -1,0 +1,111 @@
+#[cfg(feature = "debug_output")]
+pub(crate) mod debug_impl {
+    use std::sync::Once;
+    use winapi::um::{
+        consoleapi::AllocConsole,
+        debugapi::OutputDebugStringW,
+        wincon::{SetConsoleCP, SetConsoleOutputCP},
+        winnls::CP_UTF8,
+    };
+
+    static CONSOLE_INIT: Once = Once::new();
+
+    pub fn debug(s: &str) {
+        let wide: Vec<u16> = s.encode_utf16().chain(std::iter::once(0)).collect();
+        unsafe {
+            OutputDebugStringW(wide.as_ptr());
+        }
+
+        CONSOLE_INIT.call_once(|| {
+            // 分配控制台窗口
+            unsafe {
+                AllocConsole();
+                SetConsoleCP(CP_UTF8);
+                SetConsoleOutputCP(CP_UTF8);
+            }
+        });
+
+        println!("{s}");
+    }
+
+    pub fn get_system_error_message() -> Option<String> {
+        use winapi::um::errhandlingapi::GetLastError;
+        use winapi::um::winbase::FormatMessageW;
+        use winapi::um::winbase::{FORMAT_MESSAGE_FROM_SYSTEM, FORMAT_MESSAGE_IGNORE_INSERTS};
+
+        unsafe {
+            let error_code = GetLastError();
+
+            let mut buffer = [0u16; 512];
+            let result = FormatMessageW(
+                FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+                std::ptr::null_mut(),
+                error_code,
+                0, // 使用系统默认语言
+                buffer.as_mut_ptr(),
+                buffer.len() as u32,
+                std::ptr::null_mut(),
+            );
+
+            if result > 0 {
+                let len = result as usize;
+                let wide_slice = &buffer[..len];
+                String::from_utf16(wide_slice).ok()
+            } else {
+                None
+            }
+        }
+    }
+}
+
+#[macro_export]
+macro_rules! debug {
+    ($($arg:tt)*) => {
+        {
+            #[cfg(feature = "debug_output")]
+            {
+                $crate::debug_output::debug_impl::debug(&format!(
+                    "[{}:{}] {}",
+                    file!(),
+                    line!(),
+                    format_args!($($arg)*)
+                ));
+            }
+            #[cfg(not(feature = "debug_output"))]
+            {
+            }
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! debug_msg {
+    ($($arg:tt)*) => {
+        {
+            #[cfg(feature = "debug_output")]
+            {
+                $crate::debug_output::debug_impl::debug(&format!(
+                    "{}",
+                    format_args!($($arg)*)
+                ));
+            }
+            #[cfg(not(feature = "debug_output"))]
+            {
+            }
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! print_system_error_message {
+    ($($arg:tt)*) => {{
+        #[cfg(feature = "debug_output")]
+        {
+            if let Some(msg) = $crate::debug_output::debug_impl::get_system_error_message() {
+                $crate::debug!("[system error]: {}", msg);
+            }
+        }
+        #[cfg(not(feature = "debug_output"))]
+        {}
+    }};
+}
