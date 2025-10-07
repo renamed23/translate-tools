@@ -15,8 +15,9 @@ translate-utils = { version = "1.0.0", path = "crates/translate-utils" }
 translate-macros = { version = "1.0.0", path = "crates/translate-macros" }
 
 [profile.release]
-lto = true
+debug = false
+lto = "fat"
 strip = true
-opt-level = "z"
+opt-level = "s"
 codegen-units = 1
 panic = "unwind"
