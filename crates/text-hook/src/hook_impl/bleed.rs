@@ -8,7 +8,7 @@ use winapi::shared::windef::HDC;
 use crate::debug;
 use crate::hook::Hook;
 
-struct BleedHook {
+pub struct BleedHook {
     line_max_x: RwLock<Vec<c_int>>,
 }
 
@@ -111,7 +111,7 @@ pub unsafe extern "system" fn DllMain(
     const PROCESS_ATTACH: DWORD = 1;
     if fdw_reason == PROCESS_ATTACH {
         crate::panic_utils::set_debug_panic_hook();
-        crate::hook::set_hook_instance(Box::new(BleedHook::new()));
+        crate::hook::set_hook_instance(BleedHook::new());
         crate::hook::enable_text_hooks();
     }
 

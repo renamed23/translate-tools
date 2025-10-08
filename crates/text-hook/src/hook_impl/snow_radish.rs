@@ -25,7 +25,7 @@ pub static ORIGINAL_DECODE_LZ: OnceCell<DecodeLzFn> = OnceCell::new();
 
 /// 一个很简单的 Hook 实现，使用 Hook trait 的默认方法。
 /// 你的实际逻辑（Shift-JIS 映射）在 map_shift_jis 模块里，Hook trait 的默认方法会调用它。
-struct SnowRadishHook;
+pub struct SnowRadishHook;
 
 #[ffi_catch_unwind(0)]
 #[unsafe(no_mangle)]
@@ -131,7 +131,7 @@ pub unsafe extern "system" fn init() {
     }
 
     // 设置全局 Hook 实例（如果你之后想换实现，只调用一次 set_hook_instance）
-    set_hook_instance(Box::new(SnowRadishHook));
+    set_hook_instance(SnowRadishHook);
 
     debug!("hook instance set");
 }

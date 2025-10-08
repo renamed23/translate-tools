@@ -33,7 +33,7 @@ pub unsafe extern "system" fn DllMain(
             Err(e) => debug!("patch_iat failed with {e}"),
         }
 
-        set_hook_instance(Box::new(DefaultHook));
+        set_hook_instance(DefaultHook);
 
         debug!("hook instance set");
     }

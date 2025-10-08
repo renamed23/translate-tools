@@ -19,7 +19,7 @@ pub unsafe extern "system" fn DllMain(
     const PROCESS_ATTACH: DWORD = 1;
     if fdw_reason == PROCESS_ATTACH {
         crate::panic_utils::set_debug_panic_hook();
-        crate::hook::set_hook_instance(Box::new(DefaultHook));
+        crate::hook::set_hook_instance(DefaultHook);
 
         #[cfg(feature = "custom_font")]
         crate::custom_font::add_font();

@@ -27,3 +27,17 @@ pub mod c4;
 
 #[cfg(feature = "debug_file_hook_impl")]
 pub mod debug_file_hook_impl;
+
+// ---------------------- 钩子实现类型 ------------------------------
+
+#[cfg(feature = "default_hook_impl")]
+pub type HookImplType = default_hook_impl::DefaultHook;
+
+#[cfg(feature = "bleed")]
+pub type HookImplType = bleed::BleedHook;
+
+#[cfg(feature = "debug_file_hook_impl")]
+pub type HookImplType = debug_file_hook_impl::DebugFileHook;
+
+#[cfg(feature = "snow_radish")]
+pub type HookImplType = snow_radish::SnowRadishHook;
