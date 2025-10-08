@@ -50,7 +50,6 @@ c4 = ["patch", "default_hook_impl", "enum_font_families"]
 [dependencies]
 translate-macros.workspace = true
 translate-utils.workspace = true
-encoding_rs.workspace = true
 anyhow.workspace = true
 once_cell.workspace = true
 

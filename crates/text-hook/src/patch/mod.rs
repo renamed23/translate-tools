@@ -116,7 +116,7 @@ pub unsafe fn try_patching(ptr: *mut u8, len: usize) {
 }
 
 /// 尝试提取传入数据，若为新数据，将会写入 raw 目录
-#[allow(dead_code)]
+#[allow(dead_code, unused_variables)]
 pub unsafe fn try_extracting(ptr: *mut u8, len: usize) {
     debug!(
         "Buffer len: {len}, thread: {:?}",

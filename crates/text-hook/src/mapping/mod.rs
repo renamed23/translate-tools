@@ -5,11 +5,69 @@ mod mapping_data;
 #[cfg(not(feature = "shift_bin"))]
 mod mapping_impl {
     use crate::mapping::mapping_data;
+    use winapi::um::stringapiset::MultiByteToWideChar;
 
     pub(super) fn mapping(bytes: &[u8]) -> Vec<u16> {
-        translate_utils::utils::mapping(bytes, |char: u16| {
-            mapping_data::SJIS_PHF_MAP.get(&char).copied()
-        })
+        let mut out_utf16 = Vec::with_capacity(bytes.len() * 2);
+        let mut i = 0;
+
+        let mut wide_char: u16 = 0;
+
+        while i < bytes.len() {
+            let high = bytes[i];
+
+            if high <= 0x7F {
+                out_utf16.push(high as u16);
+                i += 1;
+                continue;
+            }
+
+            let sjis_slice: &[u8];
+
+            if translate_utils::utils::is_sjis_high_byte(high) {
+                if i + 1 >= bytes.len() {
+                    out_utf16.push(0xFFFD);
+                    break;
+                }
+                let low = bytes[i + 1];
+                if low == 0 {
+                    break;
+                }
+
+                // 检查是否是需要特殊映射的字符
+                let sjis_char = ((high as u16) << 8) | (low as u16);
+                if let Some(&mapped_char) = mapping_data::SJIS_PHF_MAP.get(&sjis_char) {
+                    out_utf16.push(mapped_char);
+                    i += 2;
+                    continue;
+                }
+
+                sjis_slice = &bytes[i..i + 2];
+                i += 2;
+            } else {
+                sjis_slice = &bytes[i..i + 1];
+                i += 1;
+            }
+
+            let chars_written = unsafe {
+                MultiByteToWideChar(
+                    932,
+                    0,
+                    sjis_slice.as_ptr() as _,
+                    sjis_slice.len() as i32,
+                    &mut wide_char,
+                    1,
+                )
+            };
+
+            if chars_written > 0 {
+                out_utf16.push(wide_char);
+            } else {
+                out_utf16.push(0xFFFD);
+            }
+        }
+
+        out_utf16
     }
 }
 
