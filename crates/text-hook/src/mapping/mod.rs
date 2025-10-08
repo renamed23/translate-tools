@@ -34,7 +34,8 @@ mod mapping_impl {
                     break;
                 }
 
-                // 检查是否是需要特殊映射的字符
+                // 如果开启了`generate_full_mapping_data`特性，则mapping_data::SJIS_PHF_MAP包含了所有非ascii的映射
+                // 否则仅包含替身字符的映射
                 let sjis_char = ((high as u16) << 8) | (low as u16);
                 if let Some(&mapped_char) = mapping_data::SJIS_PHF_MAP.get(&sjis_char) {
                     out_utf16.push(mapped_char);
