@@ -5,14 +5,11 @@ mod mapping_data;
 #[cfg(not(feature = "shift_bin"))]
 mod mapping_impl {
     use crate::mapping::mapping_data;
-    use once_cell::sync::Lazy;
-    use std::collections::HashMap;
-
-    /// 映射数据(shift-jis码点 -> utf16码点)
-    static SJIS_MAPPING: Lazy<HashMap<u16, u16>> = Lazy::new(mapping_data::new);
 
     pub(super) fn mapping(bytes: &[u8]) -> Vec<u16> {
-        translate_utils::utils::mapping(bytes, |char: u16| SJIS_MAPPING.get(&char).copied())
+        translate_utils::utils::mapping(bytes, |char: u16| {
+            mapping_data::SJIS_PHF_MAP.get(&char).copied()
+        })
     }
 }
 
