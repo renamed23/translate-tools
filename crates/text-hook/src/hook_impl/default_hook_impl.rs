@@ -4,7 +4,6 @@ use winapi::shared::minwindef::{BOOL, DWORD, FALSE, HMODULE, LPVOID, TRUE};
 use crate::hook::Hook;
 
 /// 默认实现的钩子，应该可以应对大部分场景
-#[allow(dead_code)]
 pub struct DefaultHook;
 
 impl Hook for DefaultHook {}
