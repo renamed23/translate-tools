@@ -166,27 +166,26 @@ fn generate_mapping_data() -> anyhow::Result<()> {
     // 排序（按 key 的编码）
     entries.sort_by_key(|e| e.0);
 
-    // 生成文件
+    // 生成文件 (替换原来的 HashMap 输出)
     let out_path = Path::new("src/mapping/mapping_data.rs");
     if let Some(parent) = out_path.parent() {
         fs::create_dir_all(parent)?;
     }
 
     let mut out = String::new();
-    out.push_str("// 自动生成的MAPPING数据\n");
+    out.push_str("// 自动生成的 MAPPING 数据（phf）\n");
     out.push_str("// key: Shift_JIS 编码 (u16), value: UTF-16 码点 (u16, BMP)\n");
-    out.push_str("use std::collections::HashMap;\n\n");
-    out.push_str("pub(super) fn new() -> HashMap<u16, u16> {\n");
-    out.push_str("    HashMap::from([\n");
+    out.push_str("use phf::phf_map;\n\n");
+    out.push_str("pub(super) static SJIS_PHF_MAP: phf::Map<u16, u16> = phf_map! {\n");
 
     for (kcode, vcode, kch, vch) in &entries {
+        // 注意：为保险起见给字面量加上类型后缀 u16
         out.push_str(&format!(
-            "        (0x{kcode:04X}, 0x{vcode:04X}), // '{kch}' -> '{vch}'\n"
+            "    0x{kcode:04X}u16 => 0x{vcode:04X}u16, // '{kch}' -> '{vch}'\n"
         ));
     }
 
-    out.push_str("    ])\n");
-    out.push_str("}\n");
+    out.push_str("};\n\n");
 
     let mut f = fs::File::create(out_path)?;
     f.write_all(out.as_bytes())?;
