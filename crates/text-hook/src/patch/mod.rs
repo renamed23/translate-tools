@@ -5,71 +5,15 @@ use crate::{
     utils::{quick_memory_check_win32, sha256_of_bytes},
 };
 
-/// 零分配构造 byte-key 并执行 body（body 中可使用名为 `$key` 的 `&[u8]`）
-///
-/// 用法：
-// make_key_bytes!(src, key, {
-//     patch_data::PATCHES.get(key).map(|p| p.as_slice())
-// })
-macro_rules! make_key_bytes {
-    ($src:expr, $key:ident, $body:block) => {{
-        // 计算 sha（[u8;32]）
-        let __sha: [u8; 32] = crate::utils::sha256_of_bytes($src);
-
-        // 缓冲：64 hex + ':' + up to 31 digits -> 96 bytes 足够
-        let mut __buf = [0u8; 96];
-        const __HEX: &[u8; 16] = b"0123456789abcdef";
-
-        // 写 hex 小写
-        let mut __i = 0usize;
-        while __i < 32 {
-            let __b = __sha[__i];
-            __buf[2 * __i] = __HEX[((__b >> 4) & 0xF) as usize];
-            __buf[2 * __i + 1] = __HEX[(__b & 0xF) as usize];
-            __i += 1;
-        }
-
-        // 写 ':'
-        let mut __pos = 64;
-        __buf[__pos] = b':';
-        __pos += 1;
-
-        // 写 len 的十进制（先倒序写入 tmp，再反转）
-        let mut __tbuf = [0u8; 32];
-        let mut __t = 0usize;
-        let mut __n = $src.len();
-        if __n == 0 {
-            __tbuf[0] = b'0';
-            __t = 1;
-        } else {
-            while __n > 0 {
-                __tbuf[__t] = b'0' + ((__n % 10) as u8);
-                __n /= 10;
-                __t += 1;
-            }
-        }
-        let mut __j = 0usize;
-        while __j < __t {
-            __buf[__pos + __j] = __tbuf[__t - 1 - __j];
-            __j += 1;
-        }
-        let __total = __pos + __t;
-
-        let $key: &[u8] = &__buf[..__total];
-
-        $body
-    }};
-}
-
 /// 根据目标数据，获取补丁数据
 pub fn get_patch(src: &[u8]) -> Option<&'static [u8]> {
     if !patch_data::LEN_FILTER.contains(&src.len()) {
         return None;
     }
 
-    make_key_bytes!(src, key, {
-        patch_data::PATCHES.get(key).map(|p| p.as_slice())
-    })
+    patch_data::PATCHES
+        .get(&sha256_of_bytes(src))
+        .map(|p| p.as_slice())
 }
 
 /// 根据目标数据，获取补丁数据对应的原始文件名（仅在 debug_output 特性启用时可用）
@@ -79,7 +23,9 @@ pub fn get_filename(src: &[u8]) -> Option<&str> {
         return None;
     }
 
-    make_key_bytes!(src, key, { patch_data::FILENAMES.get(key).map(|v| &**v) })
+    patch_data::FILENAMES
+        .get(&sha256_of_bytes(src))
+        .map(|v| &**v)
 }
 
 /// 尝试匹配传入数据，若为目标数据，将会覆盖对应的补丁数据
@@ -128,7 +74,7 @@ pub unsafe fn try_extracting(ptr: *mut u8, len: usize) {
     }
 
     let slice = unsafe { std::slice::from_raw_parts(ptr, len) };
-    let new_sha = sha256_of_bytes(slice);
+    let new_hash = sha256_of_bytes(slice);
 
     let exe_dir = match std::env::current_exe()
         .ok()
@@ -168,8 +114,8 @@ pub unsafe fn try_extracting(ptr: *mut u8, len: usize) {
             match std::fs::read(&path) {
                 Ok(existing_bytes) => {
                     if existing_bytes.len() == slice.len() {
-                        let existing_sha = sha256_of_bytes(&existing_bytes);
-                        if existing_sha == new_sha {
+                        let existing_hash = sha256_of_bytes(&existing_bytes);
+                        if existing_hash == new_hash {
                             debug!(
                                 "extract: identical file already exists, skipping write: {:?}",
                                 path

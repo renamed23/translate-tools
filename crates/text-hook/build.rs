@@ -259,13 +259,13 @@ fn generate_patch_data() -> anyhow::Result<()> {
         translated_path: std::path::PathBuf,
         raw_filename: String,
         len: usize,
-        sha: [u8; 32],
+        hash: [u8; 32],
     }
 
     let mut files: Vec<FileEntry> = Vec::new();
     let mut errors: Vec<String> = Vec::new();
     let mut warnings: Vec<String> = Vec::new();
-    let mut seen_keys = HashSet::new();
+    let mut seen_keys: HashSet<[u8; 32]> = HashSet::new();
 
     for raw_path in raw_files {
         println!("cargo:rerun-if-changed={}", raw_path.display());
@@ -315,22 +315,18 @@ fn generate_patch_data() -> anyhow::Result<()> {
 
         let mut hasher = Sha256::new();
         hasher.update(&raw_data);
-        let sha_bytes = hasher.finalize();
-        let mut sha_arr = [0u8; 32];
-        sha_arr.copy_from_slice(&sha_bytes);
+        let hash_bytes: [u8; 32] = hasher.finalize().into();
 
-        // 检查是否有重复的原始文件
-        let key = (sha_arr, raw_data.len());
-        if seen_keys.contains(&key) {
+        // 检查是否有重复的原始文件（基于 32 字节 hash）
+        if seen_keys.contains(&hash_bytes) {
             errors.push(format!(
-                "发现重复的原始文件: {} (SHA256: {:02x?}, 长度: {})",
+                "发现重复的原始文件（同 hash）: {} ({:02x?})",
                 raw_path.display(),
-                sha_arr,
-                raw_data.len()
+                hash_bytes,
             ));
             continue;
         }
-        seen_keys.insert(key);
+        seen_keys.insert(hash_bytes);
 
         // 获取原始文件名
         let raw_filename = raw_path
@@ -343,7 +339,7 @@ fn generate_patch_data() -> anyhow::Result<()> {
             translated_path: translated_path.clone(),
             raw_filename,
             len: raw_data.len(),
-            sha: sha_arr,
+            hash: hash_bytes,
         });
     }
 
@@ -381,18 +377,21 @@ fn generate_patch_data() -> anyhow::Result<()> {
         ));
     }
 
+    fn bytes_to_rust_byte_escapes(b: &[u8]) -> String {
+        let mut s = String::with_capacity(b.len() * 4);
+        for &x in b {
+            s.push_str(&format!("\\x{:02X}", x));
+        }
+        s
+    }
+
     out.push_str(
-        "pub(super) static PATCHES: phf::Map<&'static [u8], &LazyLock<Vec<u8>>> = phf_map! {\n",
+        "pub(super) static PATCHES: phf::Map<&'static [u8;32], &LazyLock<Vec<u8>>> = phf_map! {\n",
     );
     for (idx, item) in files.iter().enumerate() {
-        let sha_hex = item
-            .sha
-            .iter()
-            .map(|b| format!("{:02x}", b))
-            .collect::<String>();
-        let key = format!("{}:{}", sha_hex, item.len);
         let patch_name = format!("PATCH_{:04}", idx + 1);
-        out.push_str(&format!("    b\"{}\" => &{},\n", key, patch_name));
+        let bytes_esc = bytes_to_rust_byte_escapes(&item.hash); // e.g. "\xAB\xCD..."
+        out.push_str(&format!("    b\"{}\" => &{},\n", bytes_esc, patch_name));
     }
     out.push_str("};\n\n");
 
@@ -405,19 +404,16 @@ fn generate_patch_data() -> anyhow::Result<()> {
     }
     out.push_str("};\n\n");
 
-    // optional filenames map for debug_output
     out.push_str("#[cfg(feature = \"debug_output\")]\n");
     out.push_str(
-        "pub(super) static FILENAMES: phf::Map<&'static [u8], &'static str> = phf_map! {\n",
+        "pub(super) static FILENAMES: phf::Map<&'static [u8;32], &'static str> = phf_map! {\n",
     );
     for item in files.iter() {
-        let sha_hex = item
-            .sha
-            .iter()
-            .map(|b| format!("{:02x}", b))
-            .collect::<String>();
-        let key = format!("{}:{}", sha_hex, item.len);
-        out.push_str(&format!("    b\"{}\" => \"{}\",\n", key, item.raw_filename));
+        let bytes_esc = bytes_to_rust_byte_escapes(&item.hash);
+        out.push_str(&format!(
+            "    b\"{}\" => \"{}\",\n",
+            bytes_esc, item.raw_filename
+        ));
     }
     out.push_str("};\n\n");
 
