@@ -327,77 +327,69 @@ fn generate_patch_data() -> anyhow::Result<()> {
         bail!("patch_data 生成失败：存在错误，已中止构建");
     }
 
-    let mut out_lines: Vec<String> = vec![
-        "// 自动生成的补丁数据".to_string(),
-        "use std::collections::{HashMap, HashSet};".to_string(),
-        "use super::{PatchManager, FileKey};".to_string(),
-        "".to_string(),
-        "pub(super) fn new() -> PatchManager {".to_string(),
-        "    let mut patches = HashMap::new();".to_string(),
-        "    let mut len_filter = HashSet::new();".to_string(),
-        "    #[cfg(feature = \"debug_output\")]".to_string(),
-        "    let mut filenames = HashMap::new();".to_string(),
-        "".to_string(),
-    ];
-
-    let mut include_lines: Vec<String> = files
-        .iter()
-        .enumerate()
-        .flat_map(|(idx, item)| {
-            let patch_name = format!("PATCH_{:04}", idx + 1);
-            let rel = item.translated_path.to_string_lossy().replace('\\', "/");
-            vec![
-                format!("    include_flate::flate!("),
-                format!("        static {}: [u8] from \"{}\"", patch_name, rel),
-                format!("    );"),
-            ]
-        })
-        .collect();
-    out_lines.append(&mut include_lines);
-
-    out_lines.push("".to_string());
-
-    // 添加插入逻辑
-    for (idx, item) in files.iter().enumerate() {
-        let sha_array = item
-            .sha
-            .iter()
-            .map(|b| format!("0x{b:02x}"))
-            .collect::<Vec<_>>()
-            .join(", ");
-        let patch_name = format!("PATCH_{:04}", idx + 1);
-        out_lines.push("    {".to_string());
-
-        out_lines.push(format!(
-            "        let key = FileKey {{ hash: [{}], len: {} }};",
-            sha_array, item.len
-        ));
-        out_lines.push(format!(
-            "        patches.insert(key, {patch_name}.as_slice());"
-        ));
-        out_lines.push(format!("        len_filter.insert({});", item.len));
-        out_lines.push("        #[cfg(feature = \"debug_output\")]".to_string());
-        out_lines.push(format!(
-            "        filenames.insert(key, \"{}\".to_string());",
-            item.raw_filename
-        ));
-        out_lines.push("    }".to_string());
-    }
-
-    out_lines.push("    PatchManager {".to_string());
-    out_lines.push("        patches,".to_string());
-    out_lines.push("        len_filter,".to_string());
-    out_lines.push("        #[cfg(feature = \"debug_output\")]".to_string());
-    out_lines.push("        filenames,".to_string());
-    out_lines.push("    }".to_string());
-    out_lines.push("}".to_string());
-    out_lines.push("".to_string());
-
+    // --- 下面开始生成 phf 代码 ---
     if let Some(parent) = out_path.parent() {
         fs::create_dir_all(parent)?;
     }
-    let mut f = fs::File::create(out_path)?;
-    f.write_all(out_lines.join("\n").as_bytes())?;
 
+    // header
+    let mut out = String::new();
+    out.push_str("// 自动生成的补丁数据（phf 版本）\n");
+    out.push_str("use phf::{phf_map, phf_set};\n");
+    out.push_str("use std::sync::LazyLock;\n\n");
+
+    // include_flate lines
+    for (idx, item) in files.iter().enumerate() {
+        let patch_name = format!("PATCH_{:04}", idx + 1);
+        let rel = item.translated_path.to_string_lossy().replace('\\', "/");
+        out.push_str(&format!(
+            "include_flate::flate!(\n    static {}: [u8] from \"{}\"\n);\n\n",
+            patch_name, rel
+        ));
+    }
+
+    out.push_str(
+        "pub(super) static PATCHES: phf::Map<&'static [u8], &LazyLock<Vec<u8>>> = phf_map! {\n",
+    );
+    for (idx, item) in files.iter().enumerate() {
+        let sha_hex = item
+            .sha
+            .iter()
+            .map(|b| format!("{:02x}", b))
+            .collect::<String>();
+        let key = format!("{}:{}", sha_hex, item.len);
+        let patch_name = format!("PATCH_{:04}", idx + 1);
+        out.push_str(&format!("    b\"{}\" => &{},\n", key, patch_name));
+    }
+    out.push_str("};\n\n");
+
+    let mut lens: Vec<usize> = files.iter().map(|f| f.len).collect();
+    lens.sort_unstable();
+    lens.dedup();
+    out.push_str("pub(super) static LEN_FILTER: phf::Set<usize> = phf_set! {\n");
+    for l in &lens {
+        out.push_str(&format!("    {},\n", l));
+    }
+    out.push_str("};\n\n");
+
+    // optional filenames map for debug_output
+    out.push_str("#[cfg(feature = \"debug_output\")]\n");
+    out.push_str(
+        "pub(super) static FILENAMES: phf::Map<&'static [u8], &'static str> = phf_map! {\n",
+    );
+    for item in files.iter() {
+        let sha_hex = item
+            .sha
+            .iter()
+            .map(|b| format!("{:02x}", b))
+            .collect::<String>();
+        let key = format!("{}:{}", sha_hex, item.len);
+        out.push_str(&format!("    b\"{}\" => \"{}\",\n", key, item.raw_filename));
+    }
+    out.push_str("};\n\n");
+
+    // 写入文件
+    let mut f = fs::File::create(out_path)?;
+    f.write_all(out.as_bytes())?;
     Ok(())
 }

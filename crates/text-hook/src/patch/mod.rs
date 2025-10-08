@@ -1,69 +1,85 @@
 mod patch_data;
 
-use once_cell::sync::Lazy;
-use std::collections::{HashMap, HashSet};
-
 use crate::{
     debug,
     utils::{quick_memory_check_win32, sha256_of_bytes},
 };
 
-/// 文件的唯一标识符（SHA256 + 长度）
-#[derive(Hash, Eq, PartialEq, Debug, Clone, Copy)]
-struct FileKey {
-    hash: [u8; 32],
-    len: usize,
-}
+/// 零分配构造 byte-key 并执行 body（body 中可使用名为 `$key` 的 `&[u8]`）
+///
+/// 用法：
+// make_key_bytes!(src, key, {
+//     patch_data::PATCHES.get(key).map(|p| p.as_slice())
+// })
+macro_rules! make_key_bytes {
+    ($src:expr, $key:ident, $body:block) => {{
+        // 计算 sha（[u8;32]）
+        let __sha: [u8; 32] = crate::utils::sha256_of_bytes($src);
 
-/// 补丁管理器
-struct PatchManager {
-    patches: HashMap<FileKey, &'static [u8]>,
-    len_filter: HashSet<usize>,
-    #[cfg(feature = "debug_output")]
-    filenames: HashMap<FileKey, String>,
-}
+        // 缓冲：64 hex + ':' + up to 31 digits -> 96 bytes 足够
+        let mut __buf = [0u8; 96];
+        const __HEX: &[u8; 16] = b"0123456789abcdef";
 
-impl PatchManager {
-    fn new() -> Self {
-        patch_data::new()
-    }
-
-    fn get_patch(&self, src: &[u8]) -> Option<&'static [u8]> {
-        self.patches
-            .get(&self.get_filekey_from_slice(src)?)
-            .copied()
-    }
-
-    #[cfg(feature = "debug_output")]
-    fn get_filename(&self, src: &[u8]) -> Option<&str> {
-        self.filenames
-            .get(&self.get_filekey_from_slice(src)?)
-            .map(|s| s.as_str())
-    }
-
-    fn get_filekey_from_slice(&self, src: &[u8]) -> Option<FileKey> {
-        if !self.len_filter.contains(&src.len()) {
-            return None;
+        // 写 hex 小写
+        let mut __i = 0usize;
+        while __i < 32 {
+            let __b = __sha[__i];
+            __buf[2 * __i] = __HEX[((__b >> 4) & 0xF) as usize];
+            __buf[2 * __i + 1] = __HEX[(__b & 0xF) as usize];
+            __i += 1;
         }
 
-        Some(FileKey {
-            hash: crate::utils::sha256_of_bytes(src),
-            len: src.len(),
-        })
-    }
-}
+        // 写 ':'
+        let mut __pos = 64;
+        __buf[__pos] = b':';
+        __pos += 1;
 
-static PATCH_MANAGER: Lazy<PatchManager> = Lazy::new(PatchManager::new);
+        // 写 len 的十进制（先倒序写入 tmp，再反转）
+        let mut __tbuf = [0u8; 32];
+        let mut __t = 0usize;
+        let mut __n = $src.len();
+        if __n == 0 {
+            __tbuf[0] = b'0';
+            __t = 1;
+        } else {
+            while __n > 0 {
+                __tbuf[__t] = b'0' + ((__n % 10) as u8);
+                __n /= 10;
+                __t += 1;
+            }
+        }
+        let mut __j = 0usize;
+        while __j < __t {
+            __buf[__pos + __j] = __tbuf[__t - 1 - __j];
+            __j += 1;
+        }
+        let __total = __pos + __t;
+
+        let $key: &[u8] = &__buf[..__total];
+
+        $body
+    }};
+}
 
 /// 根据目标数据，获取补丁数据
 pub fn get_patch(src: &[u8]) -> Option<&'static [u8]> {
-    PATCH_MANAGER.get_patch(src)
+    if !patch_data::LEN_FILTER.contains(&src.len()) {
+        return None;
+    }
+
+    make_key_bytes!(src, key, {
+        patch_data::PATCHES.get(key).map(|p| p.as_slice())
+    })
 }
 
 /// 根据目标数据，获取补丁数据对应的原始文件名（仅在 debug_output 特性启用时可用）
 #[cfg(feature = "debug_output")]
 pub fn get_filename(src: &[u8]) -> Option<&str> {
-    PATCH_MANAGER.get_filename(src)
+    if !patch_data::LEN_FILTER.contains(&src.len()) {
+        return None;
+    }
+
+    make_key_bytes!(src, key, { patch_data::FILENAMES.get(key).map(|v| &**v) })
 }
 
 /// 尝试匹配传入数据，若为目标数据，将会覆盖对应的补丁数据
