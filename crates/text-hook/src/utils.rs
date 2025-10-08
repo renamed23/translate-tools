@@ -28,7 +28,7 @@ pub fn quick_memory_check_win32(ptr: *mut u8, len: usize) -> bool {
     }
 
     // 检查地址 + len 是否会越界
-    if addr.saturating_add(len) > 0x7FFEFFFF {
+    if addr.saturating_add(len - 1) > 0x7FFEFFFF {
         return false;
     }
 
