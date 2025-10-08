@@ -8,33 +8,44 @@ build = "build.rs"
 crate-type = ["cdylib"]
 
 [features]
+
+# features ---------------------------------------------------
+
 # 调试输出
 debug_output = []
 # 调试输出映射文本
 debug_text_mapping = ["debug_output"]
-# 调试文件输出的HOOK实现，可用于调试
-debug_file_hook_impl = ["debug_output"]
 
 # 截获并替换patch数据
 patch = []
 # 默认的patch导出函数实现
 default_patch_impl = ["patch"]
+# 当该feature开启时，create_font系列函数不再固定字体
+enum_font_families = []
+# 嵌入`assets/custom.ttf`的自定义字体，会使用`AddFontMemResourceEx`让GDI识别
+custom_font = []
+# 通过读取`assets/translated.json`生成完整的映射数据，
+# 不仅是替身字符，还包括了非映射字符(仅支持jis0208的双字节字符，不支持单字节片假名和CP932的扩展字符)
+# ascii码不需要进行映射，所以开启该特性后，几乎不需要使用`MultiByteToWideChar`，
+# 通过映射表即可映射几乎所有字符
+generate_full_mapping_data = []
+
+# 是否导出钩子函数，实际上如果用detour的话，不需要导出
+export_hooks = []
 # 内嵌原文->译文字典
 embedded_dict = []
-# 使用VNTEXT的映射表
+# 嵌入`assets/sjis_ext.bin`，使用VNTEXT的映射表解码
 shift_bin = []
+
+# 通用impl ---------------------------------------------------
+
+# 调试文件输出的HOOK实现，可用于调试
+debug_file_hook_impl = ["debug_output"]
 # 默认的HOOK实现，使用`DefaultHook`，并启动`set_debug_panic_hook`
 # 会拦截所有与字体相关的GDI函数
 default_hook_impl = []
-# 当该feature开启时，create_font系列函数不再固定字体
-# 并且会创建一个detour
-enum_font_families = []
-# 是否导出钩子函数，实际上如果用detour的话，不需要导出
-export_hooks = []
-# 自定义字体，会使用`AddFontMemResourceEx`让GDI识别
-custom_font = []
 
-# impl -------------------------------------------------------
+# 针对特定游戏的impl-------------------------------------------
 snow_radish = ["patch"]
 bleed = []
 sukisuki = ["default_hook_impl"]

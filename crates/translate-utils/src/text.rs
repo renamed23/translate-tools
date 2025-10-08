@@ -149,4 +149,42 @@ impl Text {
     pub fn add_text(&mut self, text: Self) {
         self.items.extend(text.items);
     }
+
+    /// 获取所有字符的集合，应用指定的过滤器
+    ///
+    /// 遍历所有 `item` 的 `name` 和 `message`，对每个字符应用过滤器函数
+    /// 如果过滤器返回 true，则保留该字符
+    pub fn get_filtered_chars<F>(&self, filter: F) -> HashSet<char>
+    where
+        F: Fn(char) -> bool,
+    {
+        let mut chars = HashSet::new();
+
+        for item in &self.items {
+            // 处理 `message` 中的字符
+            for ch in item.message.chars() {
+                if filter(ch) {
+                    chars.insert(ch);
+                }
+            }
+
+            // 处理 name 中的字符（如果存在）
+            if let Some(name) = &item.name {
+                for ch in name.chars() {
+                    if filter(ch) {
+                        chars.insert(ch);
+                    }
+                }
+            }
+        }
+
+        chars
+    }
+
+    /// 获取所有字符的集合（不应用过滤器）
+    ///
+    /// 内部调用 `get_filtered_chars` 并使用始终返回 true 的过滤器
+    pub fn get_chars(&self) -> HashSet<char> {
+        self.get_filtered_chars(|_| true)
+    }
 }

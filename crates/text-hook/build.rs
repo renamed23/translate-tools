@@ -5,6 +5,7 @@ use std::fs;
 use std::io::Write;
 use std::path::Path;
 use translate_utils::jis0208::is_jis0208;
+use translate_utils::text::Text;
 
 fn main() -> anyhow::Result<()> {
     generate_constant()?;
@@ -106,20 +107,59 @@ fn generate_mapping_data() -> anyhow::Result<()> {
     let map: HashMap<String, String> =
         serde_json::from_str(&s).map_err(|e| anyhow!("解析 assets/mapping.json 失败: {e}"))?;
 
-    if map.is_empty() {
-        println!("cargo:warning=assets/mapping.json 为空（将生成空的 mapping.rs）");
+    // 初始化字符映射
+    let mut char_mapping = HashMap::new();
+
+    // 如果启用了 generate_full_mapping_data，从 translated.json 提取字符
+    if std::env::var("CARGO_FEATURE_GENERATE_FULL_MAPPING_DATA").is_ok() {
+        println!(
+            "cargo:warning=已启用 feature `generate_full_mapping_data`，从 translated.json 提取字符"
+        );
+
+        let translated_path = Path::new("assets/translated.json");
+        println!("cargo:rerun-if-changed={}", translated_path.display());
+
+        if !translated_path.exists() {
+            bail!("assets/translated.json 不存在");
+        }
+
+        // 读取 translated.json
+        let text = Text::from_path(translated_path)
+            .map_err(|e| anyhow!("读取 assets/translated.json 失败: {e}"))?;
+
+        // 提取所有双字节字符（JIS0208兼容）
+        let all_chars = text.get_filtered_chars(is_jis0208);
+
+        println!(
+            "cargo:warning=从 translated.json 提取到 {} 个JIS0208字符",
+            all_chars.len()
+        );
+
+        // 为每个字符创建自映射（字符 -> 相同字符）
+        for ch in all_chars {
+            char_mapping.insert(ch.to_string(), ch.to_string());
+        }
+    }
+
+    // 用 mapping.json 覆盖或添加映射
+    for (k, v) in map.into_iter() {
+        char_mapping.insert(k, v);
+    }
+
+    if char_mapping.is_empty() {
+        println!("cargo:warning=字符映射为空（将生成空的 mapping.rs）");
     }
 
     let mut entries: Vec<(u16, u16, String, String)> = Vec::new();
     let mut seen_codes: HashSet<u16> = HashSet::new();
 
-    for (k, v) in map.into_iter() {
+    for (k, v) in char_mapping.into_iter() {
         // 强制单字符
         if k.chars().count() != 1 {
-            bail!("mapping.json 的键必须是单个字符，发现: {k:?}");
+            bail!("映射键必须是单个字符，发现: {k:?}");
         }
         if v.chars().count() != 1 {
-            bail!("mapping.json 的值必须是单个字符，发现: {v:?}");
+            bail!("映射值必须是单个字符，发现: {v:?}");
         }
 
         let kc = k.chars().next().unwrap();
@@ -127,14 +167,7 @@ fn generate_mapping_data() -> anyhow::Result<()> {
 
         // 使用 is_jis0208 判断 key 是否为 JIS0208（可被 Shift_JIS 编码）
         if !is_jis0208(kc) {
-            bail!("mapping.json 键 '{kc}' 不是 JIS0208（不可被 Shift_JIS 编码），请修正");
-        }
-
-        // value 必须是 shift-jis 不兼容字符
-        if is_jis0208(vc) {
-            println!(
-                "mapping.json 值 '{vc}' 是 JIS0208（可以被 Shift_JIS 编码），但应为 shift-jis 不兼容字符"
-            );
+            bail!("映射键 '{kc}' 不是 JIS0208（不可被 Shift_JIS 编码），请修正");
         }
 
         // 将 key 编码为 Shift_JIS
@@ -149,18 +182,18 @@ fn generate_mapping_data() -> anyhow::Result<()> {
         let key_code: u16 = ((enc[0] as u16) << 8) | (enc[1] as u16);
 
         if seen_codes.contains(&key_code) {
-            bail!("发现重复的 Shift_JIS 编码 0x{key_code:04X} 对应多个键（请检查 mapping.json）");
+            bail!("发现重复的 Shift_JIS 编码 0x{key_code:04X} 对应多个键（请检查映射）");
         }
         seen_codes.insert(key_code);
 
         // value -> utf16 codepoint（仅支持 BMP）
         let val_u32 = vc as u32;
         if val_u32 > 0xFFFF {
-            bail!("mapping.json 的值 '{vc}' 超过 BMP（>0xFFFF），目前不支持");
+            bail!("映射值 '{vc}' 超过 BMP（>0xFFFF），目前不支持");
         }
         let val_code: u16 = val_u32 as u16;
 
-        entries.push((key_code, val_code, k.clone(), v.clone()));
+        entries.push((key_code, val_code, k, v));
     }
 
     // 排序（按 key 的编码）
