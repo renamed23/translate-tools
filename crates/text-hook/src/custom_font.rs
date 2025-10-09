@@ -3,7 +3,7 @@ use winapi::um::winnt::HANDLE;
 
 use crate::debug;
 
-include_flate::flate!(
+translate_macros::flate!(
     static CUSTOM_FONT: [u8] from "assets\\custom_font.ttf"
 );
 

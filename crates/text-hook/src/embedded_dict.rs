@@ -2,7 +2,7 @@ use once_cell::sync::Lazy;
 
 use crate::translated_dict::TranslatedDict;
 
-include_flate::flate!(
+translate_macros::flate!(
     static TRANSLATED_JSON: str from "assets\\translated.json"
 );
 

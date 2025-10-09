@@ -80,7 +80,7 @@ mod mapping_impl {
 
     /// 惰性静态映射表：在第一次需要时解析 SJIT_EXT_FILE 并转换为 Vec<u16>（小端）
     static TUNNEL: Lazy<SjisTunnel> = Lazy::new(|| {
-        include_flate::flate!(
+        translate_macros::flate!(
             static SJIT_EXT_FILE: [u8] from "assets\\sjis_ext.bin"
         );
 

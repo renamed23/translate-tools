@@ -78,11 +78,11 @@ winapi = { version = "0.3", features = [
     "consoleapi",
     "errhandlingapi",
 ] }
-include-flate = "0.3"
 sha2 = "0.10"
 retour = "0.4.0-alpha.4"
 dynasmrt = "4.0.1"
 phf = { version = "0.13", features = ["macros"] }
+zstd = "0.13"
 
 [build-dependencies]
 sha2 = "0.10"

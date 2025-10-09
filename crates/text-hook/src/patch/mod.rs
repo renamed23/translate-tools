@@ -5,6 +5,10 @@ use crate::{
     utils::{quick_memory_check_win32, sha256_of_bytes},
 };
 
+pub fn decompress_zstd(data: &[u8], cap: usize) -> Vec<u8> {
+    zstd::bulk::decompress(data, cap).unwrap()
+}
+
 /// 根据目标数据，获取补丁数据
 pub fn get_patch(src: &[u8]) -> Option<&'static [u8]> {
     if !patch_data::LEN_FILTER.contains(&src.len()) {

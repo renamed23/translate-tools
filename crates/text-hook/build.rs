@@ -367,12 +367,11 @@ fn generate_patch_data() -> anyhow::Result<()> {
     out.push_str("use phf::{phf_map, phf_set};\n");
     out.push_str("use std::sync::LazyLock;\n\n");
 
-    // include_flate lines
     for (idx, item) in files.iter().enumerate() {
         let patch_name = format!("PATCH_{:04}", idx + 1);
         let rel = item.translated_path.to_string_lossy().replace('\\', "/");
         out.push_str(&format!(
-            "include_flate::flate!(\n    static {}: [u8] from \"{}\"\n);\n\n",
+            "translate_macros::flate!(\n    static {}: [u8] from \"{}\"\n);\n\n",
             patch_name, rel
         ));
     }

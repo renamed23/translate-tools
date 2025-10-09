@@ -1,5 +1,6 @@
 pub(crate) mod byte_slice;
 pub(crate) mod ffi_catch_unwind;
+pub(crate) mod flate;
 pub(crate) mod generate_detours;
 pub(crate) mod utils;
 
@@ -176,4 +177,54 @@ pub fn generate_detours(attr: TokenStream, item: TokenStream) -> TokenStream {
 #[proc_macro_attribute]
 pub fn ffi_catch_unwind(attr: TokenStream, item: TokenStream) -> TokenStream {
     ffi_catch_unwind::ffi_catch_unwind(attr, item)
+}
+
+/// 将文件在编译时压缩并嵌入为静态变量，运行时解压访问。
+///
+/// # 语法
+/// ```ignore
+/// flate!([pub] static VARIABLE_NAME: [u8] from "file_path");
+/// ```
+///
+/// # 参数说明
+/// - `[pub]`: 可选，如果提供则生成公有的静态变量
+/// - `VARIABLE_NAME`: 静态变量的标识符
+/// - `[u8]`: 类型标记（实际类型为 `LazyLock<Vec<u8>>`）
+/// - `"file_path"`: 相对于 `CARGO_MANIFEST_DIR` 的文件路径
+///
+/// # 返回值类型
+/// 生成的静态变量类型为 `LazyLock<Vec<u8>>`，在首次访问时自动解压数据。
+///
+/// # 特性
+/// - **编译时压缩**: 使用 zstd 算法（级别 0）在编译时压缩文件
+/// - **运行时解压**: 数据在首次访问时解压，避免启动时性能开销
+/// - **路径解析**: 文件路径相对于项目根目录（`CARGO_MANIFEST_DIR`）
+/// - **错误处理**: 编译时检查文件存在性和可读性
+///
+/// # 示例
+/// ```
+/// // 在 crate root 或 mod 中
+/// use your_crate::flate;
+///
+/// // 嵌入并压缩配置文件
+/// flate!(static CONFIG_DATA: [u8] from "config/app.toml");
+///
+/// // 公有的嵌入资源
+/// flate!(pub static ASSET_DATA: [u8] from "assets/image.png");
+///
+/// // 使用时
+/// fn use_embedded_data() {
+///     let data = &*CONFIG_DATA; // 首次访问时解压
+///     println!("Config size: {}", data.len());
+/// }
+/// ```
+///
+/// # 注意事项
+/// - 文件路径相对于 `CARGO_MANIFEST_DIR`（项目根目录）
+/// - 压缩级别固定为 0（快速压缩）
+/// - 需要运行时解压函数 `crate::patch::decompress_zstd` 的支持
+/// - 生成的静态变量是 `LazyLock<Vec<u8>>` 类型，需要通过 `&*VAR` 访问数据
+#[proc_macro]
+pub fn flate(input: TokenStream) -> TokenStream {
+    flate::flate(input)
 }
