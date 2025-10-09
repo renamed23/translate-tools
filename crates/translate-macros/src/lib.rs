@@ -133,7 +133,7 @@ pub fn generate_detours(attr: TokenStream, item: TokenStream) -> TokenStream {
 /// 为 FFI 导出的函数自动生成 panic 捕获包装的属性宏实现。
 ///
 /// # 用途
-/// 将这个属性应用到 `fn` 上后，函数体会被自动用 `std::panic::catch_unwind`(no-std则为不会做任何事) 包裹，
+/// 将这个属性应用到 `fn` 上后，函数体会被自动用 `std::panic::catch_unwind` 包裹，
 /// 当函数内部发生 panic 时不会让 panic 穿出 FFI 边界，而是返回用户在属性中指定的回退值（fallback）。
 ///
 /// # 属性语法

@@ -38,8 +38,6 @@ export_hooks = []
 embedded_dict = []
 # 嵌入`assets/sjis_ext.bin`，使用VNTEXT的映射表解码
 shift_bin = []
-# 不使用rust的标准库，在某些实现中无法启用该feature
-no_std = []
 
 # 通用impl ---------------------------------------------------
 
@@ -85,7 +83,6 @@ sha2 = "0.10"
 retour = "0.4.0-alpha.4"
 dynasmrt = "4.0.1"
 phf = { version = "0.13", features = ["macros"] }
-cfg-if = "1"
 
 [build-dependencies]
 sha2 = "0.10"

@@ -16,7 +16,6 @@ use crate::constant;
 use crate::debug;
 use crate::hook_impl::HookImplType;
 use crate::mapping::map_shift_jis_to_unicode;
-use crate::{Vec, vec};
 
 #[generate_detours]
 pub trait Hook: Send + Sync + 'static {

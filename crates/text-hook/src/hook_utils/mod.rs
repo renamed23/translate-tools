@@ -9,8 +9,6 @@ use winapi::{
     },
 };
 
-use crate::Vec;
-
 /// 获取模块句柄的包装函数
 /// 当module_name为空字符串时，获取当前进程的模块句柄
 #[allow(dead_code)]

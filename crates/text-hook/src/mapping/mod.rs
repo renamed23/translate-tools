@@ -1,12 +1,9 @@
-use crate::Vec;
-
 #[cfg(not(feature = "shift_bin"))]
 mod mapping_data;
 
 /// 默认的MAPPING实现
 #[cfg(not(feature = "shift_bin"))]
 mod mapping_impl {
-    use crate::Vec;
     use crate::mapping::mapping_data;
 
     use winapi::um::stringapiset::MultiByteToWideChar;

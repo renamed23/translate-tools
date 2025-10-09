@@ -2,7 +2,7 @@ use core::mem;
 use winapi::um::memoryapi::VirtualProtect;
 use winapi::um::sysinfoapi::{GetSystemInfo, SYSTEM_INFO};
 
-use crate::{Vec, hook_utils::flush_icache};
+use crate::hook_utils::flush_icache;
 
 /// RAII 内存保护守卫
 /// 在构造时修改内存保护，在析构时自动恢复原来的保护

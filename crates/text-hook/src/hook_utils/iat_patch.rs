@@ -8,7 +8,6 @@ use winapi::{
     },
 };
 
-use crate::Vec;
 use crate::debug;
 use crate::hook_utils::protect_guard::ProtectGuard;
 use crate::hook_utils::{get_module_handle, get_module_symbol_addrs};
