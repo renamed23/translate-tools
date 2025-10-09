@@ -11,9 +11,13 @@ pub fn get_patch(src: &[u8]) -> Option<&'static [u8]> {
         return None;
     }
 
-    patch_data::PATCHES
-        .get(&sha256_of_bytes(src))
-        .map(|p| p.as_slice())
+    let data = patch_data::PATCHES.get(&sha256_of_bytes(src))?.as_slice();
+    if data.len() != src.len() {
+        debug!("Error: Patch and raw have different lengths");
+        return None;
+    }
+
+    Some(data)
 }
 
 /// 根据目标数据，获取补丁数据对应的原始文件名（仅在 debug_output 特性启用时可用）
