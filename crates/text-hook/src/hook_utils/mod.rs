@@ -9,18 +9,20 @@ use winapi::{
     },
 };
 
+use crate::Vec;
+
 /// 获取模块句柄的包装函数
 /// 当module_name为空字符串时，获取当前进程的模块句柄
 #[allow(dead_code)]
 pub fn get_module_handle(module_name: &str) -> Option<HMODULE> {
     if module_name.is_empty() {
         // 空字符串表示获取当前进程的句柄
-        unsafe { Some(GetModuleHandleW(std::ptr::null())) }
+        unsafe { Some(GetModuleHandleW(core::ptr::null())) }
     } else {
         // 转换为UTF-16并调用GetModuleHandleW
         let module_wide: Vec<u16> = module_name
             .encode_utf16()
-            .chain(std::iter::once(0))
+            .chain(core::iter::once(0))
             .collect();
 
         unsafe {

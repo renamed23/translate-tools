@@ -1,6 +1,6 @@
 use once_cell::sync::OnceCell;
-use std::os::raw::c_int;
 use translate_macros::{detour, generate_detours};
+use winapi::ctypes::c_int;
 use winapi::ctypes::c_void;
 use winapi::shared::minwindef::{BOOL, DWORD, FARPROC, HMODULE, LPARAM, LPDWORD, LPVOID};
 use winapi::shared::ntdef::HANDLE;
@@ -16,6 +16,7 @@ use crate::constant;
 use crate::debug;
 use crate::hook_impl::HookImplType;
 use crate::mapping::map_shift_jis_to_unicode;
+use crate::{Vec, vec};
 
 #[generate_detours]
 pub trait Hook: Send + Sync + 'static {
@@ -30,7 +31,7 @@ pub trait Hook: Send + Sync + 'static {
         }
 
         unsafe {
-            let input_slice = std::slice::from_raw_parts(lp_string as *const u8, c as usize);
+            let input_slice = core::slice::from_raw_parts(lp_string as *const u8, c as usize);
             let result = map_shift_jis_to_unicode(input_slice);
 
             #[cfg(feature = "debug_text_mapping")]
@@ -60,7 +61,7 @@ pub trait Hook: Send + Sync + 'static {
         }
 
         unsafe {
-            let input_slice = std::slice::from_raw_parts(lp_string as *const u8, c as usize);
+            let input_slice = core::slice::from_raw_parts(lp_string as *const u8, c as usize);
             let result = map_shift_jis_to_unicode(input_slice);
 
             #[cfg(feature = "debug_text_mapping")]
@@ -123,7 +124,7 @@ pub trait Hook: Send + Sync + 'static {
     #[detour(
         dll = "kernel32.dll",
         symbol = "GetProcAddress",
-        fallback = "std::ptr::null_mut()"
+        fallback = "core::ptr::null_mut()"
     )]
     unsafe fn get_proc_address(&self, _hmod: HMODULE, _proc_name: LPCSTR) -> FARPROC {
         unimplemented!();
@@ -133,7 +134,7 @@ pub trait Hook: Send + Sync + 'static {
     #[detour(
         dll = "gdi32.dll",
         symbol = "CreateFontA",
-        fallback = "std::ptr::null_mut()"
+        fallback = "core::ptr::null_mut()"
     )]
     unsafe fn create_font(
         &self,
@@ -156,7 +157,7 @@ pub trait Hook: Send + Sync + 'static {
         let mut face_u16: Vec<u16> = constant::FONT_FACE.encode_utf16().collect();
         #[cfg(feature = "enum_font_families")]
         let mut face_u16: Vec<u16> = {
-            let bytes = unsafe { std::ffi::CStr::from_ptr(psz_face_name).to_bytes() };
+            let bytes = unsafe { core::ffi::CStr::from_ptr(psz_face_name).to_bytes() };
             crate::code_cvt::ansi_to_wide_char(bytes)
         };
 
@@ -186,11 +187,11 @@ pub trait Hook: Send + Sync + 'static {
     #[detour(
         dll = "gdi32.dll",
         symbol = "CreateFontIndirectA",
-        fallback = "std::ptr::null_mut()"
+        fallback = "core::ptr::null_mut()"
     )]
     unsafe fn create_font_indirect(&self, lplf: *const LOGFONTA) -> HFONT {
         let logfona = unsafe { &*lplf };
-        let mut logfontw = unsafe { std::mem::zeroed::<LOGFONTW>() };
+        let mut logfontw = unsafe { core::mem::zeroed::<LOGFONTW>() };
 
         logfontw.lfHeight = logfona.lfHeight;
         logfontw.lfWidth = logfona.lfWidth;
@@ -211,7 +212,7 @@ pub trait Hook: Send + Sync + 'static {
         #[cfg(feature = "enum_font_families")]
         let mut face_u16: Vec<u16> = {
             let bytes = unsafe {
-                std::slice::from_raw_parts(
+                core::slice::from_raw_parts(
                     logfona.lfFaceName.as_ptr() as *const u8,
                     logfona.lfFaceName.len(),
                 )

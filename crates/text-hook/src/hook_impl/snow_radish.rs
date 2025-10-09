@@ -1,6 +1,6 @@
+use core::ffi::CStr;
+use core::mem;
 use once_cell::sync::OnceCell;
-use std::ffi::CStr;
-use std::mem;
 use translate_macros::ffi_catch_unwind;
 use winapi::shared::minwindef::{FARPROC, HMODULE};
 use winapi::shared::ntdef::LPCSTR;

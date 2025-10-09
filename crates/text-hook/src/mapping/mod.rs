@@ -1,12 +1,15 @@
+use crate::Vec;
+
 #[cfg(not(feature = "shift_bin"))]
 mod mapping_data;
 
 /// 默认的MAPPING实现
 #[cfg(not(feature = "shift_bin"))]
 mod mapping_impl {
+    use crate::Vec;
     use crate::mapping::mapping_data;
-    use winapi::um::stringapiset::MultiByteToWideChar;
 
+    use winapi::um::stringapiset::MultiByteToWideChar;
     pub(super) fn mapping(bytes: &[u8]) -> Vec<u16> {
         let mut out_utf16 = Vec::with_capacity(bytes.len() * 2);
         let mut i = 0;

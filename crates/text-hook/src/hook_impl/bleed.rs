@@ -84,7 +84,7 @@ impl Hook for BleedHook {
         }
 
         unsafe {
-            let input_slice = std::slice::from_raw_parts(lp_string as *const u8, c as usize);
+            let input_slice = core::slice::from_raw_parts(lp_string as *const u8, c as usize);
 
             let this = self as *const _ as *mut BleedHook;
             let (new_x, new_y) = this.as_mut().unwrap().layout_text(x, y);

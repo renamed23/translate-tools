@@ -1,4 +1,4 @@
-use std::ptr;
+use core::ptr;
 use winapi::shared::ntdef::LPCSTR;
 use winapi::um::winnt::PAGE_EXECUTE_READWRITE;
 use winapi::{
@@ -8,6 +8,7 @@ use winapi::{
     },
 };
 
+use crate::Vec;
 use crate::debug;
 use crate::hook_utils::protect_guard::ProtectGuard;
 use crate::hook_utils::{get_module_handle, get_module_symbol_addrs};
@@ -57,7 +58,7 @@ pub unsafe fn patch_iat(
             // 修改内存保护以允许写入
             let guard = ProtectGuard::new(
                 iat_entry,
-                std::mem::size_of::<usize>(),
+                core::mem::size_of::<usize>(),
                 PAGE_EXECUTE_READWRITE,
             )?;
 

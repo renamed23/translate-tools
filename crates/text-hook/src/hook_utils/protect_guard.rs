@@ -1,8 +1,8 @@
-use std::mem;
+use core::mem;
 use winapi::um::memoryapi::VirtualProtect;
 use winapi::um::sysinfoapi::{GetSystemInfo, SYSTEM_INFO};
 
-use crate::hook_utils::flush_icache;
+use crate::{Vec, hook_utils::flush_icache};
 
 /// RAII 内存保护守卫
 /// 在构造时修改内存保护，在析构时自动恢复原来的保护
@@ -254,7 +254,7 @@ impl ProtectGuard {
         );
 
         let count = self.size / elem;
-        unsafe { std::slice::from_raw_parts(self.address as *const U, count) }
+        unsafe { core::slice::from_raw_parts(self.address as *const U, count) }
     }
 
     /// 将受保护的内存区域转换为指定类型的可变切片引用
@@ -279,7 +279,7 @@ impl ProtectGuard {
         );
 
         let count = self.size / elem;
-        unsafe { std::slice::from_raw_parts_mut(self.address as *mut U, count) }
+        unsafe { core::slice::from_raw_parts_mut(self.address as *mut U, count) }
     }
 
     /// 写入字节切片到受保护的内存
@@ -349,7 +349,7 @@ impl ProtectGuard {
 
         unsafe {
             let target_addr = self.address.add(offset);
-            std::ptr::copy_nonoverlapping(data.as_ptr(), target_addr, len);
+            core::ptr::copy_nonoverlapping(data.as_ptr(), target_addr, len);
 
             if asm {
                 flush_icache(target_addr, len);
@@ -394,7 +394,7 @@ impl ProtectGuard {
 
         unsafe {
             let source_addr = self.address.add(offset);
-            std::ptr::copy_nonoverlapping(source_addr, buffer.as_mut_ptr(), len);
+            core::ptr::copy_nonoverlapping(source_addr, buffer.as_mut_ptr(), len);
         }
         len
     }

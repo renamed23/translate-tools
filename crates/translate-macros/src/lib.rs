@@ -133,7 +133,7 @@ pub fn generate_detours(attr: TokenStream, item: TokenStream) -> TokenStream {
 /// 为 FFI 导出的函数自动生成 panic 捕获包装的属性宏实现。
 ///
 /// # 用途
-/// 将这个属性应用到 `fn` 上后，函数体会被自动用 `std::panic::catch_unwind` 包裹，
+/// 将这个属性应用到 `fn` 上后，函数体会被自动用 `std::panic::catch_unwind`(no-std则为不会做任何事) 包裹，
 /// 当函数内部发生 panic 时不会让 panic 穿出 FFI 边界，而是返回用户在属性中指定的回退值（fallback）。
 ///
 /// # 属性语法
@@ -141,13 +141,6 @@ pub fn generate_detours(attr: TokenStream, item: TokenStream) -> TokenStream {
 /// - `#[ffi_catch_unwind(<fallback_expr>)]`：带一个表达式作为回退值，例如 `#[ffi_catch_unwind(FALSE)]`、`#[ffi_catch_unwind(0)]`、`#[ffi_catch_unwind(())]` 等。
 ///
 /// 回退值表达式必须与被修饰函数的返回类型兼容（可隐式或显式转换通过类型检查）。
-///
-/// # 行为细节
-/// - 宏会把原来的函数体（`block`）放进 `catch_unwind(AssertUnwindSafe(|| { ... }))` 中：
-///   - 如果执行正常（`Ok(r)`），则直接返回 `r`（原函数体的返回值）。
-///   - 如果发生 panic（`Err(_)`），则返回属性中指定的 `fallback` 值。
-/// - 使用了 `AssertUnwindSafe`，因此会绕过 `UnwindSafe` 的编译期检查：
-///   如果函数体中持有在 panic 后状态可能不安全恢复的结构（极少见），请谨慎使用。
 ///
 /// # 限制与注意事项
 /// - 这是一个属性宏（`#[proc_macro_attribute]`），只能应用于项（`fn`），不能用于任意表达式或局部块。

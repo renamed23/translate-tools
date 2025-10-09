@@ -27,8 +27,8 @@ pub fn add_font() -> Option<u32> {
         let handle = AddFontMemResourceEx(
             font_data.as_ptr() as *mut _,
             font_data.len() as u32,
-            std::ptr::null_mut(),
-            std::ptr::null_mut(),
+            core::ptr::null_mut(),
+            core::ptr::null_mut(),
         );
 
         if handle.is_null() {

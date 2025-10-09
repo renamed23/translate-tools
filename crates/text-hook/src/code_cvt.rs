@@ -1,7 +1,8 @@
-use std::ptr;
+use core::ptr;
 use winapi::um::stringapiset::{MultiByteToWideChar, WideCharToMultiByte};
 use winapi::um::winnls::{CP_ACP, CP_UTF8};
 
+use crate::Vec;
 use crate::print_system_error_message;
 
 /// 将字节切片转换为宽字符字符串

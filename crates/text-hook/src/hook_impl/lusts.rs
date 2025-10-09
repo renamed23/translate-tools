@@ -1,4 +1,4 @@
-use std::ffi::CStr;
+use core::ffi::CStr;
 use std::path::Path;
 use translate_macros::ffi_catch_unwind;
 use winapi::shared::minwindef::{DWORD, UINT};
@@ -92,10 +92,10 @@ pub unsafe extern "system" fn get_private_profiles_string(
                     0,
                     wide_str.as_ptr(),
                     wide_len,
-                    std::ptr::null_mut(),
+                    core::ptr::null_mut(),
                     0,
-                    std::ptr::null(),
-                    std::ptr::null_mut(),
+                    core::ptr::null(),
+                    core::ptr::null_mut(),
                 );
 
                 if ansi_size == 0 {
@@ -114,8 +114,8 @@ pub unsafe extern "system" fn get_private_profiles_string(
                     wide_len,
                     ansi_ptr as *mut i8,
                     ansi_size,
-                    std::ptr::null(),
-                    std::ptr::null_mut(),
+                    core::ptr::null(),
+                    core::ptr::null_mut(),
                 );
 
                 if result == 0 {
@@ -129,7 +129,7 @@ pub unsafe extern "system" fn get_private_profiles_string(
                 let copy_len = ansi_buffer.len().min(n_size as usize);
 
                 // 复制到输出缓冲区
-                std::ptr::copy_nonoverlapping(
+                core::ptr::copy_nonoverlapping(
                     ansi_buffer.as_ptr(),
                     lp_returned_string as *mut u8,
                     copy_len,

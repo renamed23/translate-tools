@@ -11,7 +11,7 @@ pub(crate) mod debug_impl {
     static CONSOLE_INIT: Once = Once::new();
 
     pub fn debug(s: &str) {
-        let wide: Vec<u16> = s.encode_utf16().chain(std::iter::once(0)).collect();
+        let wide: Vec<u16> = s.encode_utf16().chain(core::iter::once(0)).collect();
         unsafe {
             OutputDebugStringW(wide.as_ptr());
         }
@@ -39,12 +39,12 @@ pub(crate) mod debug_impl {
             let mut buffer = [0u16; 512];
             let result = FormatMessageW(
                 FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
-                std::ptr::null_mut(),
+                core::ptr::null_mut(),
                 error_code,
                 0, // 使用系统默认语言
                 buffer.as_mut_ptr(),
                 buffer.len() as u32,
-                std::ptr::null_mut(),
+                core::ptr::null_mut(),
             );
 
             if result > 0 {

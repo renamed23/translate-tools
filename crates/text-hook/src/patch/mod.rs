@@ -29,17 +29,15 @@ pub fn get_filename(src: &[u8]) -> Option<&str> {
 }
 
 /// 尝试匹配传入数据，若为目标数据，将会覆盖对应的补丁数据
+#[cfg(not(feature = "patch_extracting"))]
 pub unsafe fn try_patching(ptr: *mut u8, len: usize) {
-    debug!(
-        "Buffer len: {len}, thread: {:?}",
-        std::thread::current().id()
-    );
+    debug!("Buffer len: {len}",);
 
     if !quick_memory_check_win32(ptr, len) {
         return;
     }
 
-    let slice = unsafe { std::slice::from_raw_parts_mut(ptr, len) };
+    let slice = unsafe { core::slice::from_raw_parts_mut(ptr, len) };
 
     if let Some(patch) = get_patch(slice) {
         if patch.len() != slice.len() {
@@ -63,17 +61,15 @@ pub unsafe fn try_patching(ptr: *mut u8, len: usize) {
 
 /// 尝试提取传入数据，若为新数据，将会写入 raw 目录
 #[allow(dead_code, unused_variables)]
+#[cfg(feature = "patch_extracting")]
 pub unsafe fn try_extracting(ptr: *mut u8, len: usize) {
-    debug!(
-        "Buffer len: {len}, thread: {:?}",
-        std::thread::current().id()
-    );
+    debug!("Buffer len: {len}");
 
     if !quick_memory_check_win32(ptr, len) {
         return;
     }
 
-    let slice = unsafe { std::slice::from_raw_parts(ptr, len) };
+    let slice = unsafe { core::slice::from_raw_parts(ptr, len) };
     let new_hash = sha256_of_bytes(slice);
 
     let exe_dir = match std::env::current_exe()
@@ -168,7 +164,9 @@ pub unsafe fn try_extracting(ptr: *mut u8, len: usize) {
 #[unsafe(no_mangle)]
 pub unsafe extern "system" fn replace_script(ptr: *mut u8, len: usize) {
     unsafe {
+        #[cfg(not(feature = "patch_extracting"))]
         try_patching(ptr, len);
-        // try_extracting(ptr, len);
+        #[cfg(feature = "patch_extracting")]
+        try_extracting(ptr, len);
     }
 }

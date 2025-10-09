@@ -20,6 +20,8 @@ debug_text_mapping = ["debug_output"]
 patch = []
 # 默认的patch导出函数实现
 default_patch_impl = ["patch"]
+# 提取补丁而不是替换补丁
+patch_extracting = ["default_patch_impl"]
 # 当该feature开启时，create_font系列函数不再固定字体
 enum_font_families = []
 # 嵌入`assets/custom.ttf`的自定义字体，会使用`AddFontMemResourceEx`让GDI识别
@@ -36,6 +38,8 @@ export_hooks = []
 embedded_dict = []
 # 嵌入`assets/sjis_ext.bin`，使用VNTEXT的映射表解码
 shift_bin = []
+# 不使用rust的标准库，在某些实现中无法启用该feature
+no_std = []
 
 # 通用impl ---------------------------------------------------
 
@@ -81,6 +85,7 @@ sha2 = "0.10"
 retour = "0.4.0-alpha.4"
 dynasmrt = "4.0.1"
 phf = { version = "0.13", features = ["macros"] }
+cfg-if = "1"
 
 [build-dependencies]
 sha2 = "0.10"

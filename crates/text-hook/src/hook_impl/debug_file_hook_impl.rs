@@ -38,7 +38,7 @@ impl Hook for DebugFileHook {
         // 将lp_file_name转换为String
         let file_name = if !lp_file_name.is_null() {
             let wide_str =
-                ansi_to_wide_char(unsafe { std::ffi::CStr::from_ptr(lp_file_name).to_bytes() });
+                ansi_to_wide_char(unsafe { core::ffi::CStr::from_ptr(lp_file_name).to_bytes() });
             String::from_utf16_lossy(&wide_str)
         } else {
             String::from("(null)")

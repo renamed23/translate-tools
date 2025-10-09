@@ -195,7 +195,7 @@ pub fn generate_detours(_attr: TokenStream, item: TokenStream) -> TokenStream {
                                 #dll_lit,
                                 concat!(#symbol_lit, "\0").as_ptr() as winapi::shared::ntdef::LPCSTR
                             ).expect(concat!("symbol not found: ", #symbol_lit));
-                            let ori: #fn_ty_tokens = unsafe { std::mem::transmute(address) };
+                            let ori: #fn_ty_tokens = unsafe { core::mem::transmute(address) };
                             unsafe {
                                 retour::GenericDetour::new(ori, #export_ident).expect(concat!("Failed to create detour for ", #symbol_lit))
                             }

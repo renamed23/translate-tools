@@ -798,6 +798,7 @@ name = "text-hook"
 version = "1.0.0"
 dependencies = [
  "anyhow",
+ "cfg-if",
  "dynasmrt",
  "encoding_rs",
  "include-flate",

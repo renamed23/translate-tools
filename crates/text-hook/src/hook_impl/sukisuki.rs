@@ -146,7 +146,7 @@ unsafe fn styled(hdc: HDC, render_fn: impl Fn()) {
         let white: DWORD = 0x00FFFFFF;
         let old_color = SetTextColor(hdc, white);
 
-        let mut old_pt: POINT = std::mem::zeroed();
+        let mut old_pt: POINT = core::mem::zeroed();
         GetViewportOrgEx(hdc, &mut old_pt as *mut POINT);
 
         if ENABLE_SHADOW {
@@ -156,10 +156,10 @@ unsafe fn styled(hdc: HDC, render_fn: impl Fn()) {
                 hdc,
                 old_pt.x + SHADOW_OFFSET_X,
                 old_pt.y + SHADOW_OFFSET_Y,
-                std::ptr::null_mut(),
+                core::ptr::null_mut(),
             );
             render_fn();
-            SetViewportOrgEx(hdc, old_pt.x, old_pt.y, std::ptr::null_mut());
+            SetViewportOrgEx(hdc, old_pt.x, old_pt.y, core::ptr::null_mut());
             SetTextColor(hdc, white);
         }
 
@@ -180,7 +180,7 @@ pub unsafe extern "C" fn render_text(x: i32, y: i32, text: *const i8) {
     }
 
     unsafe {
-        let hdc = std::ptr::read(0x45DF40 as *const HDC);
+        let hdc = core::ptr::read(0x45DF40 as *const HDC);
         if hdc.is_null() {
             debug!("Error: hdc is null");
             return;

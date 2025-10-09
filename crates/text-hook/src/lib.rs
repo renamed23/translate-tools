@@ -1,4 +1,14 @@
+#![cfg_attr(feature = "no_std", no_std)]
 #![crate_type = "cdylib"]
+
+cfg_if::cfg_if!(
+    if #[cfg(feature = "no_std")] {
+        extern crate alloc;
+        pub use alloc::{string::String, vec, vec::Vec};
+    } else {
+        pub use std::{string::String, vec, vec::Vec};
+    }
+);
 
 #[allow(dead_code)]
 pub(crate) mod constant;
