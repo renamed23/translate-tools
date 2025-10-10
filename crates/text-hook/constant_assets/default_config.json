@@ -10,7 +10,7 @@
     },
     "FONT_FILTER": {
         "type": "&[u16]",
-        "value": "ＭＳ ゴシック;",
+        "value": "ＭＳ ゴシック;MS Gothic",
         "encode_to_u16": true
     }
 }

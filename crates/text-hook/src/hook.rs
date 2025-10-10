@@ -158,9 +158,11 @@ pub trait Hook: Send + Sync + 'static {
         let mut face_u16: Vec<u16> = {
             let bytes = unsafe { core::ffi::CStr::from_ptr(psz_face_name).to_bytes() };
             let u16_bytes = crate::code_cvt::ansi_to_wide_char(bytes);
-            crate::utils::contains_slice(&constant::FONT_FILTER, &u16_bytes)
-                .then(|| constant::FONT_FACE.to_vec())
-                .unwrap_or(u16_bytes)
+            if crate::utils::contains_slice(&constant::FONT_FILTER, &u16_bytes) {
+                constant::FONT_FACE.to_vec()
+            } else {
+                u16_bytes
+            }
         };
 
         face_u16.push(0);
@@ -221,9 +223,11 @@ pub trait Hook: Send + Sync + 'static {
             };
             let end = bytes.iter().position(|&c| c == 0).unwrap_or(31);
             let u16_bytes = crate::code_cvt::ansi_to_wide_char(&bytes[..end]);
-            crate::utils::contains_slice(&constant::FONT_FILTER, &u16_bytes)
-                .then(|| constant::FONT_FACE.to_vec())
-                .unwrap_or(u16_bytes)
+            if crate::utils::contains_slice(&constant::FONT_FILTER, &u16_bytes) {
+                constant::FONT_FACE.to_vec()
+            } else {
+                u16_bytes
+            }
         };
 
         face_u16.push(0);
