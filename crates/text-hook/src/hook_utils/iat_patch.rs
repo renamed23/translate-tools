@@ -1,6 +1,5 @@
 use core::ptr;
 use winapi::shared::ntdef::LPCSTR;
-use winapi::um::winnt::PAGE_EXECUTE_READWRITE;
 use winapi::{
     shared::minwindef::{FARPROC, HMODULE},
     um::winnt::{
@@ -9,8 +8,7 @@ use winapi::{
 };
 
 use crate::debug;
-use crate::hook_utils::protect_guard::ProtectGuard;
-use crate::hook_utils::{get_module_handle, get_module_symbol_addrs};
+use crate::hook_utils::{get_module_handle, get_module_symbol_addrs, write_bytes};
 
 /// 通用的 IAT 修补函数
 ///
@@ -52,17 +50,8 @@ pub unsafe fn patch_iat(
                 );
             }
 
-            debug!("Found IAT entry for {source_dll_name}!{func_name:?} in {target_mod_name}");
-
-            // 修改内存保护以允许写入
-            let guard = ProtectGuard::new(
-                iat_entry,
-                core::mem::size_of::<usize>(),
-                PAGE_EXECUTE_READWRITE,
-            )?;
-
             // 写入 hook 地址
-            guard.write(*hook_addr);
+            write_bytes(iat_entry as _, &hook_addr.to_ne_bytes())?;
 
             debug!("Patched IAT entry for {source_dll_name}!{func_name:?} -> 0x{hook_addr:08X}",);
         }

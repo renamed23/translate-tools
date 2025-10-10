@@ -9,6 +9,8 @@ use winapi::{
     },
 };
 
+use crate::hook_utils::protect_guard::ProtectGuard;
+
 /// 获取模块句柄的包装函数
 /// 当module_name为空字符串时，获取当前进程的模块句柄
 #[allow(dead_code)]
@@ -60,4 +62,44 @@ pub fn flush_icache(addr: *const u8, size: usize) {
     unsafe {
         let _ = FlushInstructionCache(GetCurrentProcess(), addr as _, size as _);
     }
+}
+
+/// 写入汇编字节到指定地址，自动处理内存保护和指令缓存刷新
+#[allow(dead_code)]
+pub fn write_asm(address: *mut u8, data: &[u8]) -> anyhow::Result<()> {
+    if address.is_null() {
+        anyhow::bail!("address is null");
+    }
+    if data.is_empty() {
+        return Ok(());
+    }
+
+    unsafe {
+        ProtectGuard::new(
+            address,
+            data.len(),
+            winapi::um::winnt::PAGE_EXECUTE_READWRITE,
+        )?
+        .write_asm_bytes(data);
+    }
+
+    Ok(())
+}
+
+/// 写入字节到指定地址，自动处理内存保护
+#[allow(dead_code)]
+pub fn write_bytes(address: *mut u8, data: &[u8]) -> anyhow::Result<()> {
+    if address.is_null() {
+        anyhow::bail!("address is null");
+    }
+    if data.is_empty() {
+        return Ok(());
+    }
+
+    unsafe {
+        ProtectGuard::new(address, data.len(), winapi::um::winnt::PAGE_READWRITE)?
+            .write_bytes(data);
+    }
+
+    Ok(())
 }
