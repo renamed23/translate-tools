@@ -36,6 +36,7 @@ pub fn quick_memory_check_win32(ptr: *mut u8, len: usize) -> bool {
 }
 
 /// 检查切片 `haystack` 是否包含子切片 `needle`
+#[allow(dead_code)]
 pub fn contains_slice<T: PartialEq>(haystack: &[T], needle: &[T]) -> bool {
     if needle.is_empty() {
         return true;

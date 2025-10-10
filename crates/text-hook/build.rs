@@ -67,40 +67,46 @@ fn generate_constant() -> anyhow::Result<()> {
             .and_then(|v| v.as_bool())
             .unwrap_or(false);
 
-        // 检查用户配置中是否有对应的值
         let final_value = if let Some(user_val) = user_config.get(key) {
-            user_val // 使用用户配置的值
+            user_val
         } else {
-            default_val // 使用默认值
+            default_val
         };
 
-        if encode_to_u16 && type_str == "&[u16]" {
-            // 将字符串转换为 &[u16]
-            let s = final_value
-                .as_str()
-                .ok_or_else(|| anyhow!("字段 '{}' 需要字符串类型以进行 UTF-16 编码", key))?;
-            let utf16: Vec<u16> = s.encode_utf16().collect();
-            let array_str = format!(
-                "[{}]",
-                utf16
-                    .iter()
-                    .map(|n| format!("{}u16", n))
-                    .collect::<Vec<_>>()
+        let to_rust_value = |v: &serde_json::Value| -> anyhow::Result<String> {
+            let s = if encode_to_u16 {
+                let s = v
+                    .as_str()
+                    .ok_or_else(|| anyhow!("字段 '{}' 需要字符串类型以进行 UTF-16 编码", key))?;
+                let utf16: Vec<u16> = s.encode_utf16().collect();
+                format!(
+                    "&[{}]",
+                    utf16
+                        .iter()
+                        .map(|n| format!("{}u16", n))
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                )
+            } else {
+                v.to_string()
+            };
+
+            Ok(s)
+        };
+
+        let s = if let Some(arr) = final_value.as_array() {
+            format!(
+                "&[{}]",
+                arr.iter()
+                    .map(to_rust_value)
+                    .collect::<anyhow::Result<Vec<_>>>()?
                     .join(", ")
-            );
-            // 生成类似 &[u16; N] 的类型
-            let array_type = format!("[u16; {}]", utf16.len());
-            constant_lines.push(format!(
-                "pub const {}: {} = {};",
-                key, array_type, array_str
-            ));
-            continue; // 已经处理并添加到 constant_lines，跳过后续添加
+            )
+        } else {
+            to_rust_value(final_value)?
         };
 
-        constant_lines.push(format!(
-            "pub const {}: {} = {};",
-            key, type_str, final_value
-        ));
+        constant_lines.push(format!("pub const {}: {} = {};", key, type_str, s));
     }
 
     let mut file = fs::File::create(&out_path)?;
