@@ -62,6 +62,11 @@ fn generate_constant() -> anyhow::Result<()> {
             .get("value")
             .ok_or_else(|| anyhow!("default_config.json 中字段 '{}' 缺少 value", key))?;
 
+        let encode_to_u16 = default_value
+            .get("encode_to_u16")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false);
+
         // 检查用户配置中是否有对应的值
         let final_value = if let Some(user_val) = user_config.get(key) {
             user_val // 使用用户配置的值
@@ -69,15 +74,26 @@ fn generate_constant() -> anyhow::Result<()> {
             default_val // 使用默认值
         };
 
-        if let Some(s) = final_value.as_str() {
-            constant_lines.push(format!("pub const {}: {} = \"{}\";", key, type_str, s));
-        } else if let Some(n) = final_value.as_u64() {
-            constant_lines.push(format!("pub const {}: {} = {};", key, type_str, n));
-        } else if let Some(b) = final_value.as_bool() {
-            constant_lines.push(format!("pub const {}: {} = {};", key, type_str, b));
-        } else {
-            bail!("不支持的类型或值格式: {} = {:?}", key, final_value);
-        }
+        if encode_to_u16 && type_str == "&[u16]" {
+            // 将字符串转换为 &[u16]
+            let s = final_value
+                .as_str()
+                .ok_or_else(|| anyhow!("字段 '{}' 需要字符串类型以进行 UTF-16 编码", key))?;
+            let utf16: Vec<u16> = s.encode_utf16().collect();
+            let array_str = format!("&{:?}", utf16);
+            // 生成类似 &[u16; N] 的类型
+            let array_type = format!("[u16; {}]", utf16.len());
+            constant_lines.push(format!(
+                "pub const {}: {} = {};",
+                key, array_type, array_str
+            ));
+            continue; // 已经处理并添加到 constant_lines，跳过后续添加
+        };
+
+        constant_lines.push(format!(
+            "pub const {}: {} = {};",
+            key, type_str, final_value
+        ));
     }
 
     let mut file = fs::File::create(&out_path)?;

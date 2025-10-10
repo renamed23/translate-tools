@@ -1,10 +1,16 @@
 {
     "FONT_FACE": {
-        "type": "&str",
-        "value": "SimSun"
+        "type": "&[u16]",
+        "value": "SimSun",
+        "encode_to_u16": true
     },
     "CHAR_SET": {
         "type": "winapi::shared::minwindef::DWORD",
         "value": 134
+    },
+    "FONT_FILTER": {
+        "type": "&[u16]",
+        "value": "ＭＳ ゴシック;",
+        "encode_to_u16": true
     }
 }
