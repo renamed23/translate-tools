@@ -1,10 +1,9 @@
-#[cfg(not(feature = "shift_bin"))]
-mod mapping_data;
-
 /// 默认的MAPPING实现
 #[cfg(not(feature = "shift_bin"))]
 mod mapping_impl {
-    use crate::mapping::mapping_data;
+    mod mapping_data {
+        include!(concat!(env!("OUT_DIR"), "/mapping_data.rs"));
+    }
 
     use winapi::um::stringapiset::MultiByteToWideChar;
     pub(super) fn mapping(bytes: &[u8]) -> Vec<u16> {

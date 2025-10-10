@@ -1,4 +1,6 @@
-mod patch_data;
+mod patch_data {
+    include!(concat!(env!("OUT_DIR"), "/patch_data.rs"));
+}
 
 use crate::{
     debug,

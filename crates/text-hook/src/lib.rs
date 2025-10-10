@@ -1,7 +1,9 @@
 #![crate_type = "cdylib"]
 
 #[allow(dead_code)]
-pub(crate) mod constant;
+pub(crate) mod constant {
+    include!(concat!(env!("OUT_DIR"), "/constant.rs"));
+}
 
 pub(crate) mod code_cvt;
 pub(crate) mod debug_output;

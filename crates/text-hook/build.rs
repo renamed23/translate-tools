@@ -16,6 +16,9 @@ fn main() -> anyhow::Result<()> {
 }
 
 fn generate_constant() -> anyhow::Result<()> {
+    let out_dir = std::env::var("OUT_DIR").map_err(|e| anyhow!("无法获取 OUT_DIR: {}", e))?;
+    let out_path = Path::new(&out_dir).join("constant.rs");
+
     let default_config_path = Path::new("constant_assets/default_config.json");
     let config_path = Path::new("assets/config.json");
 
@@ -77,12 +80,7 @@ fn generate_constant() -> anyhow::Result<()> {
         }
     }
 
-    let out_path = Path::new("src/constant.rs");
-    if let Some(parent) = out_path.parent() {
-        fs::create_dir_all(parent)?;
-    }
-
-    let mut file = fs::File::create(out_path)?;
+    let mut file = fs::File::create(&out_path)?;
     file.write_all(constant_lines.join("\n").as_bytes())?;
 
     Ok(())
@@ -93,6 +91,9 @@ fn generate_mapping_data() -> anyhow::Result<()> {
         println!("cargo:warning=已启用 feature `shift_bin`，跳过生成 mapping_data");
         return Ok(());
     }
+
+    let out_dir = std::env::var("OUT_DIR").map_err(|e| anyhow!("无法获取 OUT_DIR: {}", e))?;
+    let out_path = Path::new(&out_dir).join("mapping_data.rs");
 
     let mapping_path = Path::new("assets/mapping.json");
     println!("cargo:rerun-if-changed={}", mapping_path.display());
@@ -200,11 +201,6 @@ fn generate_mapping_data() -> anyhow::Result<()> {
     entries.sort_by_key(|e| e.0);
 
     // 生成文件 (替换原来的 HashMap 输出)
-    let out_path = Path::new("src/mapping/mapping_data.rs");
-    if let Some(parent) = out_path.parent() {
-        fs::create_dir_all(parent)?;
-    }
-
     let mut out = String::new();
     out.push_str("// 自动生成的 MAPPING 数据（phf）\n");
     out.push_str("// key: Shift_JIS 编码 (u16), value: UTF-16 码点 (u16, BMP)\n");
@@ -220,7 +216,7 @@ fn generate_mapping_data() -> anyhow::Result<()> {
 
     out.push_str("};\n\n");
 
-    let mut f = fs::File::create(out_path)?;
+    let mut f = fs::File::create(&out_path)?;
     f.write_all(out.as_bytes())?;
 
     Ok(())
@@ -232,9 +228,11 @@ fn generate_patch_data() -> anyhow::Result<()> {
         return Ok(());
     }
 
+    let out_dir = std::env::var("OUT_DIR").map_err(|e| anyhow!("无法获取 OUT_DIR: {}", e))?;
+    let out_path = Path::new(&out_dir).join("patch_data.rs");
+
     let raw_dir = Path::new("assets/raw");
     let translated_dir = Path::new("assets/translated");
-    let out_path = Path::new("src/patch/patch_data.rs");
 
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-changed=assets/raw");
@@ -357,10 +355,6 @@ fn generate_patch_data() -> anyhow::Result<()> {
     }
 
     // --- 下面开始生成 phf 代码 ---
-    if let Some(parent) = out_path.parent() {
-        fs::create_dir_all(parent)?;
-    }
-
     // header
     let mut out = String::new();
     out.push_str("// 自动生成的补丁数据（phf 版本）\n");
@@ -417,7 +411,7 @@ fn generate_patch_data() -> anyhow::Result<()> {
     out.push_str("};\n\n");
 
     // 写入文件
-    let mut f = fs::File::create(out_path)?;
+    let mut f = fs::File::create(&out_path)?;
     f.write_all(out.as_bytes())?;
     Ok(())
 }
