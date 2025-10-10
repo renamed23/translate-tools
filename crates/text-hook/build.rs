@@ -80,7 +80,14 @@ fn generate_constant() -> anyhow::Result<()> {
                 .as_str()
                 .ok_or_else(|| anyhow!("字段 '{}' 需要字符串类型以进行 UTF-16 编码", key))?;
             let utf16: Vec<u16> = s.encode_utf16().collect();
-            let array_str = format!("&{:?}", utf16);
+            let array_str = format!(
+                "[{}]",
+                utf16
+                    .iter()
+                    .map(|n| format!("{}u16", n))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            );
             // 生成类似 &[u16; N] 的类型
             let array_type = format!("[u16; {}]", utf16.len());
             constant_lines.push(format!(
