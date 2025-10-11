@@ -50,7 +50,7 @@ default_hook_impl = []
 # 针对特定游戏的impl-------------------------------------------
 snow_radish = ["patch"]
 bleed = []
-sukisuki = ["default_hook_impl"]
+sukisuki = ["default_hook_impl", "generate_full_mapping_data"]
 ao_vo = ["patch", "default_hook_impl"]
 noise = ["patch", "default_hook_impl"]
 lusts = ["default_hook_impl"]

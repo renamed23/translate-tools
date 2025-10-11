@@ -16,7 +16,7 @@ use winapi::{
     },
 };
 
-use crate::{debug, mapping::map_shift_jis_to_unicode};
+use crate::{constant, debug, mapping::map_shift_jis_to_unicode};
 
 #[derive(Default)]
 struct Layouter {
@@ -92,7 +92,6 @@ impl Layouter {
     }
 }
 
-const FONT_FACE: &str = "SimSun";
 const TARGET_PX: i32 = 24;
 const ENABLE_SHADOW: bool = true;
 const SHADOW_OFFSET_X: i32 = 2;
@@ -112,7 +111,7 @@ unsafe fn ensure_font() -> HFONT {
 
         debug!("Creating Font...");
 
-        let mut face_u16: Vec<u16> = FONT_FACE.encode_utf16().collect();
+        let mut face_u16: Vec<u16> = constant::FONT_FACE.to_vec();
         face_u16.push(0);
 
         let hf = CreateFontW(
@@ -171,6 +170,12 @@ unsafe fn styled(hdc: HDC, render_fn: impl Fn()) {
     }
 }
 
+// sukisuki
+// const HDC_ADDR: usize = 0x45DF40;
+
+// maid
+const HDC_ADDR: usize = 0x4750A0;
+
 #[ffi_catch_unwind]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn render_text(x: i32, y: i32, text: *const i8) {
@@ -180,7 +185,7 @@ pub unsafe extern "C" fn render_text(x: i32, y: i32, text: *const i8) {
     }
 
     unsafe {
-        let hdc = core::ptr::read(0x45DF40 as *const HDC);
+        let hdc = core::ptr::read(HDC_ADDR as *const HDC);
         if hdc.is_null() {
             debug!("Error: hdc is null");
             return;
