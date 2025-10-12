@@ -31,6 +31,9 @@ pub mod debug_file_hook_impl;
 #[cfg(feature = "bittersweet_fools")]
 pub mod bittersweet_fools;
 
+#[cfg(feature = "white_breath")]
+pub mod white_breath;
+
 // ---------------------- 钩子实现类型 ------------------------------
 
 #[cfg(feature = "default_hook_impl")]
