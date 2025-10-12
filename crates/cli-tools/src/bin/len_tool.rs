@@ -154,7 +154,7 @@ fn try_fix_message(trans_msg: &str, orig_len: usize, method: &Method) -> (String
     }
 
     // 3. 合并重复标点符号
-    const PUNCT_REPLACEMENTS: [(&str, &str); 3] = [
+    const PUNCT_REPLACEMENTS: [(&str, &str); 4] = [
         ("……", "…"), // 多个省略号合并为一个
         ("――", "―"), // 多个长破折号合并为一个
         ("——", "—"), // 多个长破折号合并为一个
