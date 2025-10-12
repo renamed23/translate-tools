@@ -158,6 +158,7 @@ fn try_fix_message(trans_msg: &str, orig_len: usize, method: &Method) -> (String
         ("……", "…"), // 多个省略号合并为一个
         ("――", "―"), // 多个长破折号合并为一个
         ("——", "—"), // 多个长破折号合并为一个
+        ("‥‥", "‥"), // 多个双点省略号合并为一个
     ];
 
     for (from, to) in PUNCT_REPLACEMENTS.iter() {
