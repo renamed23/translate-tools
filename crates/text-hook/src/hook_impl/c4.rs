@@ -27,8 +27,12 @@ pub unsafe extern "system" fn replace_script(ptr: *mut u8, len: usize) {
             SNR_FILE_OCCUR.set(false);
 
             debug!("ptr: 0x{:X}, len: 0x{len:X}", ptr as usize);
+
+            #[cfg(not(feature = "patch_extracting"))]
             crate::patch::try_patching(ptr, len);
-            // crate::patch::try_extracting(ptr, len);
+
+            #[cfg(feature = "patch_extracting")]
+            crate::patch::try_extracting(ptr, len);
         }
     }
 }
