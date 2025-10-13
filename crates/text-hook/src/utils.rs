@@ -45,3 +45,9 @@ pub fn contains_slice<T: PartialEq>(haystack: &[T], needle: &[T]) -> bool {
         .windows(needle.len())
         .any(|window| window == needle)
 }
+
+/// 使用 zstd 解压数据，`cap` 是解压后数据的预估大小
+#[allow(dead_code)]
+pub fn decompress_zstd(data: &[u8], cap: usize) -> Vec<u8> {
+    zstd::bulk::decompress(data, cap).unwrap()
+}

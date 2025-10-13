@@ -76,7 +76,7 @@ pub fn flate(input: TokenStream) -> TokenStream {
 
     let file_len = file_bytes.len();
 
-    let runtime_fn_path = quote! { crate::patch::decompress_zstd };
+    let runtime_fn_path = quote! { crate::utils::decompress_zstd };
 
     let expanded = quote! {
         #pub_token static #name_ident: ::std::sync::LazyLock<Vec<u8>> = ::std::sync::LazyLock::new(|| {
