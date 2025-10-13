@@ -60,7 +60,12 @@ summer_radish = []
 lucky_crosse = ["default_hook_impl", "default_patch_impl"]
 cosmos = ["default_hook_impl", "default_patch_impl"]
 # 非C社的c4
-c4 = ["patch", "default_hook_impl", "enum_font_families"]
+c4 = [
+    "patch",
+    "default_hook_impl",
+    "enum_font_families",
+    "generate_full_mapping_data",
+]
 bittersweet_fools = [
     "enum_font_families",
     "generate_full_mapping_data",
