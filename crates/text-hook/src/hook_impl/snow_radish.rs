@@ -7,7 +7,7 @@ use winapi::shared::ntdef::LPCSTR;
 use winapi::um::libloaderapi::GetProcAddress as WinGetProcAddress;
 
 use crate::debug;
-use crate::hook::{Hook, set_hook_instance};
+use crate::hook::{Hook, enable_text_hooks, set_hook_instance};
 use crate::hook_utils::iat_patch::patch_iat;
 use crate::panic_utils::set_debug_panic_hook;
 
@@ -25,6 +25,7 @@ pub static ORIGINAL_DECODE_LZ: OnceCell<DecodeLzFn> = OnceCell::new();
 
 /// 一个很简单的 Hook 实现，使用 Hook trait 的默认方法。
 /// 你的实际逻辑（Shift-JIS 映射）在 map_shift_jis 模块里，Hook trait 的默认方法会调用它。
+#[derive(Default)]
 pub struct SnowRadishHook;
 
 #[ffi_catch_unwind(0)]
@@ -75,9 +76,8 @@ impl Hook for SnowRadishHook {
                     // 保存原始 DecodeLz 地址（如果尚未保存）
                     // 转换为 DecodeLzFn 并尝试 set
                     let decoded: DecodeLzFn = mem::transmute(real);
-                    match ORIGINAL_DECODE_LZ.set(decoded) {
-                        Ok(()) => debug!("ORIGINAL_DECODE_LZ saved"),
-                        Err(_) => debug!("ORIGINAL_DECODE_LZ was already set"),
+                    if let Ok(()) = ORIGINAL_DECODE_LZ.set(decoded) {
+                        debug!("ORIGINAL_DECODE_LZ saved")
                     }
 
                     // 返回我们自己的实现地址（hook_exports::hooked_decode_lz）
@@ -100,21 +100,6 @@ impl Hook for SnowRadishHook {
 #[unsafe(no_mangle)]
 pub unsafe extern "system" fn init() {
     debug!("init_thread start");
-    set_debug_panic_hook();
-
-    match unsafe {
-        patch_iat(
-            "",
-            "gdi32.dll",
-            &[(
-                c"CreateFontIndirectA".as_ptr(),
-                crate::hook::create_font_indirect as usize,
-            )],
-        )
-    } {
-        Ok(()) => debug!("patch_iat OK"),
-        Err(e) => debug!("patch_iat failed with {e}"),
-    }
 
     match unsafe {
         patch_iat(
@@ -130,8 +115,9 @@ pub unsafe extern "system" fn init() {
         Err(e) => debug!("patch_iat failed with {e}"),
     }
 
-    // 设置全局 Hook 实例（如果你之后想换实现，只调用一次 set_hook_instance）
+    set_debug_panic_hook();
     set_hook_instance(SnowRadishHook);
+    enable_text_hooks();
 
     debug!("hook instance set");
 }

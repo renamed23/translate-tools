@@ -31,6 +31,9 @@ custom_font = []
 # ascii码不需要进行映射，所以开启该特性后，几乎不需要使用`MultiByteToWideChar`，
 # 通过映射表即可映射几乎所有字符
 generate_full_mapping_data = []
+# 导出默认的DllMain，内部使用`default_dll_main`，
+# 使用`HookImplType::default()`作为钩子实例
+export_default_dll_main = []
 
 # 是否导出钩子函数，实际上如果用detour的话，不需要导出
 export_hooks = []
@@ -41,25 +44,28 @@ shift_bin = []
 
 # 通用impl ---------------------------------------------------
 
-# 调试文件输出的HOOK实现，可用于调试
-debug_file_hook_impl = ["debug_output"]
-# 默认的HOOK实现，使用`DefaultHook`，并启动`set_debug_panic_hook`
-# 会拦截所有与字体相关的GDI函数
-default_hook_impl = []
+# 调试文件输出的HOOK实现，可用于调试，并导出默认的DllMain
+debug_file_hook_impl = ["debug_output", "export_default_dll_main"]
+# 默认的HOOK实现(即使用`Hook` trait的默认代码)，并导出默认的DllMain
+default_hook_impl = ["export_default_dll_main"]
 
 # 针对特定游戏的impl-------------------------------------------
 snow_radish = ["patch"]
-bleed = []
+bleed = ["export_default_dll_main"]
 sukisuki = ["default_hook_impl", "generate_full_mapping_data"]
 ao_vo = ["patch", "default_hook_impl"]
 noise = ["patch", "default_hook_impl"]
 lusts = ["default_hook_impl"]
 summer_radish = []
-lucky_crosse = ["patch", "shift_bin", "default_hook_impl", "default_patch_impl"]
-cosmos = ["patch", "default_patch_impl", "default_hook_impl", "shift_bin"]
+lucky_crosse = ["default_hook_impl", "default_patch_impl"]
+cosmos = ["default_hook_impl", "default_patch_impl"]
 # 非C社的c4
 c4 = ["patch", "default_hook_impl", "enum_font_families"]
-bittersweet_fools = ["enum_font_families", "generate_full_mapping_data"]
+bittersweet_fools = [
+    "enum_font_families",
+    "generate_full_mapping_data",
+    "export_default_dll_main",
+]
 white_breath = ["default_hook_impl", "patch", "generate_full_mapping_data"]
 
 [dependencies]

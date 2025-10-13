@@ -1,8 +1,7 @@
 use std::collections::HashMap;
 use std::sync::RwLock;
 
-use translate_macros::ffi_catch_unwind;
-use winapi::shared::minwindef::{BOOL, DWORD, FALSE, HMODULE, LPDWORD, LPVOID, TRUE};
+use winapi::shared::minwindef::{BOOL, DWORD, LPDWORD, LPVOID, TRUE};
 use winapi::shared::ntdef::LPCSTR;
 use winapi::um::handleapi::INVALID_HANDLE_VALUE;
 use winapi::um::minwinbase::{LPOVERLAPPED, LPSECURITY_ATTRIBUTES};
@@ -12,16 +11,9 @@ use crate::code_cvt::ansi_to_wide_char;
 use crate::debug_msg;
 use crate::hook::Hook;
 
+#[derive(Default)]
 pub struct DebugFileHook {
     handles: RwLock<HashMap<usize, String>>,
-}
-
-impl DebugFileHook {
-    fn new() -> Self {
-        Self {
-            handles: RwLock::new(HashMap::new()),
-        }
-    }
 }
 
 impl Hook for DebugFileHook {
@@ -131,26 +123,4 @@ impl Hook for DebugFileHook {
 
         unsafe { crate::hook::HOOK_CLOSE_HANDLE.call(h_object) }
     }
-}
-
-#[ffi_catch_unwind(FALSE)]
-#[unsafe(no_mangle)]
-pub unsafe extern "system" fn DllMain(
-    _hinst_dll: HMODULE,
-    fdw_reason: DWORD,
-    _lpv_reserved: LPVOID,
-) -> BOOL {
-    const PROCESS_ATTACH: DWORD = 1;
-    if fdw_reason == PROCESS_ATTACH {
-        crate::panic_utils::set_debug_panic_hook();
-        crate::hook::set_hook_instance(DebugFileHook::new());
-
-        #[cfg(feature = "custom_font")]
-        crate::custom_font::add_font();
-
-        crate::hook::enable_text_hooks();
-        crate::hook::enable_file_hooks();
-    }
-
-    TRUE
 }

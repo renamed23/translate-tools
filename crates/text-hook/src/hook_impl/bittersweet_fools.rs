@@ -10,7 +10,7 @@ use winapi::{
 
 use crate::{hook::Hook, mapping::map_shift_jis_to_unicode};
 
-/// 默认实现的钩子，应该可以应对大部分场景
+#[derive(Default)]
 pub struct BittersweetFools;
 
 impl Hook for BittersweetFools {
@@ -62,21 +62,4 @@ impl Hook for BittersweetFools {
 
         0
     }
-}
-
-#[ffi_catch_unwind(FALSE)]
-#[unsafe(no_mangle)]
-pub unsafe extern "system" fn DllMain(
-    _hinst_dll: HMODULE,
-    fdw_reason: DWORD,
-    _lpv_reserved: LPVOID,
-) -> BOOL {
-    const PROCESS_ATTACH: DWORD = 1;
-    if fdw_reason == PROCESS_ATTACH {
-        crate::panic_utils::set_debug_panic_hook();
-        crate::hook::set_hook_instance(BittersweetFools);
-        crate::hook::enable_text_hooks();
-    }
-
-    TRUE
 }

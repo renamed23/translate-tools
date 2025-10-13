@@ -1,24 +1,18 @@
 use std::sync::RwLock;
-use translate_macros::ffi_catch_unwind;
 use winapi::ctypes::c_int;
-use winapi::shared::minwindef::{BOOL, DWORD, FALSE, HMODULE, LPVOID, TRUE};
+use winapi::shared::minwindef::BOOL;
 use winapi::shared::ntdef::LPCSTR;
 use winapi::shared::windef::HDC;
 
 use crate::debug;
 use crate::hook::Hook;
 
+#[derive(Default)]
 pub struct BleedHook {
     line_max_x: RwLock<Vec<c_int>>,
 }
 
 impl BleedHook {
-    fn new() -> Self {
-        Self {
-            line_max_x: RwLock::new(Vec::new()),
-        }
-    }
-
     fn layout_text(&self, x: c_int, y: c_int) -> (c_int, c_int) {
         const START_X: c_int = 18;
         const START_Y: c_int = 19;
@@ -99,21 +93,4 @@ impl Hook for BleedHook {
             )
         }
     }
-}
-
-#[ffi_catch_unwind(FALSE)]
-#[unsafe(no_mangle)]
-pub unsafe extern "system" fn DllMain(
-    _hinst_dll: HMODULE,
-    fdw_reason: DWORD,
-    _lpv_reserved: LPVOID,
-) -> BOOL {
-    const PROCESS_ATTACH: DWORD = 1;
-    if fdw_reason == PROCESS_ATTACH {
-        crate::panic_utils::set_debug_panic_hook();
-        crate::hook::set_hook_instance(BleedHook::new());
-        crate::hook::enable_text_hooks();
-    }
-
-    TRUE
 }
