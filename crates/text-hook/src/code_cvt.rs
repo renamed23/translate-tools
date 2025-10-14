@@ -2,7 +2,7 @@ use core::ptr;
 use winapi::um::stringapiset::{MultiByteToWideChar, WideCharToMultiByte};
 use winapi::um::winnls::{CP_ACP, CP_UTF8};
 
-use crate::print_system_error_message;
+use crate::{constant, debug, print_system_error_message};
 
 /// 将字节切片转换为宽字符字符串
 ///
@@ -142,4 +142,16 @@ pub fn wide_char_to_utf8(wide_str: &[u16]) -> Vec<u8> {
 #[allow(dead_code)]
 pub fn wide_char_to_ansi(wide_str: &[u16]) -> Vec<u8> {
     wide_char_to_multi_byte(wide_str, CP_ACP)
+}
+
+/// 将 ANSI 编码的字体名称转换为宽字符，并根据过滤列表替换为指定字体
+#[allow(dead_code)]
+pub fn ansi_font_to_wide_font(bytes: &[u8]) -> Vec<u16> {
+    let u16_bytes = crate::code_cvt::ansi_to_wide_char(bytes);
+    debug!("Requested font: {:?}", String::from_utf16_lossy(&u16_bytes));
+    if constant::FONT_FILTER.contains(&u16_bytes.as_slice()) {
+        constant::FONT_FACE.to_vec()
+    } else {
+        u16_bytes
+    }
 }

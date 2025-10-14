@@ -12,6 +12,7 @@
         "type": "&[&[u16]]",
         "value": [
             "ＭＳ ゴシック",
+            "俵俽 僑僔僢僋",
             "MS Gothic"
         ],
         "encode_to_u16": true
