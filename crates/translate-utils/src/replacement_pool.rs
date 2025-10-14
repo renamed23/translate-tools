@@ -145,13 +145,13 @@ impl PoolBuilder {
     pub fn generate_shiftjis_pool(&mut self, cp932: bool) -> Result<()> {
         // Shift-JIS字符范围定义
         let sjis_ranges = [
-            // (0xFF66, 0xFF9F), // 半角片假名
-            (0x4E00, 0x9FFF), // CJK统一汉字 (日本汉字)
-            (0x3400, 0x4DBF), // CJK扩展A (兼容汉字)
             (0x3041, 0x3096), // 平假名 (Hiragana)
             (0x30A1, 0x30FA), // 片假名 (Katakana)
             (0x30FD, 0x30FE), // ヽ-ヾ
             (0x31F0, 0x31FF), // 片假名扩展
+            // (0xFF66, 0xFF9F), // 半角片假名
+            (0x4E00, 0x9FFF), // CJK统一汉字 (日本汉字)
+            (0x3400, 0x4DBF), // CJK扩展A (兼容汉字)
         ];
 
         // 生成所有有效的Shift-JIS字符
@@ -204,6 +204,7 @@ impl PoolBuilder {
     pub fn to_vec(&self) -> Vec<char> {
         let mut chars_vec: Vec<char> = self.pool.iter().cloned().collect();
         chars_vec.sort();
+        chars_vec.reverse();
         chars_vec
     }
 
