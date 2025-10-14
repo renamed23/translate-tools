@@ -5,7 +5,7 @@
 ### 编译cli-tools
 
 ```ps
-cargo build --release --bin len_tools
+cargo build --release --bin len_tool
 cargo build --release --bin replacement_tool
 ```
 
