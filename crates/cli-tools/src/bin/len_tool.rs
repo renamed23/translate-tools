@@ -239,26 +239,18 @@ fn try_fix_message(
 fn try_aggressive_fix(trans_msg: &str, orig_len: usize, method: &Method) -> (String, bool) {
     let mut modified = trans_msg.to_string();
 
-    // 在激进模式下，我们会应用所有规则，而不是成功一次就返回
-    // 这样可以最大程度地缩短文本
-
     // 1. 激进同义词替换
     apply_and_check!(modified, orig_len, method, {
-        const AGGRESSIVE_SYNONYM_REPLACEMENTS: [(&str, &str); 14] = [
+        const AGGRESSIVE_SYNONYM_REPLACEMENTS: [(&str, &str); 9] = [
             ("但是", "但"),
             ("可是", "可"),
             ("因为", "因"),
-            ("所以", "故"),
-            ("然后", "后"),
             ("已经", "已"),
             ("知道", "知"),
             ("觉得", "觉"),
             ("可以", "可"),
             ("不要", "别"),
             ("非常", "很"),
-            ("表示", "称"),
-            ("自己", "自"),
-            ("我们", "我等"), // "我等"是古称，比"我们"短
         ];
         for (from, to) in AGGRESSIVE_SYNONYM_REPLACEMENTS {
             modified = modified.replace(from, to);
