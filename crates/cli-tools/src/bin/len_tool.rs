@@ -26,7 +26,7 @@ struct Cli {
     #[arg(short, long, value_enum, default_value_t = Method::Pseudo)]
     method: Method,
 
-    /// 行为模式：check（仅检查），fix（自动修复）
+    /// 行为模式：check（仅检查），fix（自动修复），aggressive-fix（激进修复）
     #[arg(short, long, value_enum, default_value_t = Behavior::Check)]
     behave: Behavior,
 }
@@ -45,6 +45,8 @@ enum Behavior {
     Check,
     /// 自动修复超长译文
     Fix,
+    /// 激进修复模式，即使修复失败也应用修复结果
+    AggressiveFix,
 }
 
 impl Method {
@@ -125,77 +127,61 @@ fn full_width_to_half_width(c: char) -> Option<char> {
     }
 }
 
-fn try_fix_message(trans_msg: &str, orig_len: usize, method: &Method) -> (String, bool) {
+/// 宏：应用一个修改操作，如果长度达标则返回
+macro_rules! apply_and_check {
+    ($modified:expr, $orig_len:expr, $method:expr, $action:block) => {
+        $action
+        if $method.count(&$modified) <= $orig_len {
+            return ($modified, true);
+        }
+    };
+}
+
+fn try_fix_message(
+    trans_msg: &str,
+    orig_len: usize,
+    method: &Method,
+    aggressive: bool,
+) -> (String, bool) {
     let mut modified = trans_msg.to_string();
 
-    // 1. 全角字母数字转半角
-    let mut temp = String::new();
-    for c in modified.chars() {
-        if let Some(half) = full_width_to_half_width(c) {
-            temp.push(half);
-        } else {
-            temp.push(c);
-        }
-    }
-    modified = temp;
-
-    // 检查是否已解决
+    // 初始检查，如果原文就符合长度要求，直接返回
     if method.count(&modified) <= orig_len {
         return (modified, true);
     }
 
-    // 2. 去除全角空格
-    if modified.contains('\u{3000}') {
-        modified = modified.replace('\u{3000}', "");
+    // --- 第1阶段：标准化处理 (基本无损) ---
+    // 1. 全角字母数字转半角 (包括全角空格)
+    apply_and_check!(modified, orig_len, method, {
+        modified = modified
+            .chars()
+            .map(|c| full_width_to_half_width(c).unwrap_or(c))
+            .collect();
+    });
 
-        if method.count(&modified) <= orig_len {
-            return (modified, true);
-        }
-    }
-
-    // 3. 合并重复标点符号
-    const PUNCT_REPLACEMENTS: [(&str, &str); 4] = [
-        ("……", "…"), // 多个省略号合并为一个
-        ("――", "―"), // 多个长破折号合并为一个
-        ("——", "—"), // 多个长破折号合并为一个
-        ("‥‥", "‥"), // 多个双点省略号合并为一个
+    // 2. 合并重复标点符号
+    const PUNCT_REPLACEMENTS: [(&str, &str); 5] = [
+        ("……", "…"),
+        ("――", "―"),
+        ("——", "—"),
+        ("‥‥", "‥"),
+        ("──", "─"),
     ];
-
-    for (from, to) in PUNCT_REPLACEMENTS.iter() {
+    for (from, to) in PUNCT_REPLACEMENTS {
         if modified.contains(from) {
-            while modified.contains(from) {
-                modified = modified.replace(from, to);
-            }
-
-            if method.count(&modified) <= orig_len {
-                return (modified, true);
-            }
+            apply_and_check!(modified, orig_len, method, {
+                while modified.contains(from) {
+                    modified = modified.replace(from, to);
+                }
+            });
         }
     }
 
-    // 4. 删除对话边框
-    if modified.ends_with('」') {
-        modified.pop();
-
-        if method.count(&modified) <= orig_len {
-            return (modified, true);
-        }
-    }
-
-    // 5. 删除结尾句号
-    if modified.ends_with('。') {
-        modified.pop();
-
-        if method.count(&modified) <= orig_len {
-            return (modified, true);
-        }
-    }
-
-    // 6. 同义词替换（使用更短的表达）
+    // --- 第2阶段：轻度缩减 (可能轻微影响语义) ---
+    // 3. 同义词替换（使用更短的表达）
     const SYNONYM_REPLACEMENTS: [(&str, &str); 21] = [
         ("真是", "真"),
         ("什么", "啥"),
-        // 省略"一"字类
         ("那一个", "那个"),
         ("哪一个", "哪个"),
         ("某一个", "某个"),
@@ -207,26 +193,133 @@ fn try_fix_message(trans_msg: &str, orig_len: usize, method: &Method) -> (String
         ("是一名", "是名"),
         ("是一位", "是位"),
         ("是一件", "是件"),
-        // 省略"个"字类
         ("一个人", "一人"),
         ("两个人", "两人"),
         ("三个人", "三人"),
-        // 时间表达简化
         ("的时候", "时"),
         ("之前", "前"),
         ("之后", "后"),
         ("之时", "时"),
-        // 连接词简化
         ("如果", "若"),
     ];
-
-    for (from, to) in SYNONYM_REPLACEMENTS.iter() {
+    for (from, to) in SYNONYM_REPLACEMENTS {
         if modified.contains(from) {
-            modified = modified.replace(from, to);
-            if method.count(&modified) <= orig_len {
-                return (modified, true);
-            }
+            apply_and_check!(modified, orig_len, method, {
+                modified = modified.replace(from, to);
+            });
         }
+    }
+
+    // 4. 删除末尾的特定标点
+    let ends_with_puncts = ['」', '。', '！', '？', '!', '?'];
+    for p in ends_with_puncts {
+        if modified.ends_with(p) {
+            apply_and_check!(modified, orig_len, method, {
+                modified.pop();
+            });
+        }
+    }
+
+    // 如果长度已达标，直接返回成功
+    if method.count(&modified) <= orig_len {
+        return (modified, true);
+    }
+
+    // --- 第3阶段：激进修复 ---
+    if aggressive {
+        let (aggressively_modified, fixed) = try_aggressive_fix(&modified, orig_len, method);
+        return (aggressively_modified, fixed);
+    }
+
+    (modified, false)
+}
+
+/// 激进修复措施（仅在激进修复模式下使用），会不惜一切代价缩短文本
+/// 返回值：(修复后的字符串, 是否成功修复到目标长度以内)
+fn try_aggressive_fix(trans_msg: &str, orig_len: usize, method: &Method) -> (String, bool) {
+    let mut modified = trans_msg.to_string();
+
+    // 在激进模式下，我们会应用所有规则，而不是成功一次就返回
+    // 这样可以最大程度地缩短文本
+
+    // 1. 激进同义词替换
+    const AGGRESSIVE_SYNONYM_REPLACEMENTS: [(&str, &str); 14] = [
+        ("但是", "但"),
+        ("可是", "可"),
+        ("因为", "因"),
+        ("所以", "故"),
+        ("然后", "后"),
+        ("已经", "已"),
+        ("知道", "知"),
+        ("觉得", "觉"),
+        ("可以", "可"),
+        ("不要", "别"),
+        ("非常", "很"),
+        ("表示", "称"),
+        ("自己", "自"),
+        ("我们", "我等"), // "我等"是古称，比"我们"短
+    ];
+    for (from, to) in AGGRESSIVE_SYNONYM_REPLACEMENTS {
+        modified = modified.replace(from, to);
+    }
+
+    if method.count(&modified) <= orig_len {
+        return (modified, true);
+    }
+
+    // 2. 激进修复：删除常见的"的"字所有格
+    const DE_REPLACEMENTS: [(&str, &str); 8] = [
+        ("我的", "我"),
+        ("你的", "你"),
+        ("他的", "他"),
+        ("她的", "她"),
+        ("它的", "它"),
+        ("我们的", "我们"),
+        ("你们的", "你们"),
+        ("他们的", "他们"),
+    ];
+    for (from, to) in DE_REPLACEMENTS {
+        modified = modified.replace(from, to);
+    }
+
+    if method.count(&modified) <= orig_len {
+        return (modified, true);
+    }
+
+    // 3. 激进修复：删除所有"的"字 (这是一个非常强力的操作)
+    modified = modified.replace('的', "");
+
+    if method.count(&modified) <= orig_len {
+        return (modified, true);
+    }
+
+    // 4. 激进修复：删除所有空白字符
+    modified.retain(|c| !c.is_whitespace());
+
+    if method.count(&modified) <= orig_len {
+        return (modified, true);
+    }
+
+    // 5. 激进修复：删除结尾语气词
+    const MODAL_PARTICLES: [&str; 9] = ["呢", "吗", "吧", "啊", "呀", "啦", "哦", "哟", "呦"];
+    for particle in MODAL_PARTICLES {
+        if modified.ends_with(particle) {
+            modified = modified.trim_end_matches(particle).to_string();
+        }
+    }
+
+    if method.count(&modified) <= orig_len {
+        return (modified, true);
+    }
+
+    // 6. 激进修复：完全删除特定标点符号
+    const AGGRESSIVE_PUNCT_REMOVAL: [char; 12] = [
+        '…', '―', '—', '‥', '~', '～', '·', '・', '，', ',', '、', ' ',
+    ];
+    modified.retain(|c| !AGGRESSIVE_PUNCT_REMOVAL.contains(&c));
+
+    if method.count(&modified) <= orig_len {
+        return (modified, true);
     }
 
     (modified, false)
@@ -271,6 +364,7 @@ fn main() -> Result<()> {
 
     let mut error_count = 0;
     let mut fixed_count = 0;
+    let mut aggressive_fixed_count = 0;
 
     for (i, (orig_item, trans_item)) in orig_array.iter().zip(trans_array.iter_mut()).enumerate() {
         // 提取 message 字段
@@ -305,8 +399,9 @@ fn main() -> Result<()> {
                     eprintln!("第 {i} 项: 插入 error 字段（原:{orig_len} 译:{trans_len}）");
                 }
                 Behavior::Fix => {
-                    // 尝试自动修复
-                    let (fixed_msg, fixed) = try_fix_message(&trans_msg, orig_len, &cli.method);
+                    // 尝试自动修复（非激进模式）
+                    let (fixed_msg, fixed) =
+                        try_fix_message(&trans_msg, orig_len, &cli.method, false);
                     if fixed {
                         // 更新消息
                         let map = trans_item.as_object_mut().unwrap();
@@ -326,6 +421,33 @@ fn main() -> Result<()> {
                         eprintln!("第 {i} 项: 插入 error 字段（原:{orig_len} 译:{trans_len}）");
                     }
                 }
+                Behavior::AggressiveFix => {
+                    // 激进修复模式
+                    let (fixed_msg, fixed) =
+                        try_fix_message(&trans_msg, orig_len, &cli.method, true);
+
+                    // 无论是否修复成功，都更新消息
+                    let map = trans_item.as_object_mut().unwrap();
+                    map.insert("message".to_string(), Value::String(fixed_msg.clone()));
+
+                    let new_len = cli.method.count(&fixed_msg);
+
+                    if new_len <= orig_len {
+                        // 修复成功，移除错误标记
+                        map.remove("error");
+                        fixed_count += 1;
+                        aggressive_fixed_count += 1;
+                        eprintln!("第 {i} 项: 激进修复成功（原:{orig_len} 修后:{new_len}）");
+                    } else {
+                        // 修复失败，但仍更新消息并标记错误
+                        let err_text =
+                            format!("原文 {orig_len} < 译文 {new_len}（激进修复后仍超长）");
+                        map.insert("error".to_string(), Value::String(err_text));
+                        error_count += 1;
+                        aggressive_fixed_count += 1;
+                        eprintln!("第 {i} 项: 激进修复后仍超长（原:{orig_len} 修后:{new_len}）");
+                    }
+                }
             }
         } else {
             // 移除可能存在的 error 字段
@@ -339,7 +461,7 @@ fn main() -> Result<()> {
     // 确定输出路径
     let output_path = match cli.behave {
         Behavior::Check => cli.trans.clone(),
-        Behavior::Fix => {
+        Behavior::Fix | Behavior::AggressiveFix => {
             let mut new_path = cli.trans.clone();
             let file_name = new_path.file_stem().unwrap().to_str().unwrap();
             let extension = new_path.extension().unwrap().to_str().unwrap();
@@ -378,6 +500,19 @@ fn main() -> Result<()> {
                 println!("仍有 {error_count} 项无法自动修复，需要人工处理。");
             } else {
                 println!("所有超长译文已自动修复，输出到: {}", output_path.display());
+            }
+        }
+        Behavior::AggressiveFix => {
+            if aggressive_fixed_count > 0 {
+                println!(
+                    "已激进修复 {} 项超长译文（其中 {} 项完全修复，{} 项修复后仍超长），输出到: {}",
+                    aggressive_fixed_count,
+                    fixed_count,
+                    error_count,
+                    output_path.display()
+                );
+            } else {
+                println!("无需激进修复，文件已输出到: {}", output_path.display());
             }
         }
     }
