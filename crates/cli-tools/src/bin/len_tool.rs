@@ -243,84 +243,72 @@ fn try_aggressive_fix(trans_msg: &str, orig_len: usize, method: &Method) -> (Str
     // 这样可以最大程度地缩短文本
 
     // 1. 激进同义词替换
-    const AGGRESSIVE_SYNONYM_REPLACEMENTS: [(&str, &str); 14] = [
-        ("但是", "但"),
-        ("可是", "可"),
-        ("因为", "因"),
-        ("所以", "故"),
-        ("然后", "后"),
-        ("已经", "已"),
-        ("知道", "知"),
-        ("觉得", "觉"),
-        ("可以", "可"),
-        ("不要", "别"),
-        ("非常", "很"),
-        ("表示", "称"),
-        ("自己", "自"),
-        ("我们", "我等"), // "我等"是古称，比"我们"短
-    ];
-    for (from, to) in AGGRESSIVE_SYNONYM_REPLACEMENTS {
-        modified = modified.replace(from, to);
-    }
-
-    if method.count(&modified) <= orig_len {
-        return (modified, true);
-    }
+    apply_and_check!(modified, orig_len, method, {
+        const AGGRESSIVE_SYNONYM_REPLACEMENTS: [(&str, &str); 14] = [
+            ("但是", "但"),
+            ("可是", "可"),
+            ("因为", "因"),
+            ("所以", "故"),
+            ("然后", "后"),
+            ("已经", "已"),
+            ("知道", "知"),
+            ("觉得", "觉"),
+            ("可以", "可"),
+            ("不要", "别"),
+            ("非常", "很"),
+            ("表示", "称"),
+            ("自己", "自"),
+            ("我们", "我等"), // "我等"是古称，比"我们"短
+        ];
+        for (from, to) in AGGRESSIVE_SYNONYM_REPLACEMENTS {
+            modified = modified.replace(from, to);
+        }
+    });
 
     // 2. 激进修复：删除常见的"的"字所有格
-    const DE_REPLACEMENTS: [(&str, &str); 8] = [
-        ("我的", "我"),
-        ("你的", "你"),
-        ("他的", "他"),
-        ("她的", "她"),
-        ("它的", "它"),
-        ("我们的", "我们"),
-        ("你们的", "你们"),
-        ("他们的", "他们"),
-    ];
-    for (from, to) in DE_REPLACEMENTS {
-        modified = modified.replace(from, to);
-    }
-
-    if method.count(&modified) <= orig_len {
-        return (modified, true);
-    }
+    apply_and_check!(modified, orig_len, method, {
+        const DE_REPLACEMENTS: [(&str, &str); 8] = [
+            ("我的", "我"),
+            ("你的", "你"),
+            ("他的", "他"),
+            ("她的", "她"),
+            ("它的", "它"),
+            ("我们的", "我们"),
+            ("你们的", "你们"),
+            ("他们的", "他们"),
+        ];
+        for (from, to) in DE_REPLACEMENTS {
+            modified = modified.replace(from, to);
+        }
+    });
 
     // 3. 激进修复：删除所有"的"字 (这是一个非常强力的操作)
-    modified = modified.replace('的', "");
-
-    if method.count(&modified) <= orig_len {
-        return (modified, true);
-    }
+    apply_and_check!(modified, orig_len, method, {
+        modified = modified.replace('的', "");
+    });
 
     // 4. 激进修复：删除所有空白字符
-    modified.retain(|c| !c.is_whitespace());
-
-    if method.count(&modified) <= orig_len {
-        return (modified, true);
-    }
+    apply_and_check!(modified, orig_len, method, {
+        modified.retain(|c| !c.is_whitespace());
+    });
 
     // 5. 激进修复：删除结尾语气词
-    const MODAL_PARTICLES: [&str; 9] = ["呢", "吗", "吧", "啊", "呀", "啦", "哦", "哟", "呦"];
-    for particle in MODAL_PARTICLES {
-        if modified.ends_with(particle) {
-            modified = modified.trim_end_matches(particle).to_string();
+    apply_and_check!(modified, orig_len, method, {
+        const MODAL_PARTICLES: [&str; 9] = ["呢", "吗", "吧", "啊", "呀", "啦", "哦", "哟", "呦"];
+        for particle in MODAL_PARTICLES {
+            if modified.ends_with(particle) {
+                modified = modified.trim_end_matches(particle).to_string();
+            }
         }
-    }
-
-    if method.count(&modified) <= orig_len {
-        return (modified, true);
-    }
+    });
 
     // 6. 激进修复：完全删除特定标点符号
-    const AGGRESSIVE_PUNCT_REMOVAL: [char; 12] = [
-        '…', '―', '—', '‥', '~', '～', '·', '・', '，', ',', '、', ' ',
-    ];
-    modified.retain(|c| !AGGRESSIVE_PUNCT_REMOVAL.contains(&c));
-
-    if method.count(&modified) <= orig_len {
-        return (modified, true);
-    }
+    apply_and_check!(modified, orig_len, method, {
+        const AGGRESSIVE_PUNCT_REMOVAL: [char; 12] = [
+            '…', '―', '—', '‥', '~', '～', '·', '・', '，', ',', '、', ' ',
+        ];
+        modified.retain(|c| !AGGRESSIVE_PUNCT_REMOVAL.contains(&c));
+    });
 
     (modified, false)
 }
