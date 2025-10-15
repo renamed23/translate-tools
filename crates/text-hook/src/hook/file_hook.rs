@@ -2,7 +2,6 @@ use translate_macros::{detour, generate_detours};
 use winapi::shared::minwindef::{BOOL, DWORD, LPDWORD, LPVOID};
 use winapi::shared::ntdef::HANDLE;
 use winapi::um::fileapi::CreateFileW;
-use winapi::um::handleapi::INVALID_HANDLE_VALUE;
 use winapi::um::minwinbase::{LPOVERLAPPED, LPSECURITY_ATTRIBUTES};
 use winapi::um::winnt::LPCSTR;
 
@@ -25,10 +24,6 @@ pub trait FileHook: Send + Sync + 'static {
         dw_flags_and_attributes: DWORD,
         h_template_file: HANDLE,
     ) -> HANDLE {
-        if lp_file_name.is_null() {
-            return INVALID_HANDLE_VALUE;
-        }
-
         let mut file_name_u16: Vec<u16> = {
             let bytes = unsafe { core::ffi::CStr::from_ptr(lp_file_name).to_bytes() };
             crate::code_cvt::ansi_font_to_wide_font(bytes)

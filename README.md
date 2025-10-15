@@ -32,11 +32,15 @@ cargo build --release --features default_hook_impl,generate_full_mapping_data
 
 ```json
 {
-  "FONT_FACE": "SimHei",
+  "FONT_FACE": "SimSun",
   "CHAR_SET": 134,
   "FONT_FILTER": [
     "ＭＳ ゴシック",
+    "俵俽 僑僔僢僋",
     "MS Gothic"
+  ],
+  "CHAR_FILTER": [
+    64
   ]
 }
 ```
@@ -44,6 +48,8 @@ cargo build --release --features default_hook_impl,generate_full_mapping_data
 若未开启`enum_font_families`特性，那么则使用`FONT_FACE`固定字体，若开启了`enum_font_families`，那么传入字体是`FONT_FILTER`，则使用`FONT_FACE`，否则使用传入的字体
 
 `CHAR_SET`对应于GDI函数的`CharSet`
+
+`CHAR_FILTER`用于过滤一些字符(比如需要定长时的填充字符，注意输入的应该是字符的u16值(只支持BMP))，示例中`@`会被过滤，不会被显示出来
 
 
 ### custom_font.ttf

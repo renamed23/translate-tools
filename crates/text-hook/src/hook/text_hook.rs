@@ -11,7 +11,7 @@ use winapi::um::winnt::LPCSTR;
 
 use crate::constant;
 use crate::debug;
-use crate::mapping::map_shift_jis_to_unicode;
+use crate::mapping::map_chars;
 
 #[generate_detours]
 pub trait TextHook: Send + Sync + 'static {
@@ -21,16 +21,14 @@ pub trait TextHook: Send + Sync + 'static {
         fallback = "winapi::shared::minwindef::FALSE"
     )]
     unsafe fn text_out(&self, hdc: HDC, x: c_int, y: c_int, lp_string: LPCSTR, c: c_int) -> BOOL {
-        if lp_string.is_null() || c <= 0 {
-            return 0;
-        }
-
         unsafe {
             let input_slice = core::slice::from_raw_parts(lp_string as *const u8, c as usize);
-            let result = map_shift_jis_to_unicode(input_slice);
+            let mut buffer = [0u16; 256];
+            let written_count = map_chars(input_slice, &mut buffer);
+            let result = &buffer[..written_count];
 
             #[cfg(feature = "debug_text_mapping")]
-            match String::from_utf16(result.as_slice()) {
+            match String::from_utf16(result) {
                 Ok(result) => debug!("draw text '{result}' at ({x}, {y})"),
                 Err(e) => debug!("Convert utf16 to utf8 fails with {e}"),
             }
@@ -51,16 +49,14 @@ pub trait TextHook: Send + Sync + 'static {
         c: c_int,
         lp_size: LPSIZE,
     ) -> BOOL {
-        if lp_string.is_null() || lp_size.is_null() || c <= 0 {
-            return 0;
-        }
-
         unsafe {
             let input_slice = core::slice::from_raw_parts(lp_string as *const u8, c as usize);
-            let result = map_shift_jis_to_unicode(input_slice);
+            let mut buffer = [0u16; 256];
+            let written_count = map_chars(input_slice, &mut buffer);
+            let result = &buffer[..written_count];
 
             #[cfg(feature = "debug_text_mapping")]
-            match String::from_utf16(result.as_slice()) {
+            match String::from_utf16(result) {
                 Ok(result) => debug!("get_text_extent_point_32 result: {result}"),
                 Err(e) => debug!("Convert utf16 to utf8 fails with {e}"),
             }
@@ -83,16 +79,18 @@ pub trait TextHook: Send + Sync + 'static {
         let b1 = ((u_char >> 8) & 0xFF) as u8;
         let b2 = (u_char & 0xFF) as u8;
 
-        let bytes = if u_char >> 8 == 0 {
-            vec![b2]
+        let input_slice = if u_char >> 8 == 0 {
+            &[b2][..]
         } else {
-            vec![b1, b2]
+            &[b1, b2][..]
         };
 
-        let result = map_shift_jis_to_unicode(&bytes);
+        let mut buffer = [0u16; 2];
+        let written_count = map_chars(input_slice, &mut buffer);
+        let result = &buffer[..written_count];
 
         #[cfg(feature = "debug_text_mapping")]
-        match String::from_utf16(result.as_slice()) {
+        match String::from_utf16(result) {
             Ok(result) => debug!("get_glyph_outline result: {result}"),
             Err(e) => debug!("Convert utf16 to utf8 fails with {e}"),
         }
