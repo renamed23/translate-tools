@@ -5,6 +5,7 @@ use winapi::shared::ntdef::LPCSTR;
 use winapi::shared::windef::HDC;
 
 use crate::debug;
+use crate::hook::CoreHook;
 use crate::hook::text_hook::{HOOK_TEXT_OUT, TextHook};
 
 #[derive(Default)]
@@ -70,6 +71,8 @@ impl BleedHook {
         (mapped_x, mapped_y)
     }
 }
+
+impl CoreHook for BleedHook {}
 
 impl TextHook for BleedHook {
     unsafe fn text_out(&self, hdc: HDC, x: c_int, y: c_int, lp_string: LPCSTR, c: c_int) -> BOOL {
