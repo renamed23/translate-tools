@@ -116,11 +116,6 @@ fn generate_constant() -> anyhow::Result<()> {
 }
 
 fn generate_mapping_data() -> anyhow::Result<()> {
-    if std::env::var("CARGO_FEATURE_SHIFT_BIN").is_ok() {
-        println!("cargo:warning=已启用 feature `shift_bin`，跳过生成 mapping_data");
-        return Ok(());
-    }
-
     let out_dir = std::env::var("OUT_DIR").map_err(|e| anyhow!("无法获取 OUT_DIR: {}", e))?;
     let out_path = Path::new(&out_dir).join("mapping_data.rs");
 

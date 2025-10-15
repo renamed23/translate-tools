@@ -1,5 +1,5 @@
 use anyhow::Result;
-use encoding_rs::{Encoding, SHIFT_JIS};
+use encoding_rs::Encoding;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
@@ -205,56 +205,4 @@ pub fn write_with_dir_create<P: AsRef<Path>, C: AsRef<[u8]>>(path: P, contents: 
 /// 检查一个字节是否是有效的 Shift-JIS 高位（第一）字节。
 pub fn is_sjis_high_byte(b: u8) -> bool {
     (0x81..=0x9F).contains(&b) || (0xE0..=0xFC).contains(&b)
-}
-
-/// 解码一个SHIFT_JIS字节切片，并使用 `mapper` 映射其中的替身字符
-pub fn mapping<F>(input: &[u8], mapper: F) -> Vec<u16>
-where
-    F: Fn(u16) -> Option<u16>,
-{
-    let mut out_utf16 = Vec::with_capacity(input.len() * 2);
-    let mut i = 0;
-
-    while i < input.len() {
-        let high = input[i];
-        i += 1;
-
-        // ASCII直接处理
-        if high <= 0x7F {
-            out_utf16.push(high as u16);
-            continue;
-        }
-
-        // 双字节
-        if is_sjis_high_byte(high) {
-            if i >= input.len() {
-                break;
-            }
-            let low = input[i];
-            i += 1;
-            if low == 0 {
-                break;
-            }
-
-            // 检查是否是映射字符
-            let sjis_char = ((high as u16) << 8) | (low as u16);
-            if let Some(mapped_char) = mapper(sjis_char) {
-                out_utf16.push(mapped_char);
-                continue;
-            }
-
-            // 正常双字节解码
-            let slice = &input[i - 2..i];
-            let (decoded, _, _) = SHIFT_JIS.decode(slice);
-            out_utf16.extend(decoded.encode_utf16());
-            continue;
-        }
-
-        // 单字节非 ASCII（半角片假名等）
-        let slice = &input[i - 1..i];
-        let (decoded, _, _) = SHIFT_JIS.decode(slice);
-        out_utf16.extend(decoded.encode_utf16());
-    }
-
-    out_utf16
 }

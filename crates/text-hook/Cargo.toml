@@ -41,8 +41,6 @@ export_default_dll_main = []
 export_hooks = []
 # 内嵌原文->译文字典
 embedded_dict = []
-# 嵌入`assets/sjis_ext.bin`，使用VNTEXT的映射表解码
-shift_bin = []
 
 # 通用impl ---------------------------------------------------
 
