@@ -9,14 +9,14 @@ use winapi::um::winnt::HANDLE;
 
 use crate::code_cvt::ansi_to_wide_char;
 use crate::debug_msg;
-use crate::hook::Hook;
+use crate::hook::file_hook::{FileHook, HOOK_CLOSE_HANDLE, HOOK_CREATE_FILE, HOOK_READ_FILE};
 
 #[derive(Default)]
 pub struct DebugFileHook {
     handles: RwLock<HashMap<usize, String>>,
 }
 
-impl Hook for DebugFileHook {
+impl FileHook for DebugFileHook {
     unsafe fn create_file(
         &self,
         lp_file_name: LPCSTR,
@@ -40,7 +40,7 @@ impl Hook for DebugFileHook {
 
         // 调用原始函数
         let result = unsafe {
-            crate::hook::HOOK_CREATE_FILE.call(
+            HOOK_CREATE_FILE.call(
                 lp_file_name,
                 dw_desired_access,
                 dw_share_mode,
@@ -83,7 +83,7 @@ impl Hook for DebugFileHook {
 
         // 调用原始函数
         let result = unsafe {
-            crate::hook::HOOK_READ_FILE.call(
+            HOOK_READ_FILE.call(
                 h_file,
                 lp_buffer,
                 n_number_of_bytes_to_read,
@@ -121,6 +121,6 @@ impl Hook for DebugFileHook {
             debug_msg!("CloseHandle called for: {}", name);
         }
 
-        unsafe { crate::hook::HOOK_CLOSE_HANDLE.call(h_object) }
+        unsafe { HOOK_CLOSE_HANDLE.call(h_object) }
     }
 }

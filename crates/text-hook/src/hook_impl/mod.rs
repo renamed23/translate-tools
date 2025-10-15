@@ -1,6 +1,3 @@
-#[cfg(feature = "snow_radish")]
-pub mod snow_radish;
-
 #[cfg(feature = "bleed")]
 pub mod bleed;
 
@@ -15,9 +12,6 @@ pub mod noise;
 
 #[cfg(feature = "lusts")]
 pub mod lusts;
-
-#[cfg(feature = "summer_radish")]
-pub mod summer_radish;
 
 #[cfg(feature = "c4")]
 pub mod c4;
@@ -39,25 +33,21 @@ pub type HookImplType = bleed::BleedHook;
 #[cfg(feature = "debug_file_hook_impl")]
 pub type HookImplType = debug_file_hook_impl::DebugFileHook;
 
-#[cfg(feature = "snow_radish")]
-pub type HookImplType = snow_radish::SnowRadishHook;
-
-#[cfg(feature = "summer_radish")]
-pub type HookImplType = summer_radish::SummerRadishHook;
-
 // ---------------------- DLL MAIN ----------------------------------
 
 #[allow(unused_imports)]
 use winapi::shared::minwindef::{BOOL, DWORD, FALSE, HMODULE, LPVOID, TRUE};
-
-use crate::hook::Hook;
 
 /// 默认实现的钩子，应该可以应对大部分场景
 #[allow(dead_code)]
 #[derive(Default)]
 pub struct DefaultHook;
 
-impl Hook for DefaultHook {}
+#[cfg(feature = "text_hook")]
+impl crate::hook::text_hook::TextHook for DefaultHook {}
+
+#[cfg(feature = "file_hook")]
+impl crate::hook::file_hook::FileHook for DefaultHook {}
 
 #[cfg(feature = "export_default_dll_main")]
 #[translate_macros::ffi_catch_unwind(FALSE)]
@@ -81,15 +71,11 @@ pub fn default_dll_main(_hinst_dll: HMODULE, fdw_reason: DWORD, _lpv_reserved: L
         #[cfg(feature = "custom_font")]
         crate::custom_font::add_font();
 
-        crate::hook::enable_text_hooks();
+        #[cfg(feature = "text_hook")]
+        crate::hook::text_hook::enable_hooks();
 
-        #[cfg(feature = "debug_file_hook_impl")]
-        crate::hook::enable_file_hooks();
-
-        #[cfg(feature = "read_file_patch_impl")]
-        unsafe {
-            crate::hook::HOOK_READ_FILE.enable().unwrap();
-        }
+        #[cfg(feature = "file_hook")]
+        crate::hook::file_hook::enable_hooks();
     }
 
     TRUE
