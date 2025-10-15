@@ -43,6 +43,8 @@ use winapi::shared::minwindef::{BOOL, DWORD, FALSE, HMODULE, LPVOID, TRUE};
 #[derive(Default)]
 pub struct DefaultHook;
 
+impl crate::hook::CoreHook for DefaultHook {}
+
 #[cfg(feature = "text_hook")]
 impl crate::hook::text_hook::TextHook for DefaultHook {}
 
@@ -71,11 +73,16 @@ pub fn default_dll_main(_hinst_dll: HMODULE, fdw_reason: DWORD, _lpv_reserved: L
         #[cfg(feature = "custom_font")]
         crate::custom_font::add_font();
 
+        use crate::hook::CoreHook as _;
+        crate::hook::hook_instance().enable_hooks();
+
         #[cfg(feature = "text_hook")]
         crate::hook::text_hook::enable_hooks();
 
-        #[cfg(feature = "file_hook")]
-        crate::hook::file_hook::enable_hooks();
+        #[cfg(feature = "read_file_patch_impl")]
+        unsafe {
+            crate::hook::file_hook::HOOK_READ_FILE.enable().unwrap();
+        }
     }
 
     TRUE

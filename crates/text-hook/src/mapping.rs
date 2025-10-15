@@ -14,6 +14,7 @@ mod mapping_data {
 ///
 /// # 返回值
 /// 返回实际写入缓冲区的字符数量。如果缓冲区太小，会进行截断。
+#[allow(dead_code)]
 pub fn map_chars(bytes: &[u8], buffer: &mut [u16]) -> usize {
     #[inline(always)]
     fn cvt(bytes: &[u8]) -> u16 {

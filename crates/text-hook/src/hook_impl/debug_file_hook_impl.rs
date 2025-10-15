@@ -9,11 +9,18 @@ use winapi::um::winnt::HANDLE;
 
 use crate::code_cvt::ansi_to_wide_char;
 use crate::debug_msg;
+use crate::hook::CoreHook;
 use crate::hook::file_hook::{FileHook, HOOK_CLOSE_HANDLE, HOOK_CREATE_FILE, HOOK_READ_FILE};
 
 #[derive(Default)]
 pub struct DebugFileHook {
     handles: RwLock<HashMap<usize, String>>,
+}
+
+impl CoreHook for DebugFileHook {
+    fn enable_hooks(&self) {
+        crate::hook::file_hook::enable_hooks();
+    }
 }
 
 impl FileHook for DebugFileHook {

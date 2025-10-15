@@ -9,6 +9,10 @@ use once_cell::sync::OnceCell;
 use crate::debug;
 use crate::hook_impl::HookImplType;
 
+pub trait CoreHook: Send + Sync + 'static {
+    fn enable_hooks(&self) {}
+}
+
 static HOOK_INSTANCE: OnceCell<HookImplType> = OnceCell::new();
 
 /// 设置全局钩子实例
