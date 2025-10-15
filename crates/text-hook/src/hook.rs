@@ -2,7 +2,7 @@ use once_cell::sync::OnceCell;
 use translate_macros::{detour, generate_detours};
 use winapi::ctypes::c_int;
 use winapi::ctypes::c_void;
-use winapi::shared::minwindef::{BOOL, DWORD, FALSE, FARPROC, HMODULE, LPARAM, LPDWORD, LPVOID};
+use winapi::shared::minwindef::{BOOL, DWORD, FARPROC, HMODULE, LPARAM, LPDWORD, LPVOID};
 use winapi::shared::ntdef::HANDLE;
 use winapi::shared::windef::{HDC, HFONT, LPSIZE};
 use winapi::um::minwinbase::{LPOVERLAPPED, LPSECURITY_ATTRIBUTES};
@@ -292,6 +292,8 @@ pub trait Hook: Send + Sync + 'static {
 
         #[cfg(feature = "read_file_patch_impl")]
         unsafe {
+            use winapi::shared::minwindef::FALSE;
+
             let result = HOOK_READ_FILE.call(
                 h_file,
                 lp_buffer,

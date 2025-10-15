@@ -25,9 +25,6 @@ pub mod c4;
 #[cfg(feature = "debug_file_hook_impl")]
 pub mod debug_file_hook_impl;
 
-#[cfg(feature = "bittersweet_fools")]
-pub mod bittersweet_fools;
-
 #[cfg(feature = "white_breath")]
 pub mod white_breath;
 
@@ -44,9 +41,6 @@ pub type HookImplType = debug_file_hook_impl::DebugFileHook;
 
 #[cfg(feature = "snow_radish")]
 pub type HookImplType = snow_radish::SnowRadishHook;
-
-#[cfg(feature = "bittersweet_fools")]
-pub type HookImplType = bittersweet_fools::BittersweetFools;
 
 #[cfg(feature = "summer_radish")]
 pub type HookImplType = summer_radish::SummerRadishHook;

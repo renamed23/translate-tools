@@ -71,7 +71,7 @@ c4 = [
 bittersweet_fools = [
     "enum_font_families",
     "generate_full_mapping_data",
-    "export_default_dll_main",
+    "default_hook_impl",
 ]
 white_breath = ["default_hook_impl", "patch", "generate_full_mapping_data"]
 mikan = [
