@@ -65,7 +65,7 @@ pub trait Hook: Send + Sync + 'static {
 
             #[cfg(feature = "debug_text_mapping")]
             match String::from_utf16(result.as_slice()) {
-                Ok(result) => debug!("result: {result}"),
+                Ok(result) => debug!("get_text_extent_point_32 result: {result}"),
                 Err(e) => debug!("Convert utf16 to utf8 fails with {e}"),
             }
 
@@ -97,7 +97,7 @@ pub trait Hook: Send + Sync + 'static {
 
         #[cfg(feature = "debug_text_mapping")]
         match String::from_utf16(result.as_slice()) {
-            Ok(result) => debug!("result: {result}"),
+            Ok(result) => debug!("get_glyph_outline result: {result}"),
             Err(e) => debug!("Convert utf16 to utf8 fails with {e}"),
         }
 

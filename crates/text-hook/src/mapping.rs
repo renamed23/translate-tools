@@ -1,3 +1,5 @@
+use crate::constant;
+
 /// 默认的MAPPING实现
 #[cfg(not(feature = "shift_bin"))]
 mod mapping_impl {
@@ -93,6 +95,14 @@ mod mapping_impl {
 }
 
 /// 将指定shift-jis字节中的替身字符映射为指定的字符并转换为utf16 String
+#[allow(clippy::const_is_empty)]
 pub fn map_shift_jis_to_unicode(bytes: &[u8]) -> Vec<u16> {
-    mapping_impl::mapping(bytes)
+    if constant::CHAR_FILTER.is_empty() {
+        mapping_impl::mapping(bytes)
+    } else {
+        mapping_impl::mapping(bytes)
+            .into_iter()
+            .filter(|c| !constant::CHAR_FILTER.contains(c))
+            .collect()
+    }
 }

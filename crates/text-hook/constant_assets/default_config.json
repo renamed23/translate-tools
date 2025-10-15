@@ -16,5 +16,9 @@
             "MS Gothic"
         ],
         "encode_to_u16": true
+    },
+    "CHAR_FILTER": {
+        "type": "&[u16]",
+        "value": []
     }
 }
