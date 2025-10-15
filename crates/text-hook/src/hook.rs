@@ -2,7 +2,7 @@ use once_cell::sync::OnceCell;
 use translate_macros::{detour, generate_detours};
 use winapi::ctypes::c_int;
 use winapi::ctypes::c_void;
-use winapi::shared::minwindef::{BOOL, DWORD, FARPROC, HMODULE, LPARAM, LPDWORD, LPVOID};
+use winapi::shared::minwindef::{BOOL, DWORD, FALSE, FARPROC, HMODULE, LPARAM, LPDWORD, LPVOID};
 use winapi::shared::ntdef::HANDLE;
 use winapi::shared::windef::{HDC, HFONT, LPSIZE};
 use winapi::um::minwinbase::{LPOVERLAPPED, LPSECURITY_ATTRIBUTES};
@@ -273,6 +273,7 @@ pub trait Hook: Send + Sync + 'static {
         unimplemented!();
     }
 
+    #[allow(unused_variables)]
     #[detour(
         dll = "kernel32.dll",
         symbol = "ReadFile",
@@ -280,13 +281,47 @@ pub trait Hook: Send + Sync + 'static {
     )]
     unsafe fn read_file(
         &self,
-        _h_file: HANDLE,
-        _lp_buffer: LPVOID,
-        _n_number_of_bytes_to_read: DWORD,
-        _lp_number_of_bytes_read: LPDWORD,
-        _lp_overlapped: LPOVERLAPPED,
+        h_file: HANDLE,
+        lp_buffer: LPVOID,
+        n_number_of_bytes_to_read: DWORD,
+        lp_number_of_bytes_read: LPDWORD,
+        lp_overlapped: LPOVERLAPPED,
     ) -> BOOL {
+        #[cfg(not(feature = "read_file_patch_impl"))]
         unimplemented!();
+
+        #[cfg(feature = "read_file_patch_impl")]
+        unsafe {
+            let result = HOOK_READ_FILE.call(
+                h_file,
+                lp_buffer,
+                n_number_of_bytes_to_read,
+                lp_number_of_bytes_read,
+                lp_overlapped,
+            );
+            if result == FALSE {
+                debug!("ReadFile failed");
+                return FALSE;
+            }
+
+            // 如果 lp_number_of_bytes_read 为 NULL
+            // - 若 lp_overlapped 非 NULL（异步），我们无法得知实际读到多少字节，跳过 patch
+            // - 若 lp_overlapped 为 NULL（同步），按规范 lp_number_of_bytes_read 不应为 NULL，跳过 patch
+            let len: usize = if !lp_number_of_bytes_read.is_null() {
+                // 安全地读取并 clamp 到请求的最大值，避免异常值
+                let bytes = *lp_number_of_bytes_read as usize;
+                let max = n_number_of_bytes_to_read as usize;
+                core::cmp::min(bytes, max)
+            } else {
+                debug!("ReadFile: lp_number_of_bytes_read is NULL");
+                return result;
+            };
+
+            let ptr = lp_buffer as *mut u8;
+            crate::patch::process_buffer(ptr, len);
+
+            result
+        }
     }
 
     #[detour(

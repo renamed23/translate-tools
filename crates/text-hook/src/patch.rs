@@ -169,6 +169,12 @@ pub unsafe fn try_extracting(ptr: *mut u8, len: usize) {
 #[translate_macros::ffi_catch_unwind]
 #[unsafe(no_mangle)]
 pub unsafe extern "system" fn replace_script(ptr: *mut u8, len: usize) {
+    process_buffer(ptr, len);
+}
+
+/// 处理传入的缓冲区，进行修补或提取
+#[inline(always)]
+pub fn process_buffer(ptr: *mut u8, len: usize) {
     unsafe {
         #[cfg(not(feature = "patch_extracting"))]
         try_patching(ptr, len);

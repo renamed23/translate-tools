@@ -42,7 +42,7 @@ pub unsafe extern "system" fn decode_lz(
             .expect("ORIGINAL_DECODE_LZ not set");
         let result = orig(dst_ptr, dst_len, src_ptr, src_len);
 
-        crate::patch::try_patching(dst_ptr, dst_len);
+        crate::patch::process_buffer(dst_ptr, dst_len);
         result
     }
 }

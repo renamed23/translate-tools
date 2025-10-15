@@ -91,6 +91,11 @@ pub fn default_dll_main(_hinst_dll: HMODULE, fdw_reason: DWORD, _lpv_reserved: L
 
         #[cfg(feature = "debug_file_hook_impl")]
         crate::hook::enable_file_hooks();
+
+        #[cfg(feature = "read_file_patch_impl")]
+        unsafe {
+            crate::hook::HOOK_READ_FILE.enable().unwrap();
+        }
     }
 
     TRUE
