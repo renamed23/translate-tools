@@ -1,11 +1,12 @@
+use winapi::um::stringapiset::MultiByteToWideChar;
+
 use crate::constant;
 
 mod mapping_data {
     include!(concat!(env!("OUT_DIR"), "/mapping_data.rs"));
 }
 
-use winapi::um::stringapiset::MultiByteToWideChar;
-pub(super) fn mapping(bytes: &[u8]) -> Vec<u16> {
+fn mapping(bytes: &[u8]) -> Vec<u16> {
     let mut out_utf16 = Vec::with_capacity(bytes.len() * 2);
     let mut i = 0;
 
