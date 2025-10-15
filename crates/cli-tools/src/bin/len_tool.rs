@@ -241,14 +241,12 @@ fn try_aggressive_fix(trans_msg: &str, orig_len: usize, method: &Method) -> (Str
 
     // 1. 激进同义词替换
     apply_and_check!(modified, orig_len, method, {
-        const AGGRESSIVE_SYNONYM_REPLACEMENTS: [(&str, &str); 9] = [
+        const AGGRESSIVE_SYNONYM_REPLACEMENTS: [(&str, &str); 7] = [
             ("但是", "但"),
             ("可是", "可"),
             ("因为", "因"),
             ("已经", "已"),
             ("知道", "知"),
-            ("觉得", "觉"),
-            ("可以", "可"),
             ("不要", "别"),
             ("非常", "很"),
         ];
@@ -300,6 +298,12 @@ fn try_aggressive_fix(trans_msg: &str, orig_len: usize, method: &Method) -> (Str
             '…', '―', '—', '‥', '~', '～', '·', '・', '，', ',', '、', ' ',
         ];
         modified.retain(|c| !AGGRESSIVE_PUNCT_REMOVAL.contains(&c));
+    });
+
+    // 7. 激进修复：移除助词 "地" 和 "得"
+    apply_and_check!(modified, orig_len, method, {
+        modified = modified.replace('地', "");
+        modified = modified.replace('得', "");
     });
 
     (modified, false)
