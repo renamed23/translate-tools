@@ -67,6 +67,12 @@ pub unsafe extern "system" fn DllMain(
 pub fn default_dll_main(_hinst_dll: HMODULE, fdw_reason: DWORD, _lpv_reserved: LPVOID) -> BOOL {
     const PROCESS_ATTACH: DWORD = 1;
     if fdw_reason == PROCESS_ATTACH {
+        #[cfg(feature = "emulate_locale")]
+        unsafe {
+            use winapi::um::winnls::SetThreadLocale;
+            SetThreadLocale(0x0411)
+        };
+
         crate::panic_utils::set_debug_panic_hook();
         crate::hook::set_hook_instance(HookImplType::default());
 

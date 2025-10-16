@@ -36,6 +36,8 @@ generate_full_mapping_data = []
 # 导出默认的DllMain，内部使用`default_dll_main`，
 # 使用`HookImplType::default()`作为钩子实例
 export_default_dll_main = []
+# 尝试模拟日语环境，目前的支持还非常初步
+emulate_locale = []
 
 # 启用文本相关的钩子
 text_hook = []
