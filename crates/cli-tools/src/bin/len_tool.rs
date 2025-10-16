@@ -407,7 +407,7 @@ fn main() -> Result<()> {
                 }
                 Behavior::AggressiveFix => {
                     // 激进修复模式
-                    let (fixed_msg, fixed) =
+                    let (fixed_msg, _fixed) =
                         try_fix_message(&trans_msg, orig_len, &cli.method, true);
 
                     // 无论是否修复成功，都更新消息
