@@ -51,6 +51,9 @@ impl crate::hook::text_hook::TextHook for DefaultHook {}
 #[cfg(feature = "file_hook")]
 impl crate::hook::file_hook::FileHook for DefaultHook {}
 
+#[cfg(feature = "locale_hook")]
+impl crate::hook::locale_hook::LocaleHook for DefaultHook {}
+
 #[cfg(feature = "export_default_dll_main")]
 #[translate_macros::ffi_catch_unwind(FALSE)]
 #[unsafe(no_mangle)]
@@ -67,7 +70,7 @@ pub unsafe extern "system" fn DllMain(
 pub fn default_dll_main(_hinst_dll: HMODULE, fdw_reason: DWORD, _lpv_reserved: LPVOID) -> BOOL {
     const PROCESS_ATTACH: DWORD = 1;
     if fdw_reason == PROCESS_ATTACH {
-        #[cfg(feature = "emulate_locale")]
+        #[cfg(feature = "locale_hook")]
         unsafe {
             use winapi::um::winnls::SetThreadLocale;
             SetThreadLocale(0x0411)
@@ -87,6 +90,9 @@ pub fn default_dll_main(_hinst_dll: HMODULE, fdw_reason: DWORD, _lpv_reserved: L
 
         #[cfg(feature = "file_hook")]
         crate::hook::file_hook::enable_hooks();
+
+        #[cfg(feature = "locale_hook")]
+        crate::hook::locale_hook::enable_hooks();
     }
 
     TRUE

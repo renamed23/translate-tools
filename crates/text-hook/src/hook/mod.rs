@@ -6,6 +6,10 @@ pub mod file_hook;
 #[allow(dead_code)]
 pub mod text_hook;
 
+#[cfg(feature = "locale_hook")]
+#[allow(dead_code)]
+pub mod locale_hook;
+
 use once_cell::sync::OnceCell;
 
 use crate::debug;
