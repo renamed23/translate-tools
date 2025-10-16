@@ -79,10 +79,8 @@ pub fn default_dll_main(_hinst_dll: HMODULE, fdw_reason: DWORD, _lpv_reserved: L
         #[cfg(feature = "text_hook")]
         crate::hook::text_hook::enable_hooks();
 
-        #[cfg(feature = "read_file_patch_impl")]
-        unsafe {
-            crate::hook::file_hook::HOOK_READ_FILE.enable().unwrap();
-        }
+        #[cfg(feature = "file_hook")]
+        crate::hook::file_hook::enable_hooks();
     }
 
     TRUE

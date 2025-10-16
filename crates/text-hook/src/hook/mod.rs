@@ -1,7 +1,9 @@
 #[cfg(feature = "file_hook")]
+#[allow(dead_code)]
 pub mod file_hook;
 
 #[cfg(feature = "text_hook")]
+#[allow(dead_code)]
 pub mod text_hook;
 
 use once_cell::sync::OnceCell;

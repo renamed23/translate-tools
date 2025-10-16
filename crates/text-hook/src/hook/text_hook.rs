@@ -211,7 +211,7 @@ pub trait TextHook: Send + Sync + 'static {
         unsafe { CreateFontIndirectW(&logfontw) }
     }
 
-    #[allow(unused_variables, dead_code)]
+    #[allow(unused_variables)]
     #[detour(dll = "gdi32.dll", symbol = "EnumFontFamiliesExA", fallback = "0")]
     unsafe fn enum_font_families_ex(
         &self,
@@ -241,7 +241,6 @@ pub trait TextHook: Send + Sync + 'static {
 }
 
 /// 开启文本相关的钩子
-#[allow(dead_code)]
 pub fn enable_hooks() {
     unsafe {
         HOOK_CREATE_FONT.enable().unwrap();
