@@ -34,13 +34,14 @@ pub fn get_filename(src: &[u8]) -> Option<&str> {
         .map(|v| &**v)
 }
 
-/// 尝试匹配传入数据，若为目标数据，将会覆盖对应的补丁数据
+/// 尝试匹配传入数据，若为目标数据，将会覆盖对应的补丁数据。
+/// 返回`true`表示修补成功
 #[cfg(not(feature = "patch_extracting"))]
-pub unsafe fn try_patching(ptr: *mut u8, len: usize) {
+pub unsafe fn try_patching(ptr: *mut u8, len: usize) -> bool {
     debug!("Buffer len: {len}",);
 
     if !quick_memory_check_win32(ptr, len) {
-        return;
+        return false;
     }
 
     let slice = unsafe { core::slice::from_raw_parts_mut(ptr, len) };
@@ -48,7 +49,7 @@ pub unsafe fn try_patching(ptr: *mut u8, len: usize) {
     if let Some(patch) = get_patch(slice) {
         if patch.len() != slice.len() {
             debug!("Error: Patch and raw have different lengths");
-            return;
+            return false;
         }
 
         #[cfg(feature = "debug_output")]
@@ -62,17 +63,21 @@ pub unsafe fn try_patching(ptr: *mut u8, len: usize) {
         }
 
         slice.copy_from_slice(patch);
+        true
+    } else {
+        false
     }
 }
 
-/// 尝试提取传入数据，若为新数据，将会写入 raw 目录
+/// 尝试提取传入数据，若为新数据，将会写入 raw 目录。
+/// 返回`true`表示提取成功
 #[allow(dead_code, unused_variables)]
 #[cfg(feature = "patch_extracting")]
-pub unsafe fn try_extracting(ptr: *mut u8, len: usize) {
+pub unsafe fn try_extracting(ptr: *mut u8, len: usize) -> bool {
     debug!("Buffer len: {len}");
 
     if !quick_memory_check_win32(ptr, len) {
-        return;
+        return false;
     }
 
     let slice = unsafe { core::slice::from_raw_parts(ptr, len) };
@@ -85,7 +90,7 @@ pub unsafe fn try_extracting(ptr: *mut u8, len: usize) {
         Some(d) => d,
         None => {
             debug!("extract: failed to determine current exe directory");
-            return;
+            return false;
         }
     };
 
@@ -93,7 +98,7 @@ pub unsafe fn try_extracting(ptr: *mut u8, len: usize) {
 
     if let Err(e) = std::fs::create_dir_all(&raw_dir) {
         debug!("extract: failed to create raw dir {:?}: {:?}", raw_dir, e);
-        return;
+        return false;
     }
 
     // 遍历 raw 目录，查找是否已有完全相同的文件（长度相同且 sha 相同）
@@ -122,7 +127,7 @@ pub unsafe fn try_extracting(ptr: *mut u8, len: usize) {
                                 "extract: identical file already exists, skipping write: {:?}",
                                 path
                             );
-                            return;
+                            return false;
                         }
                     }
                 }
@@ -156,12 +161,18 @@ pub unsafe fn try_extracting(ptr: *mut u8, len: usize) {
     let out_path = raw_dir.join(format!("{next}.snr"));
 
     match std::fs::write(&out_path, slice) {
-        Ok(_) => debug!(
-            "extract: wrote raw file {:?} (len={})",
-            out_path,
-            slice.len()
-        ),
-        Err(e) => debug!("extract: failed to write file {:?}: {:?}", out_path, e),
+        Ok(_) => {
+            debug!(
+                "extract: wrote raw file {:?} (len={})",
+                out_path,
+                slice.len()
+            );
+            true
+        }
+        Err(e) => {
+            debug!("extract: failed to write file {:?}: {:?}", out_path, e);
+            false
+        }
     }
 }
 
@@ -172,13 +183,15 @@ pub unsafe extern "system" fn replace_script(ptr: *mut u8, len: usize) {
     process_buffer(ptr, len);
 }
 
-/// 处理传入的缓冲区，进行修补或提取
+/// 处理传入的缓冲区，进行修补或提取。
+/// 返回`true`表示修补或提取成功
 #[inline(always)]
-pub fn process_buffer(ptr: *mut u8, len: usize) {
+pub fn process_buffer(ptr: *mut u8, len: usize) -> bool {
     unsafe {
         #[cfg(not(feature = "patch_extracting"))]
-        try_patching(ptr, len);
+        return try_patching(ptr, len);
+
         #[cfg(feature = "patch_extracting")]
-        try_extracting(ptr, len);
+        return try_extracting(ptr, len);
     }
 }
