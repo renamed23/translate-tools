@@ -1,48 +1,4 @@
-#[cfg(feature = "bleed")]
-pub mod bleed;
-
-#[cfg(feature = "sukisuki")]
-pub mod sukisuki;
-
-#[cfg(feature = "ao_vo")]
-pub mod ao_vo;
-
-#[cfg(feature = "noise")]
-pub mod noise;
-
-#[cfg(feature = "lusts")]
-pub mod lusts;
-
-#[cfg(feature = "c4")]
-pub mod c4;
-
-#[cfg(feature = "debug_file_impl")]
-pub mod debug_file_impl;
-
-#[cfg(feature = "default_impl")]
-pub mod default_impl;
-
-#[cfg(feature = "white_breath")]
-pub mod white_breath;
-
-#[cfg(feature = "uminom")]
-pub mod uminom;
-
-// ---------------------- 钩子实现类型 ------------------------------
-
-#[cfg(feature = "default_impl")]
-pub type HookImplType = default_impl::DefaultImplHook;
-
-#[cfg(feature = "debug_file_impl")]
-pub type HookImplType = debug_file_impl::DebugFileImplHook;
-
-#[cfg(feature = "bleed")]
-pub type HookImplType = bleed::BleedHook;
-
-#[cfg(feature = "uminom")]
-pub type HookImplType = uminom::UminomHook;
-
-// ---------------------- DLL MAIN ----------------------------------
+translate_macros::search_hook_impls!("src/hook_impl");
 
 #[allow(unused_imports)]
 use winapi::shared::minwindef::{BOOL, DWORD, FALSE, HMODULE, LPVOID, TRUE};

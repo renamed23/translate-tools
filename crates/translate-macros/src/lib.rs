@@ -2,6 +2,7 @@ pub(crate) mod byte_slice;
 pub(crate) mod ffi_catch_unwind;
 pub(crate) mod flate;
 pub(crate) mod generate_detours;
+pub(crate) mod search_hook_impls;
 pub(crate) mod utils;
 
 use proc_macro::TokenStream;
@@ -227,4 +228,65 @@ pub fn ffi_catch_unwind(attr: TokenStream, item: TokenStream) -> TokenStream {
 #[proc_macro]
 pub fn flate(input: TokenStream) -> TokenStream {
     flate::flate(input)
+}
+
+/// 自动扫描指定目录并生成钩子实现模块和类型别名的过程宏
+///
+/// 这个宏会扫描指定目录下的所有 `.rs` 文件（除了 `mod.rs` 和 `lib.rs`），
+/// 并为每个文件生成对应的模块声明和特性条件编译。同时，它会在每个文件中查找
+/// 符合命名规则的结构体（文件名转大驼峰 + `Hook`），如果找到则生成对应的类型别名。
+///
+/// # 用法
+///
+/// ```rust
+/// search_hook_impls!("相对/路径/到/钩子实现/目录/");
+/// ```
+///
+/// # 参数
+///
+/// - `path`: 相对于项目根目录的路径字符串，指向包含钩子实现文件的目录
+///
+/// # 示例
+///
+/// 假设项目结构如下：
+///
+/// ```text
+/// project/
+///   Cargo.toml
+///   src/
+///     lib.rs
+///     hooks/
+///       mod.rs
+///       bleed.rs        // 包含 pub struct BleedHook;
+///       default_impl.rs // 包含 pub struct DefaultImplHook;
+/// ```
+///
+/// 在 `mod.rs` 中使用：
+///
+/// ```rust
+/// search_hook_impls!("src/hooks/");
+/// ```
+///
+/// 这将生成：
+///
+/// ```rust
+/// #[cfg(feature = "bleed")]
+/// pub mod bleed;
+/// #[cfg(feature = "default_impl")]
+/// pub mod default_impl;
+///
+/// #[cfg(feature = "bleed")]
+/// pub type HookImplType = bleed::BleedHook;
+/// #[cfg(feature = "default_impl")]
+/// pub type HookImplType = default_impl::DefaultImplHook;
+/// ```
+///
+/// # 注意
+///
+/// - 文件名中的下划线会被转换为大驼峰命名法
+/// - 只有文件中存在对应结构体时才会生成类型别名
+/// - 使用 `CARGO_MANIFEST_DIR` 环境变量来定位项目根目录
+#[proc_macro]
+pub fn search_hook_impls(input: TokenStream) -> TokenStream {
+    search_hook_impls::search_hook_impls(input)
 }
