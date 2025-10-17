@@ -32,6 +32,17 @@ impl CoreHook for DebugFileHook {
             HOOK_FIND_CLOSE.enable().unwrap();
         }
     }
+
+    fn disable_hooks(&self) {
+        unsafe {
+            HOOK_CREATE_FILE.disable().unwrap();
+            HOOK_READ_FILE.disable().unwrap();
+            HOOK_CLOSE_HANDLE.disable().unwrap();
+            HOOK_FIND_FIRST_FILE.disable().unwrap();
+            HOOK_FIND_NEXT_FILE.disable().unwrap();
+            HOOK_FIND_CLOSE.disable().unwrap();
+        }
+    }
 }
 
 impl FileHook for DebugFileHook {

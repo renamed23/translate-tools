@@ -67,32 +67,63 @@ pub unsafe extern "system" fn DllMain(
 
 /// 默认的 DllMain 实现
 #[allow(dead_code)]
-pub fn default_dll_main(_hinst_dll: HMODULE, fdw_reason: DWORD, _lpv_reserved: LPVOID) -> BOOL {
-    const PROCESS_ATTACH: DWORD = 1;
-    if fdw_reason == PROCESS_ATTACH {
-        #[cfg(feature = "locale_hook")]
-        unsafe {
-            use winapi::um::winnls::SetThreadLocale;
-            SetThreadLocale(0x0411)
-        };
+pub fn default_dll_main(hinst_dll: HMODULE, fdw_reason: DWORD, _lpv_reserved: LPVOID) -> BOOL {
+    use crate::hook::CoreHook;
 
-        crate::panic_utils::set_debug_panic_hook();
-        crate::hook::set_hook_instance(HookImplType::default());
+    const PROCESS_ATTACH: u32 = 1;
+    const PROCESS_DETACH: u32 = 0;
+    const THREAD_ATTACH: u32 = 2;
+    const THREAD_DETACH: u32 = 3;
 
-        #[cfg(feature = "custom_font")]
-        crate::custom_font::add_font();
+    match fdw_reason {
+        PROCESS_ATTACH => {
+            #[cfg(feature = "locale_hook")]
+            unsafe {
+                use winapi::um::winnls::SetThreadLocale;
+                SetThreadLocale(0x0411)
+            };
 
-        use crate::hook::CoreHook as _;
-        crate::hook::hook_instance().enable_hooks();
+            crate::panic_utils::set_debug_panic_hook();
+            crate::hook::set_hook_instance(HookImplType::default());
 
-        #[cfg(feature = "text_hook")]
-        crate::hook::text_hook::enable_hooks();
+            #[cfg(feature = "custom_font")]
+            unsafe {
+                crate::custom_font::add_font();
+            }
 
-        #[cfg(feature = "file_hook")]
-        crate::hook::file_hook::enable_hooks();
+            crate::hook::hook_instance().enable_hooks();
 
-        #[cfg(feature = "locale_hook")]
-        crate::hook::locale_hook::enable_hooks();
+            #[cfg(feature = "text_hook")]
+            crate::hook::text_hook::enable_hooks();
+
+            #[cfg(feature = "file_hook")]
+            crate::hook::file_hook::enable_hooks();
+
+            #[cfg(feature = "locale_hook")]
+            crate::hook::locale_hook::enable_hooks();
+
+            crate::hook::hook_instance().on_process_attach(hinst_dll);
+        }
+        PROCESS_DETACH => {
+            #[cfg(feature = "custom_font")]
+            unsafe {
+                crate::custom_font::remove_font();
+            }
+
+            crate::hook::hook_instance().disable_hooks();
+
+            #[cfg(feature = "text_hook")]
+            crate::hook::text_hook::disable_hooks();
+
+            #[cfg(feature = "file_hook")]
+            crate::hook::file_hook::disable_hooks();
+
+            #[cfg(feature = "locale_hook")]
+            crate::hook::locale_hook::disable_hooks();
+
+            crate::hook::hook_instance().on_process_detach(hinst_dll);
+        }
+        _ => {}
     }
 
     TRUE

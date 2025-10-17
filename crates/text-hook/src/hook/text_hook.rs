@@ -256,3 +256,20 @@ pub fn enable_hooks() {
     }
     debug!("Text Hooked!");
 }
+
+/// 关闭文本相关的钩子
+pub fn disable_hooks() {
+    unsafe {
+        HOOK_CREATE_FONT.disable().unwrap();
+        HOOK_CREATE_FONT_INDIRECT.disable().unwrap();
+        HOOK_GET_GLYPH_OUTLINE.disable().unwrap();
+        HOOK_TEXT_OUT.disable().unwrap();
+        HOOK_GET_TEXT_EXTENT_POINT_32.disable().unwrap();
+    }
+
+    #[cfg(feature = "enum_font_families")]
+    unsafe {
+        HOOK_ENUM_FONT_FAMILIES_EX.disable().unwrap();
+    }
+    debug!("Text Unhooked!");
+}

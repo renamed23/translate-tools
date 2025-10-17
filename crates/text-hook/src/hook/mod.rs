@@ -11,12 +11,16 @@ pub mod text_hook;
 pub mod locale_hook;
 
 use once_cell::sync::OnceCell;
+use winapi::shared::minwindef::HMODULE;
 
 use crate::debug;
 use crate::hook_impl::HookImplType;
 
 pub trait CoreHook: Send + Sync + 'static {
     fn enable_hooks(&self) {}
+    fn disable_hooks(&self) {}
+    fn on_process_attach(&self, _hinst_dll: HMODULE) {}
+    fn on_process_detach(&self, _hinst_dll: HMODULE) {}
 }
 
 static HOOK_INSTANCE: OnceCell<HookImplType> = OnceCell::new();

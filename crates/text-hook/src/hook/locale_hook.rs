@@ -54,3 +54,16 @@ pub fn enable_hooks() {
 
     debug!("Locale Hooked!");
 }
+
+/// 关闭区域设置相关的钩子
+#[allow(dead_code)]
+pub fn disable_hooks() {
+    unsafe {
+        HOOK_GET_SYSTEM_DEFAULT_LCID.disable().unwrap();
+        HOOK_GET_SYSTEM_DEFAULT_LANG_ID.disable().unwrap();
+        HOOK_GET_USER_DEFAULT_LCID.disable().unwrap();
+        HOOK_GET_USER_DEFAULT_LANG_ID.disable().unwrap();
+    }
+
+    debug!("Locale Unhooked!");
+}

@@ -134,3 +134,14 @@ pub fn enable_hooks() {
 
     debug!("File Hooked!");
 }
+
+/// 关闭文件相关的钩子
+#[allow(dead_code)]
+pub fn disable_hooks() {
+    #[cfg(feature = "read_file_patch_impl")]
+    unsafe {
+        HOOK_READ_FILE.disable().unwrap();
+    }
+
+    debug!("File Unhooked!");
+}
