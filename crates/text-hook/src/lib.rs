@@ -14,9 +14,6 @@ pub(crate) mod mapping;
 pub(crate) mod panic_utils;
 pub(crate) mod utils;
 
-#[cfg(feature = "embedded_dict")]
-pub(crate) mod embedded_dict;
-
 #[cfg(feature = "patch")]
 pub(crate) mod patch;
 
