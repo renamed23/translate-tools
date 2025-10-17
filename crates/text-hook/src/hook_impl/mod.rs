@@ -16,43 +16,36 @@ pub mod lusts;
 #[cfg(feature = "c4")]
 pub mod c4;
 
-#[cfg(feature = "debug_file_hook_impl")]
-pub mod debug_file_hook_impl;
+#[cfg(feature = "debug_file_impl")]
+pub mod debug_file_impl;
+
+#[cfg(feature = "default_impl")]
+pub mod default_impl;
 
 #[cfg(feature = "white_breath")]
 pub mod white_breath;
 
+#[cfg(feature = "uminom")]
+pub mod uminom;
+
 // ---------------------- 钩子实现类型 ------------------------------
 
-#[cfg(feature = "default_hook_impl")]
-pub type HookImplType = DefaultHook;
+#[cfg(feature = "default_impl")]
+pub type HookImplType = default_impl::DefaultImplHook;
+
+#[cfg(feature = "debug_file_impl")]
+pub type HookImplType = debug_file_impl::DebugFileImplHook;
 
 #[cfg(feature = "bleed")]
 pub type HookImplType = bleed::BleedHook;
 
-#[cfg(feature = "debug_file_hook_impl")]
-pub type HookImplType = debug_file_hook_impl::DebugFileHook;
+#[cfg(feature = "uminom")]
+pub type HookImplType = uminom::UminomHook;
 
 // ---------------------- DLL MAIN ----------------------------------
 
 #[allow(unused_imports)]
 use winapi::shared::minwindef::{BOOL, DWORD, FALSE, HMODULE, LPVOID, TRUE};
-
-/// 默认实现的钩子，应该可以应对大部分场景
-#[allow(dead_code)]
-#[derive(Default)]
-pub struct DefaultHook;
-
-impl crate::hook::CoreHook for DefaultHook {}
-
-#[cfg(feature = "text_hook")]
-impl crate::hook::text_hook::TextHook for DefaultHook {}
-
-#[cfg(feature = "file_hook")]
-impl crate::hook::file_hook::FileHook for DefaultHook {}
-
-#[cfg(feature = "locale_hook")]
-impl crate::hook::locale_hook::LocaleHook for DefaultHook {}
 
 #[cfg(feature = "export_default_dll_main")]
 #[translate_macros::ffi_catch_unwind(FALSE)]

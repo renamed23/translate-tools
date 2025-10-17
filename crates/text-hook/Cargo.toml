@@ -23,7 +23,7 @@ read_file_patch_impl = ["patch", "file_hook"]
 # 默认的patch导出函数实现
 default_patch_impl = ["patch"]
 # 提取补丁而不是替换补丁
-patch_extracting = ["default_patch_impl"]
+patch_extracting = ["patch"]
 # 当该feature开启时，create_font系列函数不再固定字体
 enum_font_families = []
 # 嵌入`assets/custom.ttf`的自定义字体，会使用`AddFontMemResourceEx`让GDI识别
@@ -50,35 +50,38 @@ export_hooks = []
 # 通用impl ---------------------------------------------------
 
 # 调试文件输出的HOOK实现，可用于调试，并导出默认的DllMain
-debug_file_hook_impl = ["debug_output", "export_default_dll_main", "file_hook"]
+debug_file_impl = ["debug_output", "export_default_dll_main", "file_hook"]
 # 默认的HOOK实现(即使用`Hook` trait的默认代码)，并导出默认的DllMain
-default_hook_impl = ["export_default_dll_main", "text_hook"]
+default_impl = ["export_default_dll_main", "text_hook"]
 
 # 针对特定游戏的impl-------------------------------------------
 bleed = ["export_default_dll_main", "text_hook"]
-sukisuki = ["default_hook_impl", "generate_full_mapping_data"]
-ao_vo = ["patch", "default_hook_impl"]
-noise = ["patch", "default_hook_impl"]
-lusts = ["default_hook_impl"]
-lucky_crosse = ["default_hook_impl", "default_patch_impl"]
-cosmos = ["default_hook_impl", "default_patch_impl"]
+sukisuki = ["default_impl", "generate_full_mapping_data"]
+ao_vo = ["patch", "default_impl"]
+noise = ["patch", "default_impl"]
+lusts = ["default_impl"]
+lucky_crosse = ["default_impl", "default_patch_impl"]
+cosmos = ["default_impl", "default_patch_impl"]
 # 非C社的c4
 c4 = [
     "patch",
-    "default_hook_impl",
+    "default_impl",
     "enum_font_families",
     "generate_full_mapping_data",
 ]
 bittersweet_fools = [
     "enum_font_families",
     "generate_full_mapping_data",
-    "default_hook_impl",
+    "default_impl",
 ]
-white_breath = ["default_hook_impl", "patch", "generate_full_mapping_data"]
-mikan = [
-    "default_hook_impl",
-    "read_file_patch_impl",
+white_breath = ["default_impl", "patch", "generate_full_mapping_data"]
+mikan = ["default_impl", "read_file_patch_impl", "generate_full_mapping_data"]
+# 提取脚本需要`patch_extracting`
+uminom = [
+    "export_default_dll_main",
+    "text_hook",
     "generate_full_mapping_data",
+    # "patch_extracting",
 ]
 
 [dependencies]

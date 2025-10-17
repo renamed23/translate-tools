@@ -16,12 +16,12 @@ use crate::hook::file_hook::{
 };
 
 #[derive(Default)]
-pub struct DebugFileHook {
+pub struct DebugFileImplHook {
     handles: RwLock<HashMap<usize, String>>,
     find_handles: RwLock<HashMap<usize, String>>,
 }
 
-impl CoreHook for DebugFileHook {
+impl CoreHook for DebugFileImplHook {
     fn enable_hooks(&self) {
         unsafe {
             HOOK_CREATE_FILE.enable().unwrap();
@@ -45,7 +45,7 @@ impl CoreHook for DebugFileHook {
     }
 }
 
-impl FileHook for DebugFileHook {
+impl FileHook for DebugFileImplHook {
     unsafe fn create_file(
         &self,
         lp_file_name: LPCSTR,
