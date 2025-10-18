@@ -300,12 +300,6 @@ fn try_aggressive_fix(trans_msg: &str, orig_len: usize, method: &Method) -> (Str
         modified.retain(|c| !AGGRESSIVE_PUNCT_REMOVAL.contains(&c));
     });
 
-    // 7. 激进修复：移除助词 "地" 和 "得"
-    apply_and_check!(modified, orig_len, method, {
-        modified = modified.replace('地', "");
-        modified = modified.replace('得', "");
-    });
-
     (modified, false)
 }
 
