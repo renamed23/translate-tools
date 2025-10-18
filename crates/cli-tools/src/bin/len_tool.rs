@@ -159,7 +159,12 @@ fn try_fix_message(
             .collect();
     });
 
-    // 2. 合并重复标点符号
+    // 2. 删除全角空格
+    apply_and_check!(modified, orig_len, method, {
+        modified.retain(|c| c != '　');
+    });
+
+    // 3. 合并重复标点符号
     const PUNCT_REPLACEMENTS: [(&str, &str); 5] = [
         ("……", "…"),
         ("――", "―"),
@@ -178,7 +183,7 @@ fn try_fix_message(
     }
 
     // --- 第2阶段：轻度缩减 (可能轻微影响语义) ---
-    // 3. 同义词替换（使用更短的表达）
+    // 4. 同义词替换（使用更短的表达）
     const SYNONYM_REPLACEMENTS: [(&str, &str); 21] = [
         ("真是", "真"),
         ("什么", "啥"),
@@ -210,7 +215,7 @@ fn try_fix_message(
         }
     }
 
-    // 4. 删除末尾的特定标点
+    // 5. 删除末尾的特定标点
     let ends_with_puncts = ['」', '。', '！', '？', '!', '?'];
     for p in ends_with_puncts {
         if modified.ends_with(p) {
