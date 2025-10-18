@@ -10,6 +10,7 @@ use crate::hook::text_hook::TextHook;
 pub struct UminomHook;
 
 impl CoreHook for UminomHook {
+    // 解压器实现，仅为了获取解包数据，不要在真补丁中使用
     #[cfg(feature = "patch_extracting")]
     fn on_process_attach(&self, _hinst_dll: HMODULE) {
         use translate_macros::byte_slice;

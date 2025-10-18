@@ -101,6 +101,8 @@ pub unsafe fn try_extracting(ptr: *mut u8, len: usize) -> bool {
         return false;
     }
 
+    let mut max_index: u64 = 0;
+
     // 遍历 raw 目录，查找是否已有完全相同的文件（长度相同且 sha 相同）
     if let Ok(entries) = std::fs::read_dir(&raw_dir) {
         for entry in entries.flatten() {
@@ -109,15 +111,19 @@ pub unsafe fn try_extracting(ptr: *mut u8, len: usize) -> bool {
                 continue;
             }
 
-            // 只对数字命名文件进行检查（例如 1.snr, 2.snr）
+            // --- 步骤1: 尝试更新 max_index ---
             if let Some(stem) = path.file_stem().and_then(|s| s.to_str()) {
-                if !stem.chars().all(|c| c.is_ascii_digit()) {
+                if let Ok(n) = stem.parse::<u64>() {
+                    max_index = max_index.max(n);
+                } else {
+                    // 如果文件名不是纯数字，则跳过后续的哈希检查
                     continue;
                 }
             } else {
                 continue;
             }
 
+            // --- 步骤2: 检查文件内容是否重复 ---
             match std::fs::read(&path) {
                 Ok(existing_bytes) => {
                     if existing_bytes.len() == slice.len() {
@@ -140,23 +146,8 @@ pub unsafe fn try_extracting(ptr: *mut u8, len: usize) -> bool {
         debug!("extract: failed to read raw dir {:?}", raw_dir);
     }
 
-    // 没有找到完全相同的文件，确定下一个可用的数字文件名
-    let mut max_index: u64 = 0;
-    if let Ok(entries) = std::fs::read_dir(&raw_dir) {
-        for entry in entries.flatten() {
-            let path = entry.path();
-            if !path.is_file() {
-                continue;
-            }
-            if let Some(stem) = path.file_stem().and_then(|s| s.to_str())
-                && let Ok(n) = stem.parse::<u64>()
-                && n > max_index
-            {
-                max_index = n;
-            }
-        }
-    }
-
+    // --- 如果循环正常结束，说明没有找到任何重复的文件 ---
+    // 此时的 max_index 就是目录中最大的索引值。
     let next = max_index + 1;
     let out_path = raw_dir.join(format!("{next}.snr"));
 
