@@ -1,6 +1,7 @@
 pub mod iat_patch;
 pub mod protect_guard;
 
+use translate_macros::byte_slice;
 use winapi::{
     shared::{minwindef::HMODULE, ntdef::LPCSTR},
     um::{
@@ -102,4 +103,34 @@ pub fn write_bytes(address: *mut u8, data: &[u8]) -> anyhow::Result<()> {
     }
 
     Ok(())
+}
+
+/// 创建一个32位的汇编跳板代码
+///
+/// # 参数
+/// - `target_fn_addr`: 目标函数地址
+/// - `pre_asm`: 调用目标函数前执行的汇编字节
+/// - `pos_asm`: 调用目标函数后执行的汇编字节
+///
+/// # 返回
+/// - 返回包含跳板代码的字节向量
+#[allow(dead_code)]
+pub fn create_trampoline_32(target_fn_addr: usize, pre_asm: &[u8], post_asm: &[u8]) -> Vec<u8> {
+    let mut code_buf: Vec<u8> = Vec::with_capacity(32);
+
+    // pushad; pushfd;
+    code_buf.extend_from_slice(&byte_slice!("60 9C"));
+
+    code_buf.extend_from_slice(pre_asm);
+
+    // mov ebx, imm32
+    code_buf.push(0xBB);
+    code_buf.extend_from_slice(&target_fn_addr.to_le_bytes());
+
+    // call ebx; popfd; popad;
+    code_buf.extend_from_slice(&byte_slice!("FF D3 9D 61"));
+
+    code_buf.extend_from_slice(post_asm);
+
+    code_buf
 }
