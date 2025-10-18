@@ -1,7 +1,10 @@
 pub(crate) mod byte_slice;
 pub(crate) mod ffi_catch_unwind;
 pub(crate) mod flate;
+pub(crate) mod generate_constants_from_json;
 pub(crate) mod generate_detours;
+pub(crate) mod generate_mapping_data;
+pub(crate) mod generate_patch_data;
 pub(crate) mod search_hook_impls;
 pub(crate) mod utils;
 
@@ -289,4 +292,191 @@ pub fn flate(input: TokenStream) -> TokenStream {
 #[proc_macro]
 pub fn search_hook_impls(input: TokenStream) -> TokenStream {
     search_hook_impls::search_hook_impls(input)
+}
+
+/// 从 JSON 配置文件生成 Rust 常量的过程宏
+///
+/// # 功能描述
+/// 这个宏从两个 JSON 配置文件中读取配置项并生成对应的 Rust 常量：
+/// - 默认配置文件：包含所有配置项的默认值和类型定义
+/// - 用户配置文件：可以覆盖默认配置中的值
+///
+/// # 输入参数
+/// 接受两个字符串字面量参数，用逗号分隔：
+/// - `default_path`: 默认配置文件的相对路径（相对于 `CARGO_MANIFEST_DIR`）
+/// - `user_path`: 用户配置文件的相对路径（相对于 `CARGO_MANIFEST_DIR`）
+///
+/// 支持的字段：
+/// - `type`: Rust 类型标识符（如 `"&str"`, `"u32"`, `"bool"`, `"&[u16]"` 等）
+/// - `value`: 常量的值，可以是字符串、数字、布尔值或数组
+/// - `encode_to_u16`（可选）: 仅对字符串有效，为 `true` 时将字符串编码为 UTF-16 字节数组
+///
+/// # 生成规则
+/// - 常量名：将配置键名中的非字母数字字符替换为下划线
+/// - 类型：直接使用配置中的类型字符串
+/// - 值：优先使用用户配置，不存在时使用默认配置
+/// - 字符串处理：当 `encode_to_u16` 为 `true` 时，字符串会被转换为 `&[u16]` 数组
+///
+/// # 示例
+/// ```
+/// generate_constants_from_json!("config/default.json", "config/user.json");
+/// ```
+///
+/// # 错误处理
+/// - 文件读取失败：编译时错误
+/// - JSON 解析失败：编译时错误  
+/// - 缺少必需字段（type/value）：编译时错误
+/// - 类型解析失败：编译时错误
+///
+/// # 注意事项
+/// - 配置文件路径相对于 `CARGO_MANIFEST_DIR`（项目根目录）
+/// - 用户配置文件中不存在的配置项将使用默认值
+/// - 用户配置文件中多余的配置项会被忽略
+/// - 生成的常量都是 `pub const`
+/// - 数组类型会生成为切片引用 `&[...]`
+#[proc_macro]
+pub fn generate_constants_from_json(input: TokenStream) -> TokenStream {
+    generate_constants_from_json::generate_constants_from_json(input)
+}
+
+/// 生成字符映射数据的过程宏
+///
+/// # 功能描述
+/// 这个宏从映射配置文件和可选的译文文件中生成一个高效的字符映射表，用于在 Shift_JIS 编码和 UTF-16 编码之间进行转换。
+/// 生成的映射表使用 Perfect Hash Function (PHF) 实现，提供 O(1) 时间复杂度的查找性能。
+///
+/// # 输入参数
+/// 接受一个或两个字符串字面量参数，用逗号分隔：
+/// - `mapping_path`: 必需，映射配置文件的相对路径（相对于 `CARGO_MANIFEST_DIR`）
+/// - `translated_path`: 可选，译文文件的相对路径（用于生成完整映射数据）
+///
+/// # 配置文件格式
+///
+/// ## 映射配置文件 (mapping.json)
+/// JSON 对象，键值对表示字符映射关系：
+/// ```json
+/// {
+///   "原字符": "目标字符",
+///   "Ａ": "A",
+///   "ｶ": "カ"
+/// }
+/// ```
+/// - 键和值都必须是单个 Unicode 字符
+/// - 键字符必须属于 JIS0208 字符集（可被 Shift_JIS 编码）
+///
+/// ## 译文文件
+/// 包含需要处理的文本内容，用于提取所有 JIS0208 字符并创建自映射（字符映射到自身）。
+///
+/// # 生成规则
+/// 1. 如果提供了译文文件，首先提取其中所有 JIS0208 字符并创建自映射
+/// 2. 使用映射配置文件中的映射关系覆盖或添加映射
+/// 3. 将每个键字符编码为 Shift_JIS 双字节编码
+/// 4. 将每个值字符转换为 UTF-16 码点
+/// 5. 生成基于 PHF 的静态映射表
+///
+/// # 输出
+/// 生成一个静态的 PHF 映射表：
+/// ```rust
+/// pub(super) static SJIS_PHF_MAP: ::phf::Map<u16, u16> = phf_map! {
+///     0x8340u16 => 0x0041u16,  // "Ａ" -> "A"
+///     0x8341u16 => 0x0042u16,  // "Ｂ" -> "B"
+///     // ...
+/// };
+/// ```
+///
+/// # 使用示例
+/// ## 基本用法（仅映射文件）
+/// ```rust
+/// generate_mapping_data!("assets/mapping.json");
+/// ```
+///
+/// ## 完整映射（包含译文文件）
+/// ```rust
+/// generate_mapping_data!("assets/mapping.json", "assets/translated.txt");
+/// ```
+///
+/// # 字符编码说明
+/// - **键**: 原字符 -> Shift_JIS 双字节编码 -> u16（高字节在前）
+/// - **值**: 目标字符 -> UTF-16 码点 -> u16
+///
+/// # 性能特点
+/// - 使用 PHF 实现，编译时构建完美哈希函数
+/// - 运行时查找时间复杂度 O(1)
+/// - 适合在性能敏感的字符转换场景中使用
+///
+/// # 应用场景
+/// 主要用于游戏本地化、字符集转换、文本处理等需要高效字符映射的场景，
+/// 特别是在处理日文 Shift_JIS 编码文本时。
+///
+/// # 注意事项
+/// - 配置文件路径相对于 `CARGO_MANIFEST_DIR`（项目根目录）
+/// - 译文文件为可选，用于生成完整字符集的自映射
+/// - 所有字符映射都是 1:1 的单个字符映射
+/// - 目前不支持 BMP 之外的 Unicode 字符（>0xFFFF）
+#[proc_macro]
+pub fn generate_mapping_data(input: TokenStream) -> TokenStream {
+    generate_mapping_data::generate_mapping_data(input)
+}
+
+/// 生成补丁数据的过程宏
+///
+/// # 功能描述
+/// 这个宏通过比较原始文件和翻译文件，生成一个高效的补丁数据系统，用于在运行时动态替换文件内容。
+/// 系统使用 SHA256 哈希值来标识原始文件，并通过 PHF（Perfect Hash Function）实现快速查找。
+///
+/// # 输入参数
+/// 接受两个字符串字面量参数，用 `=>` 分隔：
+/// - `raw_dir`: 原始文件目录的相对路径（相对于 `CARGO_MANIFEST_DIR`）
+/// - `translated_dir`: 翻译文件目录的相对路径（相对于 `CARGO_MANIFEST_DIR`）
+///
+/// # 处理流程
+/// 1. 扫描原始文件目录中的所有文件
+/// 2. 在翻译文件目录中查找对应的翻译文件
+/// 3. 验证原始文件和翻译文件的字节长度是否一致
+/// 4. 计算原始文件的 SHA256 哈希值
+/// 5. 生成压缩的静态数据和高效的查找结构
+///
+/// # 验证规则
+/// - 原始文件和翻译文件必须存在且可读
+/// - 原始文件和翻译文件的字节长度必须完全一致
+/// - 原始文件的 SHA256 哈希值必须唯一（避免重复文件）
+/// - 翻译文件目录中必须存在与原始文件同名的文件
+///
+/// # 性能特点
+/// - 使用 PHF 实现 O(1) 时间复杂度的查找
+/// - 翻译文件数据在编译时进行压缩（flate压缩）
+/// - 运行时按需解压缩（LazyLock延迟加载）
+/// - 长度过滤器用于快速排除不匹配的文件
+///
+/// # 应用场景
+/// 主要用于游戏修改、资源替换、本地化补丁等需要动态替换文件内容的场景，
+/// 特别是在需要高效查找和最小化内存占用的环境中。
+///
+/// # 注意事项
+/// - 文件按文件名进行匹配（翻译文件必须与原始文件同名）
+/// - 所有文件都按二进制方式处理，不涉及字符编码转换
+/// - 调试信息需要启用 `debug_output` feature 才能使用
+/// - 生成的静态变量都是 `pub(super)` 可见性
+/// - 哈希比较使用字节数组，确保精确匹配
+///
+/// # 运行时使用示例
+/// ```rust
+/// // 1. 计算输入数据的长度和哈希
+/// let input_len = input_data.len();
+/// let input_hash = sha2::Sha256::digest(&input_data);
+///
+/// // 2. 使用长度过滤器快速排除
+/// if LEN_FILTER.contains(&input_len) {
+///     // 3. 在补丁映射中查找
+///     if let Some(patched_data) = PATCHES.get(&input_hash) {
+///         // 4. 使用找到的补丁数据
+///         return patched_data.clone();
+///     }
+/// }
+/// // 5. 返回原始数据（未找到补丁）
+/// return input_data;
+/// ```
+#[proc_macro]
+pub fn generate_patch_data(input: TokenStream) -> TokenStream {
+    generate_patch_data::generate_patch_data(input)
 }

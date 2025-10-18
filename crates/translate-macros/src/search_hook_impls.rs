@@ -11,7 +11,7 @@ pub fn search_hook_impls(input: TokenStream) -> TokenStream {
     let relative_path = input_str.value();
 
     // 获取项目根目录
-    let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| ".".into());
+    let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").expect("无法获取 CARGO_MANIFEST_DIR");
 
     // 构建完整路径
     let mut full_path = PathBuf::from(manifest_dir);

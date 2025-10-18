@@ -13,7 +13,7 @@ pub fn ffi_catch_unwind(attr: TokenStream, item: TokenStream) -> TokenStream {
     let block = &func.block;
 
     let new_block = quote! {{
-        match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| #block)) {
+        match ::std::panic::catch_unwind(::std::panic::AssertUnwindSafe(|| #block)) {
             Ok(r) => r,
             Err(_) => #fallback,
         }

@@ -1,10 +1,5 @@
 #![crate_type = "cdylib"]
 
-#[allow(dead_code)]
-pub(crate) mod constant {
-    include!(concat!(env!("OUT_DIR"), "/constant.rs"));
-}
-
 pub(crate) mod code_cvt;
 pub(crate) mod debug_output;
 pub(crate) mod hook;
@@ -19,3 +14,11 @@ pub(crate) mod patch;
 
 #[cfg(feature = "custom_font")]
 pub(crate) mod custom_font;
+
+#[allow(dead_code)]
+pub(crate) mod constant {
+    translate_macros::generate_constants_from_json!(
+        "constant_assets/default_config.json",
+        "assets/config.json"
+    );
+}

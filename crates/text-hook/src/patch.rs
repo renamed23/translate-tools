@@ -1,11 +1,11 @@
-mod patch_data {
-    include!(concat!(env!("OUT_DIR"), "/patch_data.rs"));
-}
-
 use crate::{
     debug,
     utils::{quick_memory_check_win32, sha256_of_bytes},
 };
+
+mod patch_data {
+    translate_macros::generate_patch_data!("assets/raw" => "assets/translated");
+}
 
 /// 根据目标数据，获取补丁数据
 pub fn get_patch(src: &[u8]) -> Option<&'static [u8]> {

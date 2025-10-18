@@ -3,7 +3,11 @@ use winapi::um::stringapiset::MultiByteToWideChar;
 use crate::constant;
 
 mod mapping_data {
-    include!(concat!(env!("OUT_DIR"), "/mapping_data.rs"));
+    #[cfg(not(feature = "generate_full_mapping_data"))]
+    translate_macros::generate_mapping_data!("assets/mapping.json");
+
+    #[cfg(feature = "generate_full_mapping_data")]
+    translate_macros::generate_mapping_data!("assets/mapping.json", "assets/translated.json");
 }
 
 /// 将指定shift-jis字节中的替身字符映射为指定的字符并转换为utf16

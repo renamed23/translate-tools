@@ -8,7 +8,13 @@ edition = "2024"
 proc-macro = true
 
 [dependencies]
+serde_json.workspace = true
+anyhow.workspace = true
+translate-utils.workspace = true
+encoding_rs.workspace = true
+
 proc-macro2 = "1"
 quote = "1"
 syn = { version = "2", features = ["full"] }
 zstd = "0.13"
+sha2 = "0.10"

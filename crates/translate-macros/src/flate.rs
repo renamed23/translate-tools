@@ -45,7 +45,7 @@ pub fn flate(input: TokenStream) -> TokenStream {
         quote! {}
     };
 
-    let manifest_dir = env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| ".".into());
+    let manifest_dir = env::var("CARGO_MANIFEST_DIR").expect("无法获取 CARGO_MANIFEST_DIR");
     let rel_path = input.path.value();
     let full_path = std::path::Path::new(&manifest_dir).join(&rel_path);
 

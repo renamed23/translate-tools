@@ -109,12 +109,7 @@ phf = { version = "0.13", features = ["macros"] }
 zstd = "0.13"
 
 [build-dependencies]
-sha2 = "0.10"
 anyhow.workspace = true
-translate-utils.workspace = true
-serde.workspace = true
-serde_json.workspace = true
-encoding_rs.workspace = true
 
 [lints.clippy]
 missing_safety_doc = "allow"

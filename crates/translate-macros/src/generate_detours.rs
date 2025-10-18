@@ -189,15 +189,15 @@ pub fn generate_detours(_attr: TokenStream, item: TokenStream) -> TokenStream {
                     }
 
                     // 自动生成：once_cell Lazy 的 retour detour 静态
-                    pub static #static_ident: once_cell::sync::Lazy<retour::GenericDetour<#fn_ty_tokens>> =
-                        once_cell::sync::Lazy::new(|| {
+                    pub static #static_ident: ::once_cell::sync::Lazy<retour::GenericDetour<#fn_ty_tokens>> =
+                        ::once_cell::sync::Lazy::new(|| {
                             let address = crate::hook_utils::get_module_symbol_addr(
                                 #dll_lit,
-                                concat!(#symbol_lit, "\0").as_ptr() as winapi::shared::ntdef::LPCSTR
+                                concat!(#symbol_lit, "\0").as_ptr() as ::winapi::shared::ntdef::LPCSTR
                             ).expect(concat!("symbol not found: ", #symbol_lit));
-                            let ori: #fn_ty_tokens = unsafe { core::mem::transmute(address) };
+                            let ori: #fn_ty_tokens = unsafe { ::core::mem::transmute(address) };
                             unsafe {
-                                retour::GenericDetour::new(ori, #export_ident).expect(concat!("Failed to create detour for ", #symbol_lit))
+                                ::retour::GenericDetour::new(ori, #export_ident).expect(concat!("Failed to create detour for ", #symbol_lit))
                             }
                         });
                 });

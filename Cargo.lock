@@ -640,12 +640,9 @@ version = "1.0.0"
 dependencies = [
  "anyhow",
  "dynasmrt",
- "encoding_rs",
  "once_cell",
  "phf",
  "retour",
- "serde",
- "serde_json",
  "sha2",
  "translate-macros",
  "translate-utils",
@@ -657,9 +654,14 @@ dependencies = [
 name = "translate-macros"
 version = "1.0.0"
 dependencies = [
+ "anyhow",
+ "encoding_rs",
  "proc-macro2",
  "quote",
+ "serde_json",
+ "sha2",
  "syn",
+ "translate-utils",
  "zstd",
 ]
 
