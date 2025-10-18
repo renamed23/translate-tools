@@ -81,7 +81,7 @@ uminom = [
     "export_default_dll_main",
     "text_hook",
     "generate_full_mapping_data",
-    # "patch_extracting",
+    "patch_extracting",
 ]
 
 [dependencies]

@@ -12,9 +12,34 @@ pub struct UminomHook;
 impl CoreHook for UminomHook {
     #[cfg(feature = "patch_extracting")]
     fn on_process_attach(&self, _hinst_dll: HMODULE) {
-        {
-            // 注入代码
-            todo!()
+        use translate_macros::byte_slice;
+
+        let Some(handle) = crate::hook_utils::get_module_handle("") else {
+            debug!("get_module_handle failed");
+            return;
+        };
+
+        debug!("patch {handle:p}");
+
+        let module_addr = handle as *mut u8;
+
+        unsafe {
+            crate::hook_utils::write_asm(
+                module_addr.add(0x5DDDB),
+                &byte_slice!("E9 20 91 03 00"), // jmp 0x00496F00
+            )
+            .unwrap();
+
+            let code_buf = crate::hook_utils::create_trampoline_32(
+                extract_script as _,
+                // mov eax,[esp+0x40]; mov ebx,[esp+0x2C]; mov ecx,[esp+0x28];
+                // push eax; push ebx; pushcx;
+                &byte_slice!("8B 44 24 40 8B 5C 24 2C 8B 4C 24 28 50 53 51"),
+                // ret 0x10;
+                &byte_slice!("C2 10 00"),
+            );
+
+            crate::hook_utils::write_asm(module_addr.add(0x96F00), &code_buf).unwrap();
         }
     }
 }
