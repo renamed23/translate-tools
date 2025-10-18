@@ -22,13 +22,11 @@ pub unsafe extern "system" fn prepare_for_replace() {
 #[ffi_catch_unwind]
 #[unsafe(no_mangle)]
 pub unsafe extern "system" fn replace_script(ptr: *mut u8, len: usize) {
-    unsafe {
-        if SNR_FILE_OCCUR.get() {
-            SNR_FILE_OCCUR.set(false);
+    if SNR_FILE_OCCUR.get() {
+        SNR_FILE_OCCUR.set(false);
 
-            debug!("ptr: 0x{:X}, len: 0x{len:X}", ptr as usize);
+        debug!("ptr: 0x{:X}, len: 0x{len:X}", ptr as usize);
 
-            crate::patch::process_buffer(ptr, len);
-        }
+        crate::patch::process_buffer(ptr, len);
     }
 }
