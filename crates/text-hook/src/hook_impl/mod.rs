@@ -51,6 +51,9 @@ pub fn default_dll_main(hinst_dll: HMODULE, fdw_reason: DWORD, _lpv_reserved: LP
             #[cfg(feature = "locale_hook")]
             crate::hook::locale_hook::enable_hooks();
 
+            #[cfg(feature = "window_hook")]
+            crate::hook::window_hook::enable_hooks();
+
             crate::hook::hook_instance().on_process_attach(hinst_dll);
         }
         PROCESS_DETACH => {
@@ -69,6 +72,9 @@ pub fn default_dll_main(hinst_dll: HMODULE, fdw_reason: DWORD, _lpv_reserved: LP
 
             #[cfg(feature = "locale_hook")]
             crate::hook::locale_hook::disable_hooks();
+
+            #[cfg(feature = "window_hook")]
+            crate::hook::window_hook::disable_hooks();
 
             crate::hook::hook_instance().on_process_detach(hinst_dll);
         }

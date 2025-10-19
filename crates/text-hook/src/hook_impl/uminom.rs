@@ -5,6 +5,7 @@ use winapi::shared::ntdef::LPCSTR;
 use crate::debug;
 use crate::hook::CoreHook;
 use crate::hook::text_hook::TextHook;
+use crate::hook::window_hook::WindowHook;
 
 #[derive(Default)]
 pub struct UminomHook;
@@ -46,6 +47,7 @@ impl CoreHook for UminomHook {
 }
 
 impl TextHook for UminomHook {}
+impl WindowHook for UminomHook {}
 
 #[cfg(feature = "patch_extracting")]
 #[ffi_catch_unwind]

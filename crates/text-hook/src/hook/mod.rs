@@ -10,6 +10,10 @@ pub mod text_hook;
 #[allow(dead_code)]
 pub mod locale_hook;
 
+#[cfg(feature = "window_hook")]
+#[allow(dead_code)]
+pub mod window_hook;
+
 use once_cell::sync::OnceCell;
 use winapi::shared::minwindef::HMODULE;
 

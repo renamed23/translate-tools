@@ -36,6 +36,8 @@ generate_full_mapping_data = []
 # 导出默认的DllMain，内部使用`default_dll_main`，
 # 使用`HookImplType::default()`作为钩子实例
 export_default_dll_main = []
+# 使用`assets/config.json`的`WINDOW_TITLE`字段覆写游戏标题
+override_window_title = ["window_hook"]
 
 # 启用文本相关的钩子
 text_hook = []
@@ -43,6 +45,8 @@ text_hook = []
 file_hook = []
 # 启用区域相关的钩子
 locale_hook = []
+# 启动窗口相关的钩子
+window_hook = []
 
 # 是否导出钩子函数，实际上如果用detour的话，不需要导出
 export_hooks = []
@@ -77,7 +81,12 @@ bittersweet_fools = [
 white_breath = ["default_impl", "patch", "generate_full_mapping_data"]
 mikan = ["default_impl", "read_file_patch_impl", "generate_full_mapping_data"]
 # 提取脚本需要`patch_extracting`
-uminom = ["export_default_dll_main", "text_hook", "generate_full_mapping_data"]
+uminom = [
+    "export_default_dll_main",
+    "text_hook",
+    "generate_full_mapping_data",
+    "override_window_title",
+]
 
 [dependencies]
 translate-macros.workspace = true

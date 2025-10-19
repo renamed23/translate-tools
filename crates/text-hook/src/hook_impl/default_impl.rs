@@ -13,3 +13,6 @@ impl crate::hook::file_hook::FileHook for DefaultImplHook {}
 
 #[cfg(feature = "locale_hook")]
 impl crate::hook::locale_hook::LocaleHook for DefaultImplHook {}
+
+#[cfg(feature = "window_hook")]
+impl crate::hook::window_hook::WindowHook for DefaultImplHook {}

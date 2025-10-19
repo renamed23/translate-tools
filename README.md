@@ -41,7 +41,8 @@ cargo build --release --features default_hook_impl,generate_full_mapping_data
   ],
   "CHAR_FILTER": [
     64
-  ]
+  ],
+  "WINDOW_TITLE": "游戏窗口"
 }
 ```
 
@@ -50,6 +51,8 @@ cargo build --release --features default_hook_impl,generate_full_mapping_data
 `CHAR_SET`对应于GDI函数的`CharSet`
 
 `CHAR_FILTER`用于过滤一些字符(比如需要定长时的填充字符，注意输入的应该是字符的u16值(只支持BMP))，示例中`@`会被过滤，不会被显示出来
+
+`WINDOW_TITLE`在开启`override_window_title`特性后会被用于覆写游戏标题
 
 
 ### custom_font.ttf

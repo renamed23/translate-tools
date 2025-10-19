@@ -20,5 +20,10 @@
     "CHAR_FILTER": {
         "type": "&[u16]",
         "value": []
+    },
+    "WINDOW_TITLE": {
+        "type": "&[u16]",
+        "value": "游戏窗口",
+        "encode_to_u16": true
     }
 }
