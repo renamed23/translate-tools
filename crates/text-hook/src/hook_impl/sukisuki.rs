@@ -16,7 +16,7 @@ use winapi::{
     },
 };
 
-use crate::{constant, debug, mapping::map_shift_jis_to_unicode};
+use crate::{constant, debug};
 
 #[derive(Default)]
 struct Layouter {
@@ -111,9 +111,7 @@ unsafe fn ensure_font() -> HFONT {
 
         debug!("Creating Font...");
 
-        let mut face_u16: Vec<u16> = constant::FONT_FACE.to_vec();
-        face_u16.push(0);
-
+        let face_u16 = crate::utils::u16_with_null(constant::FONT_FACE);
         let hf = CreateFontW(
             -TARGET_PX,
             0,
@@ -192,8 +190,12 @@ pub unsafe extern "C" fn render_text(x: i32, y: i32, text: *const i8) {
         }
 
         let text = CStr::from_ptr(text);
-        let result = map_shift_jis_to_unicode(text.to_bytes());
-        let text = String::from_utf16(&result).expect("Invalid utf16 String");
+
+        let mut buffer = [0u16; 256];
+        let written_count = crate::mapping::map_chars(text.to_bytes(), &mut buffer);
+        let result = &buffer[..written_count];
+
+        let text = String::from_utf16(result).expect("Invalid utf16 String");
 
         let (mapped_x, mapped_y) =
             LAYOUTER.with(|layout| layout.borrow_mut().try_layout(x, y, &text));
