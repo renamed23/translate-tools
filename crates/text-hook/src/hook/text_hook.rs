@@ -20,7 +20,7 @@ pub trait TextHook: Send + Sync + 'static {
         symbol = "TextOutA",
         fallback = "winapi::shared::minwindef::FALSE"
     )]
-    unsafe fn text_out(&self, hdc: HDC, x: c_int, y: c_int, lp_string: LPCSTR, c: c_int) -> BOOL {
+    unsafe fn text_out_a(&self, hdc: HDC, x: c_int, y: c_int, lp_string: LPCSTR, c: c_int) -> BOOL {
         unsafe {
             let input_slice = core::slice::from_raw_parts(lp_string as *const u8, c as usize);
             let mut buffer = [0u16; 256];
@@ -42,7 +42,7 @@ pub trait TextHook: Send + Sync + 'static {
         symbol = "GetTextExtentPoint32A",
         fallback = "winapi::shared::minwindef::FALSE"
     )]
-    unsafe fn get_text_extent_point_32(
+    unsafe fn get_text_extent_point_32_a(
         &self,
         hdc: HDC,
         lp_string: LPCSTR,
@@ -66,7 +66,7 @@ pub trait TextHook: Send + Sync + 'static {
     }
 
     #[detour(dll = "gdi32.dll", symbol = "GetGlyphOutlineA", fallback = "0")]
-    unsafe fn get_glyph_outline(
+    unsafe fn get_glyph_outline_a(
         &self,
         hdc: HDC,
         u_char: u32,
@@ -119,7 +119,7 @@ pub trait TextHook: Send + Sync + 'static {
         symbol = "CreateFontA",
         fallback = "core::ptr::null_mut()"
     )]
-    unsafe fn create_font(
+    unsafe fn create_font_a(
         &self,
         c_height: c_int,
         c_width: c_int,
@@ -172,7 +172,7 @@ pub trait TextHook: Send + Sync + 'static {
         symbol = "CreateFontIndirectA",
         fallback = "core::ptr::null_mut()"
     )]
-    unsafe fn create_font_indirect(&self, lplf: *const LOGFONTA) -> HFONT {
+    unsafe fn create_font_indirect_a(&self, lplf: *const LOGFONTA) -> HFONT {
         let logfona = unsafe { &*lplf };
         let mut logfontw = unsafe { core::mem::zeroed::<LOGFONTW>() };
 
@@ -213,7 +213,7 @@ pub trait TextHook: Send + Sync + 'static {
 
     #[allow(unused_variables)]
     #[detour(dll = "gdi32.dll", symbol = "EnumFontFamiliesExA", fallback = "0")]
-    unsafe fn enum_font_families_ex(
+    unsafe fn enum_font_families_ex_a(
         &self,
         hdc: HDC,
         lp_logfont: *mut LOGFONTA,
@@ -229,7 +229,7 @@ pub trait TextHook: Send + Sync + 'static {
             if let Some(font) = lp_logfont.as_mut() {
                 font.lfCharSet = constant::CHAR_SET as u8;
             }
-            HOOK_ENUM_FONT_FAMILIES_EX.call(
+            HOOK_ENUM_FONT_FAMILIES_EX_A.call(
                 hdc,
                 lp_logfont,
                 lp_enum_font_fam_proc,
@@ -243,16 +243,16 @@ pub trait TextHook: Send + Sync + 'static {
 /// 开启文本相关的钩子
 pub fn enable_hooks() {
     unsafe {
-        HOOK_CREATE_FONT.enable().unwrap();
-        HOOK_CREATE_FONT_INDIRECT.enable().unwrap();
-        HOOK_GET_GLYPH_OUTLINE.enable().unwrap();
-        HOOK_TEXT_OUT.enable().unwrap();
-        HOOK_GET_TEXT_EXTENT_POINT_32.enable().unwrap();
+        HOOK_CREATE_FONT_A.enable().unwrap();
+        HOOK_CREATE_FONT_INDIRECT_A.enable().unwrap();
+        HOOK_GET_GLYPH_OUTLINE_A.enable().unwrap();
+        HOOK_TEXT_OUT_A.enable().unwrap();
+        HOOK_GET_TEXT_EXTENT_POINT_32_A.enable().unwrap();
     }
 
     #[cfg(feature = "enum_font_families")]
     unsafe {
-        HOOK_ENUM_FONT_FAMILIES_EX.enable().unwrap();
+        HOOK_ENUM_FONT_FAMILIES_EX_A.enable().unwrap();
     }
     debug!("Text Hooked!");
 }
@@ -260,16 +260,16 @@ pub fn enable_hooks() {
 /// 关闭文本相关的钩子
 pub fn disable_hooks() {
     unsafe {
-        HOOK_CREATE_FONT.disable().unwrap();
-        HOOK_CREATE_FONT_INDIRECT.disable().unwrap();
-        HOOK_GET_GLYPH_OUTLINE.disable().unwrap();
-        HOOK_TEXT_OUT.disable().unwrap();
-        HOOK_GET_TEXT_EXTENT_POINT_32.disable().unwrap();
+        HOOK_CREATE_FONT_A.disable().unwrap();
+        HOOK_CREATE_FONT_INDIRECT_A.disable().unwrap();
+        HOOK_GET_GLYPH_OUTLINE_A.disable().unwrap();
+        HOOK_TEXT_OUT_A.disable().unwrap();
+        HOOK_GET_TEXT_EXTENT_POINT_32_A.disable().unwrap();
     }
 
     #[cfg(feature = "enum_font_families")]
     unsafe {
-        HOOK_ENUM_FONT_FAMILIES_EX.disable().unwrap();
+        HOOK_ENUM_FONT_FAMILIES_EX_A.disable().unwrap();
     }
     debug!("Text Unhooked!");
 }

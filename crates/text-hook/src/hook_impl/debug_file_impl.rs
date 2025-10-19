@@ -11,8 +11,8 @@ use crate::code_cvt::ansi_to_wide_char;
 use crate::debug_msg;
 use crate::hook::CoreHook;
 use crate::hook::file_hook::{
-    FileHook, HOOK_CLOSE_HANDLE, HOOK_CREATE_FILE, HOOK_FIND_CLOSE, HOOK_FIND_FIRST_FILE,
-    HOOK_FIND_NEXT_FILE, HOOK_READ_FILE,
+    FileHook, HOOK_CLOSE_HANDLE, HOOK_CREATE_FILE_A, HOOK_FIND_CLOSE, HOOK_FIND_FIRST_FILE_A,
+    HOOK_FIND_NEXT_FILE_A, HOOK_READ_FILE,
 };
 
 #[derive(Default)]
@@ -24,29 +24,29 @@ pub struct DebugFileImplHook {
 impl CoreHook for DebugFileImplHook {
     fn enable_hooks(&self) {
         unsafe {
-            HOOK_CREATE_FILE.enable().unwrap();
+            HOOK_CREATE_FILE_A.enable().unwrap();
             HOOK_READ_FILE.enable().unwrap();
             HOOK_CLOSE_HANDLE.enable().unwrap();
-            HOOK_FIND_FIRST_FILE.enable().unwrap();
-            HOOK_FIND_NEXT_FILE.enable().unwrap();
+            HOOK_FIND_FIRST_FILE_A.enable().unwrap();
+            HOOK_FIND_NEXT_FILE_A.enable().unwrap();
             HOOK_FIND_CLOSE.enable().unwrap();
         }
     }
 
     fn disable_hooks(&self) {
         unsafe {
-            HOOK_CREATE_FILE.disable().unwrap();
+            HOOK_CREATE_FILE_A.disable().unwrap();
             HOOK_READ_FILE.disable().unwrap();
             HOOK_CLOSE_HANDLE.disable().unwrap();
-            HOOK_FIND_FIRST_FILE.disable().unwrap();
-            HOOK_FIND_NEXT_FILE.disable().unwrap();
+            HOOK_FIND_FIRST_FILE_A.disable().unwrap();
+            HOOK_FIND_NEXT_FILE_A.disable().unwrap();
             HOOK_FIND_CLOSE.disable().unwrap();
         }
     }
 }
 
 impl FileHook for DebugFileImplHook {
-    unsafe fn create_file(
+    unsafe fn create_file_a(
         &self,
         lp_file_name: LPCSTR,
         dw_desired_access: DWORD,
@@ -69,7 +69,7 @@ impl FileHook for DebugFileImplHook {
 
         // 调用原始函数
         let result = unsafe {
-            HOOK_CREATE_FILE.call(
+            HOOK_CREATE_FILE_A.call(
                 lp_file_name,
                 dw_desired_access,
                 dw_share_mode,
@@ -153,7 +153,7 @@ impl FileHook for DebugFileImplHook {
         unsafe { HOOK_CLOSE_HANDLE.call(h_object) }
     }
 
-    unsafe fn find_first_file(
+    unsafe fn find_first_file_a(
         &self,
         lp_file_name: LPCSTR,
         lp_find_file_data: LPWIN32_FIND_DATAA,
@@ -170,7 +170,7 @@ impl FileHook for DebugFileImplHook {
         debug_msg!("FindFirstFileA called with pattern: {}", search_pattern);
 
         // 调用原始函数
-        let result = unsafe { HOOK_FIND_FIRST_FILE.call(lp_file_name, lp_find_file_data) };
+        let result = unsafe { HOOK_FIND_FIRST_FILE_A.call(lp_file_name, lp_find_file_data) };
 
         // 如果句柄有效，存入find_handles
         if result != INVALID_HANDLE_VALUE
@@ -202,7 +202,7 @@ impl FileHook for DebugFileImplHook {
         result
     }
 
-    unsafe fn find_next_file(
+    unsafe fn find_next_file_a(
         &self,
         h_find_file: HANDLE,
         lp_find_file_data: LPWIN32_FIND_DATAA,
@@ -219,7 +219,7 @@ impl FileHook for DebugFileImplHook {
         }
 
         // 调用原始函数
-        let result = unsafe { HOOK_FIND_NEXT_FILE.call(h_find_file, lp_find_file_data) };
+        let result = unsafe { HOOK_FIND_NEXT_FILE_A.call(h_find_file, lp_find_file_data) };
 
         // 如果调用成功，打印找到的文件名
         if result == TRUE && !lp_find_file_data.is_null() {

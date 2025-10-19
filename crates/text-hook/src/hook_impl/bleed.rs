@@ -6,7 +6,7 @@ use winapi::shared::windef::HDC;
 
 use crate::debug;
 use crate::hook::CoreHook;
-use crate::hook::text_hook::{HOOK_TEXT_OUT, TextHook};
+use crate::hook::text_hook::{HOOK_TEXT_OUT_A, TextHook};
 
 #[derive(Default)]
 pub struct BleedHook {
@@ -75,7 +75,7 @@ impl BleedHook {
 impl CoreHook for BleedHook {}
 
 impl TextHook for BleedHook {
-    unsafe fn text_out(&self, hdc: HDC, x: c_int, y: c_int, lp_string: LPCSTR, c: c_int) -> BOOL {
+    unsafe fn text_out_a(&self, hdc: HDC, x: c_int, y: c_int, lp_string: LPCSTR, c: c_int) -> BOOL {
         if lp_string.is_null() || c <= 0 {
             return 0;
         }
@@ -87,7 +87,7 @@ impl TextHook for BleedHook {
             let (new_x, new_y) = this.as_mut().unwrap().layout_text(x, y);
             debug!("draw text '{input_slice:?}' at ({new_x}, {new_y}) from ({x}, {y})",);
 
-            HOOK_TEXT_OUT.call(
+            HOOK_TEXT_OUT_A.call(
                 hdc,
                 new_x,
                 new_y,

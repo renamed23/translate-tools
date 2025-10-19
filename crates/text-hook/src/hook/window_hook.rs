@@ -1,14 +1,14 @@
 use translate_macros::{detour, generate_detours};
 use winapi::shared::minwindef::{LPARAM, LRESULT, UINT, WPARAM};
 use winapi::shared::windef::HWND;
-use winapi::um::winuser::{DefWindowProcW, SetWindowTextW, WM_NCCREATE, WM_SETTEXT};
+use winapi::um::winuser::{CREATESTRUCTA, CREATESTRUCTW, DefWindowProcW, WM_NCCREATE, WM_SETTEXT};
 
 use crate::{constant, debug};
 
 #[generate_detours]
 pub trait WindowHook: Send + Sync + 'static {
     #[detour(dll = "user32.dll", symbol = "DefWindowProcA", fallback = "0")]
-    unsafe fn def_window_proc(
+    unsafe fn def_window_proc_a(
         &self,
         h_wnd: HWND,
         u_msg: UINT,
@@ -17,15 +17,38 @@ pub trait WindowHook: Send + Sync + 'static {
     ) -> LRESULT {
         match u_msg {
             WM_NCCREATE => unsafe {
-                let result = HOOK_DEF_WINDOW_PROC.call(h_wnd, u_msg, w_param, l_param);
+                let params_a = l_param as *const CREATESTRUCTA;
+                let mut params_w: CREATESTRUCTW = std::mem::zeroed();
 
-                if result != 0 {
-                    let mut window_title = constant::WINDOW_TITLE.to_vec();
-                    window_title.push(0);
-                    SetWindowTextW(h_wnd, window_title.as_ptr());
+                std::ptr::copy_nonoverlapping(
+                    params_a as *const u8,
+                    &mut params_w as *mut _ as *mut u8,
+                    std::mem::size_of::<CREATESTRUCTW>(),
+                );
+
+                let class_bytes = core::ffi::CStr::from_ptr((*params_a).lpszClass).to_bytes();
+                let mut class_name = crate::code_cvt::ansi_to_wide_char(class_bytes);
+                class_name.push(0);
+                let mut window_title = constant::WINDOW_TITLE.to_vec();
+                window_title.push(0);
+
+                let class_name = class_name.into_boxed_slice();
+                let window_title = window_title.into_boxed_slice();
+
+                params_w.lpszClass = class_name.as_ptr();
+                params_w.lpszName = window_title.as_ptr();
+
+                #[cfg(feature = "debug_output")]
+                {
+                    let raw_class = String::from_utf16_lossy(&class_name);
+                    let raw_title = String::from_utf16_lossy(&window_title);
+                    debug!("Get raw class: {raw_class}, raw window title: {raw_title}");
                 }
 
-                result
+                Box::leak(class_name);
+                Box::leak(window_title);
+
+                DefWindowProcW(h_wnd, u_msg, w_param, &params_w as *const _ as LPARAM)
             },
             WM_SETTEXT => {
                 #[cfg(feature = "debug_output")]
@@ -43,7 +66,7 @@ pub trait WindowHook: Send + Sync + 'static {
 
                 unsafe { DefWindowProcW(h_wnd, u_msg, w_param, window_title.as_ptr() as LPARAM) }
             }
-            _ => unsafe { HOOK_DEF_WINDOW_PROC.call(h_wnd, u_msg, w_param, l_param) },
+            _ => unsafe { HOOK_DEF_WINDOW_PROC_A.call(h_wnd, u_msg, w_param, l_param) },
         }
     }
 }
@@ -53,7 +76,7 @@ pub trait WindowHook: Send + Sync + 'static {
 pub fn enable_hooks() {
     #[cfg(feature = "override_window_title")]
     unsafe {
-        HOOK_DEF_WINDOW_PROC.enable().unwrap();
+        HOOK_DEF_WINDOW_PROC_A.enable().unwrap();
     }
 
     debug!("Window Hooked!");
@@ -64,7 +87,7 @@ pub fn enable_hooks() {
 pub fn disable_hooks() {
     #[cfg(feature = "override_window_title")]
     unsafe {
-        HOOK_DEF_WINDOW_PROC.disable().unwrap();
+        HOOK_DEF_WINDOW_PROC_A.disable().unwrap();
     }
 
     debug!("Window Unhooked!");

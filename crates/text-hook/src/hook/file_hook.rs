@@ -13,7 +13,7 @@ pub trait FileHook: Send + Sync + 'static {
         symbol = "CreateFileA",
         fallback = "winapi::um::handleapi::INVALID_HANDLE_VALUE"
     )]
-    unsafe fn create_file(
+    unsafe fn create_file_a(
         &self,
         _lp_file_name: LPCSTR,
         _dw_desired_access: DWORD,
@@ -93,7 +93,7 @@ pub trait FileHook: Send + Sync + 'static {
         symbol = "FindFirstFileA",
         fallback = "winapi::um::handleapi::INVALID_HANDLE_VALUE"
     )]
-    unsafe fn find_first_file(
+    unsafe fn find_first_file_a(
         &self,
         _lp_file_name: LPCSTR,
         _lp_find_file_data: LPWIN32_FIND_DATAA,
@@ -106,7 +106,7 @@ pub trait FileHook: Send + Sync + 'static {
         symbol = "FindNextFileA",
         fallback = "winapi::shared::minwindef::FALSE"
     )]
-    unsafe fn find_next_file(
+    unsafe fn find_next_file_a(
         &self,
         _h_find_file: HANDLE,
         _lp_find_file_data: LPWIN32_FIND_DATAA,
