@@ -137,14 +137,12 @@ pub trait TextHook: Send + Sync + 'static {
         psz_face_name: LPCSTR,
     ) -> HFONT {
         #[cfg(not(feature = "enum_font_families"))]
-        let mut face_u16: Vec<u16> = constant::FONT_FACE.to_vec();
+        let face_u16 = crate::utils::u16_with_null(constant::FONT_FACE);
         #[cfg(feature = "enum_font_families")]
-        let mut face_u16: Vec<u16> = {
+        let face_u16 = {
             let bytes = unsafe { core::ffi::CStr::from_ptr(psz_face_name).to_bytes() };
-            crate::code_cvt::ansi_font_to_wide_font(bytes)
+            crate::code_cvt::ansi_font_to_wide_font_with_null(bytes)
         };
-
-        face_u16.push(0);
 
         unsafe {
             CreateFontW(
@@ -191,9 +189,9 @@ pub trait TextHook: Send + Sync + 'static {
         logfontw.lfPitchAndFamily = logfona.lfPitchAndFamily;
 
         #[cfg(not(feature = "enum_font_families"))]
-        let mut face_u16: Vec<u16> = constant::FONT_FACE.to_vec();
+        let face_u16 = crate::utils::u16_with_null(constant::FONT_FACE);
         #[cfg(feature = "enum_font_families")]
-        let mut face_u16: Vec<u16> = {
+        let face_u16 = {
             let bytes = unsafe {
                 core::slice::from_raw_parts(
                     logfona.lfFaceName.as_ptr() as *const u8,
@@ -201,10 +199,8 @@ pub trait TextHook: Send + Sync + 'static {
                 )
             };
             let end = bytes.iter().position(|&c| c == 0).unwrap_or(31);
-            crate::code_cvt::ansi_font_to_wide_font(&bytes[..end])
+            crate::code_cvt::ansi_font_to_wide_font_with_null(&bytes[..end])
         };
-
-        face_u16.push(0);
 
         logfontw.lfFaceName[..face_u16.len()].copy_from_slice(face_u16.as_slice());
 

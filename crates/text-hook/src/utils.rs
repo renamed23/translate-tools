@@ -51,3 +51,14 @@ pub fn contains_slice<T: PartialEq>(haystack: &[T], needle: &[T]) -> bool {
 pub fn decompress_zstd(data: &[u8], cap: usize) -> Vec<u8> {
     zstd::bulk::decompress(data, cap).unwrap()
 }
+
+/// 将 u16 切片转换为带有结尾 NULL 的新 Vec<u16>
+#[inline]
+#[allow(dead_code)]
+pub fn u16_with_null(u16_slice: &[u16]) -> Vec<u16> {
+    u16_slice
+        .iter()
+        .copied()
+        .chain(std::iter::once(0u16))
+        .collect()
+}

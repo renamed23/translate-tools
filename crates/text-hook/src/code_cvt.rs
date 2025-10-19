@@ -11,8 +11,7 @@ use crate::{constant, debug, print_system_error_message};
 /// - `code_page`: 代码页，如 CP_ACP、CP_UTF8 等
 ///
 /// # 返回
-/// - 成功: 返回宽字符向量（不以0结尾）
-/// - 失败: 返回空向量
+/// - 返回宽字符向量（不以0结尾）
 #[allow(dead_code)]
 pub fn multi_byte_to_wide_char(bytes: &[u8], code_page: u32) -> Vec<u16> {
     if bytes.is_empty() {
@@ -60,6 +59,21 @@ pub fn multi_byte_to_wide_char(bytes: &[u8], code_page: u32) -> Vec<u16> {
     }
 }
 
+/// 将字节切片转换为宽字符字符串（以null结尾）
+///
+/// # 参数
+/// - `bytes`: 输入的字节切片（不以0结尾）
+/// - `code_page`: 代码页，如 CP_ACP、CP_UTF8 等
+///
+/// # 返回
+/// - 返回宽字符向量（以0结尾）
+#[allow(dead_code)]
+pub fn multi_byte_to_wide_char_with_null(bytes: &[u8], code_page: u32) -> Vec<u16> {
+    let mut result = multi_byte_to_wide_char(bytes, code_page);
+    result.push(0x0);
+    result
+}
+
 /// 将宽字符切片转换为指定代码页的字节向量
 ///
 /// # 参数
@@ -67,8 +81,7 @@ pub fn multi_byte_to_wide_char(bytes: &[u8], code_page: u32) -> Vec<u16> {
 /// - `code_page`: 代码页，如 CP_ACP、CP_UTF8 等
 ///
 /// # 返回
-/// - 成功: 返回字节向量（不以0结尾）
-/// - 失败: 返回空向量
+/// - 返回字节向量（不以0结尾）
 #[allow(dead_code)]
 pub fn wide_char_to_multi_byte(wide_str: &[u16], code_page: u32) -> Vec<u8> {
     if wide_str.is_empty() {
@@ -120,6 +133,21 @@ pub fn wide_char_to_multi_byte(wide_str: &[u16], code_page: u32) -> Vec<u8> {
     }
 }
 
+/// 将宽字符切片转换为指定代码页的字节向量（以null结尾）
+///
+/// # 参数
+/// - `wide_str`: 输入的宽字符切片（不以0结尾）
+/// - `code_page`: 代码页，如 CP_ACP、CP_UTF8 等
+///
+/// # 返回
+/// - 返回字节向量（以0结尾）
+#[allow(dead_code)]
+pub fn wide_char_to_multi_byte_with_null(wide_str: &[u16], code_page: u32) -> Vec<u8> {
+    let mut result = wide_char_to_multi_byte(wide_str, code_page);
+    result.push(0x0);
+    result
+}
+
 /// 便捷函数：将UTF-8字节切片转换为宽字符字符串
 #[allow(dead_code)]
 pub fn utf8_to_wide_char(bytes: &[u8]) -> Vec<u16> {
@@ -147,11 +175,47 @@ pub fn wide_char_to_ansi(wide_str: &[u16]) -> Vec<u8> {
 /// 将 ANSI 编码的字体名称转换为宽字符，并根据过滤列表替换为指定字体
 #[allow(dead_code)]
 pub fn ansi_font_to_wide_font(bytes: &[u8]) -> Vec<u16> {
-    let u16_bytes = crate::code_cvt::ansi_to_wide_char(bytes);
+    let u16_bytes = ansi_to_wide_char(bytes);
     debug!("Requested font: {:?}", String::from_utf16_lossy(&u16_bytes));
     if constant::FONT_FILTER.contains(&u16_bytes.as_slice()) {
         constant::FONT_FACE.to_vec()
     } else {
         u16_bytes
     }
+}
+
+/// 便捷函数：将UTF-8字节切片转换为宽字符字符串（以null结尾）
+#[allow(dead_code)]
+pub fn utf8_to_wide_char_with_null(bytes: &[u8]) -> Vec<u16> {
+    multi_byte_to_wide_char_with_null(bytes, CP_UTF8)
+}
+
+/// 便捷函数：将ANSI字节切片转换为宽字符字符串（以null结尾）
+#[allow(dead_code)]
+pub fn ansi_to_wide_char_with_null(bytes: &[u8]) -> Vec<u16> {
+    multi_byte_to_wide_char_with_null(bytes, CP_ACP)
+}
+
+/// 便捷函数：将宽字符切片转换为UTF-8字节向量（以null结尾）
+#[allow(dead_code)]
+pub fn wide_char_to_utf8_with_null(wide_str: &[u16]) -> Vec<u8> {
+    wide_char_to_multi_byte_with_null(wide_str, CP_UTF8)
+}
+
+/// 便捷函数：将宽字符切片转换为ANSI字节向量（以null结尾）
+#[allow(dead_code)]
+pub fn wide_char_to_ansi_with_null(wide_str: &[u16]) -> Vec<u8> {
+    wide_char_to_multi_byte_with_null(wide_str, CP_ACP)
+}
+
+/// 将 ANSI 编码的字体名称转换为宽字符，并根据过滤列表替换为指定字体（以null结尾）
+#[allow(dead_code)]
+pub fn ansi_font_to_wide_font_with_null(bytes: &[u8]) -> Vec<u16> {
+    let mut u16_bytes = ansi_to_wide_char(bytes);
+    debug!("Requested font: {:?}", String::from_utf16_lossy(&u16_bytes));
+    if constant::FONT_FILTER.contains(&u16_bytes.as_slice()) {
+        u16_bytes = constant::FONT_FACE.to_vec();
+    }
+    u16_bytes.push(0x0);
+    u16_bytes
 }

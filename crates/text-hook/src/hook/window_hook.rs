@@ -27,13 +27,11 @@ pub trait WindowHook: Send + Sync + 'static {
                 );
 
                 let class_bytes = core::ffi::CStr::from_ptr((*params_a).lpszClass).to_bytes();
-                let mut class_name = crate::code_cvt::ansi_to_wide_char(class_bytes);
-                class_name.push(0);
-                let mut window_title = constant::WINDOW_TITLE.to_vec();
-                window_title.push(0);
+                let class_name =
+                    crate::code_cvt::ansi_to_wide_char_with_null(class_bytes).into_boxed_slice();
 
-                let class_name = class_name.into_boxed_slice();
-                let window_title = window_title.into_boxed_slice();
+                let window_title =
+                    crate::utils::u16_with_null(constant::WINDOW_TITLE).into_boxed_slice();
 
                 params_w.lpszClass = class_name.as_ptr();
                 params_w.lpszName = window_title.as_ptr();
@@ -61,9 +59,8 @@ pub trait WindowHook: Send + Sync + 'static {
                     };
                     debug!("Get raw window title: {raw_title}");
                 }
-                let mut window_title = constant::WINDOW_TITLE.to_vec();
-                window_title.push(0);
 
+                let window_title = crate::utils::u16_with_null(constant::WINDOW_TITLE);
                 unsafe { DefWindowProcW(h_wnd, u_msg, w_param, window_title.as_ptr() as LPARAM) }
             }
             _ => unsafe { HOOK_DEF_WINDOW_PROC_A.call(h_wnd, u_msg, w_param, l_param) },
