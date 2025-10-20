@@ -1,24 +1,15 @@
-#[cfg(feature = "file_hook")]
-#[allow(dead_code)]
-pub mod file_hook;
-
-#[cfg(feature = "text_hook")]
-#[allow(dead_code)]
-pub mod text_hook;
-
-#[cfg(feature = "locale_hook")]
-#[allow(dead_code)]
-pub mod locale_hook;
-
-#[cfg(feature = "window_hook")]
-#[allow(dead_code)]
-pub mod window_hook;
-
 use once_cell::sync::OnceCell;
 use winapi::shared::minwindef::HMODULE;
 
 use crate::debug;
 use crate::hook_impl::HookImplType;
+
+// 声明所有的Hook接口的模块文件
+translate_macros::expand_by_files!("src/hook" => {
+    #[cfg(feature = __file_str__)]
+    #[allow(dead_code)]
+    pub mod __file__;
+});
 
 pub trait CoreHook: Send + Sync + 'static {
     fn enable_hooks(&self) {}
