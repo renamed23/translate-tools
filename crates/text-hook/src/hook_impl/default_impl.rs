@@ -5,14 +5,8 @@ pub struct DefaultImplHook;
 
 impl crate::hook::CoreHook for DefaultImplHook {}
 
-#[cfg(feature = "text_hook")]
-impl crate::hook::text_hook::TextHook for DefaultImplHook {}
-
-#[cfg(feature = "file_hook")]
-impl crate::hook::file_hook::FileHook for DefaultImplHook {}
-
-#[cfg(feature = "locale_hook")]
-impl crate::hook::locale_hook::LocaleHook for DefaultImplHook {}
-
-#[cfg(feature = "window_hook")]
-impl crate::hook::window_hook::WindowHook for DefaultImplHook {}
+// 为 DefaultImplHook 实现所有可用的特性相关钩子接口
+translate_macros::expand_by_files!("src/hook" => {
+    #[cfg(feature = __file_str__)]
+    impl crate::hook::__file__::__file_pascal__ for DefaultImplHook {}
+});

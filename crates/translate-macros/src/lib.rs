@@ -1,4 +1,5 @@
 pub(crate) mod byte_slice;
+pub(crate) mod expand_by_files;
 pub(crate) mod ffi_catch_unwind;
 pub(crate) mod flate;
 pub(crate) mod generate_constants_from_json;
@@ -233,62 +234,38 @@ pub fn flate(input: TokenStream) -> TokenStream {
     flate::flate(input)
 }
 
-/// 自动扫描指定目录并生成钩子实现模块和类型别名的过程宏
+/// 一个过程宏，用于自动搜索并生成条件编译的钩子实现类型别名。
 ///
-/// 这个宏会扫描指定目录下的所有 `.rs` 文件（除了 `mod.rs` 和 `lib.rs`），
-/// 并为每个文件生成对应的模块声明和特性条件编译。同时，它会在每个文件中查找
-/// 符合命名规则的结构体（文件名转大驼峰 + `Hook`），如果找到则生成对应的类型别名。
+/// 这个宏会扫描指定目录下的 Rust 文件，查找符合命名规范的钩子结构体，
+/// 然后为每个找到的结构体生成一个条件编译的类型别名。
 ///
-/// # 用法
-///
-/// ```rust
-/// search_hook_impls!("相对/路径/到/钩子实现/目录/");
+/// # 语法
+/// ```ignore
+/// search_hook_impls!("relative/path/to/hook/implementations" => [pub] type AliasName);
 /// ```
 ///
-/// # 参数
+/// # 文件处理规则
+/// - 只处理 `.rs` 扩展名的文件
+/// - 自动跳过 `mod.rs` 和 `lib.rs` 文件
+/// - 对于每个文件 `example.rs`，期望找到名为 `ExampleHook` 的结构体
+/// - 文件名转换为大驼峰后加上 "Hook" 后缀作为期望的结构体名
 ///
-/// - `path`: 相对于项目根目录的路径字符串，指向包含钩子实现文件的目录
-///
-/// # 示例
-///
-/// 假设项目结构如下：
-///
-/// ```text
-/// project/
-///   Cargo.toml
-///   src/
-///     lib.rs
-///     hooks/
-///       mod.rs
-///       bleed.rs        // 包含 pub struct BleedHook;
-///       default_impl.rs // 包含 pub struct DefaultImplHook;
+/// # 生成代码示例
+/// 假设输入：
+/// ```ignore
+/// search_hook_impls!("src/hooks" => pub type HookImpl);
 /// ```
 ///
-/// 在 `mod.rs` 中使用：
+/// 目录 `src/hooks` 下有 `user_auth.rs` 和 `data_validation.rs` 文件，
+/// 且这些文件中分别有 `UserAuthHook` 和 `DataValidationHook` 结构体，
+/// 将生成：
+/// ```ignore
+/// #[cfg(feature = "user_auth")]
+/// pub type HookImpl = user_auth::UserAuthHook;
 ///
-/// ```rust
-/// search_hook_impls!("src/hooks/");
+/// #[cfg(feature = "data_validation")]
+/// pub type HookImpl = data_validation::DataValidationHook;
 /// ```
-///
-/// 这将生成：
-///
-/// ```rust
-/// #[cfg(feature = "bleed")]
-/// pub mod bleed;
-/// #[cfg(feature = "default_impl")]
-/// pub mod default_impl;
-///
-/// #[cfg(feature = "bleed")]
-/// pub type HookImplType = bleed::BleedHook;
-/// #[cfg(feature = "default_impl")]
-/// pub type HookImplType = default_impl::DefaultImplHook;
-/// ```
-///
-/// # 注意
-///
-/// - 文件名中的下划线会被转换为大驼峰命名法
-/// - 只有文件中存在对应结构体时才会生成类型别名
-/// - 使用 `CARGO_MANIFEST_DIR` 环境变量来定位项目根目录
 #[proc_macro]
 pub fn search_hook_impls(input: TokenStream) -> TokenStream {
     search_hook_impls::search_hook_impls(input)
@@ -479,4 +456,37 @@ pub fn generate_mapping_data(input: TokenStream) -> TokenStream {
 #[proc_macro]
 pub fn generate_patch_data(input: TokenStream) -> TokenStream {
     generate_patch_data::generate_patch_data(input)
+}
+
+/// 一个过程宏，用于根据指定目录下的 Rust 文件批量生成代码。
+///
+/// 这个宏会扫描指定目录下的所有 `.rs` 文件（除了 `mod.rs` 和 `lib.rs`），
+/// 然后对每个文件应用提供的模板代码，生成相应的代码结构。
+///
+/// # 语法
+/// ```ignore
+/// expand_by_files!("relative/path/to/directory" => {
+///     // 模板代码
+///     // 可以使用以下占位符：
+///     // - __file__: 文件名的下划线标识符 (如: my_module)
+///     // - __file_str__: 文件名字符串字面量 (如: "my_module")
+///     // - __file_pascal__: 文件名的大驼峰标识符 (如: MyModule)
+/// });
+/// ```
+///
+/// # 文件过滤
+/// - 只处理 `.rs` 扩展名的文件
+/// - 自动跳过 `mod.rs` 和 `lib.rs` 文件
+/// - 忽略子目录和非文件项
+///
+/// # 示例
+/// ```ignore
+/// expand_by_files!("src/models" => {
+///     pub mod __file__;
+///     pub use __file__::__file_pascal__;
+/// });
+/// ```
+#[proc_macro]
+pub fn expand_by_files(input: TokenStream) -> TokenStream {
+    expand_by_files::expand_by_files(input)
 }
