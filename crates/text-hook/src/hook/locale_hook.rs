@@ -42,9 +42,9 @@ pub trait LocaleHook: Send + Sync + 'static {
     }
 }
 
-/// 开启区域设置相关的钩子
+/// 开启区域设置相关的特性钩子
 #[allow(dead_code)]
-pub fn enable_hooks() {
+pub fn enable_featured_hooks() {
     unsafe {
         HOOK_GET_SYSTEM_DEFAULT_LCID.enable().unwrap();
         HOOK_GET_SYSTEM_DEFAULT_LANG_ID.enable().unwrap();
@@ -57,7 +57,7 @@ pub fn enable_hooks() {
 
 /// 关闭区域设置相关的钩子
 #[allow(dead_code)]
-pub fn disable_hooks() {
+pub fn disable_featured_hooks() {
     unsafe {
         HOOK_GET_SYSTEM_DEFAULT_LCID.disable().unwrap();
         HOOK_GET_SYSTEM_DEFAULT_LANG_ID.disable().unwrap();

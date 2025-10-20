@@ -68,9 +68,9 @@ pub trait WindowHook: Send + Sync + 'static {
     }
 }
 
-/// 开启窗口过程相关的钩子
+/// 开启窗口过程相关的特性钩子
 #[allow(dead_code)]
-pub fn enable_hooks() {
+pub fn enable_featured_hooks() {
     #[cfg(feature = "override_window_title")]
     unsafe {
         HOOK_DEF_WINDOW_PROC_A.enable().unwrap();
@@ -79,9 +79,9 @@ pub fn enable_hooks() {
     debug!("Window Hooked!");
 }
 
-/// 关闭窗口过程相关的钩子
+/// 关闭窗口过程相关的特性钩子
 #[allow(dead_code)]
-pub fn disable_hooks() {
+pub fn disable_featured_hooks() {
     #[cfg(feature = "override_window_title")]
     unsafe {
         HOOK_DEF_WINDOW_PROC_A.disable().unwrap();

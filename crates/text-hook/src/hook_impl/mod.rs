@@ -1,7 +1,11 @@
-translate_macros::search_hook_impls!("src/hook_impl");
-
 #[allow(unused_imports)]
 use winapi::shared::minwindef::{BOOL, DWORD, FALSE, HMODULE, LPVOID, TRUE};
+
+// 声明所有的Hook实现的模块文件
+translate_macros::expand_by_files!("src/hook_impl" => {
+    #[cfg(feature = __file_str__)]
+    pub mod __file__;
+});
 
 #[cfg(feature = "export_default_dll_main")]
 #[translate_macros::ffi_catch_unwind(FALSE)]
@@ -13,6 +17,9 @@ pub unsafe extern "system" fn DllMain(
 ) -> BOOL {
     default_dll_main(_hinst_dll, fdw_reason, _lpv_reserved)
 }
+
+// 在`src/hook_impl`搜索可用的Hook实现类型
+translate_macros::search_hook_impls!("src/hook_impl" => pub type HookImplType);
 
 /// 默认的 DllMain 实现
 #[allow(dead_code)]
@@ -42,17 +49,7 @@ pub fn default_dll_main(hinst_dll: HMODULE, fdw_reason: DWORD, _lpv_reserved: LP
 
             crate::hook::hook_instance().enable_hooks();
 
-            #[cfg(feature = "text_hook")]
-            crate::hook::text_hook::enable_hooks();
-
-            #[cfg(feature = "file_hook")]
-            crate::hook::file_hook::enable_hooks();
-
-            #[cfg(feature = "locale_hook")]
-            crate::hook::locale_hook::enable_hooks();
-
-            #[cfg(feature = "window_hook")]
-            crate::hook::window_hook::enable_hooks();
+            crate::hook::enable_featured_hooks();
 
             crate::hook::hook_instance().on_process_attach(hinst_dll);
         }
@@ -64,17 +61,7 @@ pub fn default_dll_main(hinst_dll: HMODULE, fdw_reason: DWORD, _lpv_reserved: LP
 
             crate::hook::hook_instance().disable_hooks();
 
-            #[cfg(feature = "text_hook")]
-            crate::hook::text_hook::disable_hooks();
-
-            #[cfg(feature = "file_hook")]
-            crate::hook::file_hook::disable_hooks();
-
-            #[cfg(feature = "locale_hook")]
-            crate::hook::locale_hook::disable_hooks();
-
-            #[cfg(feature = "window_hook")]
-            crate::hook::window_hook::disable_hooks();
+            crate::hook::disable_featured_hooks();
 
             crate::hook::hook_instance().on_process_detach(hinst_dll);
         }

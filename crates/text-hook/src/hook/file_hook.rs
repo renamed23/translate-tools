@@ -124,9 +124,9 @@ pub trait FileHook: Send + Sync + 'static {
     }
 }
 
-/// 开启文件相关的钩子
+/// 开启文件相关的特性钩子
 #[allow(dead_code)]
-pub fn enable_hooks() {
+pub fn enable_featured_hooks() {
     #[cfg(feature = "read_file_patch_impl")]
     unsafe {
         HOOK_READ_FILE.enable().unwrap();
@@ -135,9 +135,9 @@ pub fn enable_hooks() {
     debug!("File Hooked!");
 }
 
-/// 关闭文件相关的钩子
+/// 关闭文件相关的特性钩子
 #[allow(dead_code)]
-pub fn disable_hooks() {
+pub fn disable_featured_hooks() {
     #[cfg(feature = "read_file_patch_impl")]
     unsafe {
         HOOK_READ_FILE.disable().unwrap();

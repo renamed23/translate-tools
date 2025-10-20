@@ -42,3 +42,21 @@ pub fn set_hook_instance(h: HookImplType) {
 pub fn hook_instance() -> &'static HookImplType {
     HOOK_INSTANCE.get().expect("Hook not initialized")
 }
+
+/// 开启所有的特性相关钩子
+#[allow(dead_code)]
+pub fn enable_featured_hooks() {
+    translate_macros::expand_by_files!("src/hook" => {
+        #[cfg(feature= __file_str__)]
+        __file__::enable_featured_hooks();
+    });
+}
+
+/// 关闭所有的特性相关钩子
+#[allow(dead_code)]
+pub fn disable_featured_hooks() {
+    translate_macros::expand_by_files!("src/hook" => {
+        #[cfg(feature= __file_str__)]
+        __file__::disable_featured_hooks();
+    });
+}

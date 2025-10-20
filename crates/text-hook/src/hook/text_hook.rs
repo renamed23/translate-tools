@@ -237,7 +237,7 @@ pub trait TextHook: Send + Sync + 'static {
 }
 
 /// 开启文本相关的钩子
-pub fn enable_hooks() {
+pub fn enable_featured_hooks() {
     unsafe {
         HOOK_CREATE_FONT_A.enable().unwrap();
         HOOK_CREATE_FONT_INDIRECT_A.enable().unwrap();
@@ -254,7 +254,7 @@ pub fn enable_hooks() {
 }
 
 /// 关闭文本相关的钩子
-pub fn disable_hooks() {
+pub fn disable_featured_hooks() {
     unsafe {
         HOOK_CREATE_FONT_A.disable().unwrap();
         HOOK_CREATE_FONT_INDIRECT_A.disable().unwrap();
