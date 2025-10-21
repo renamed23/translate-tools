@@ -1,7 +1,6 @@
 use sha2::{Digest, Sha256};
 
 /// 返回输入字节的sha256哈希值
-#[allow(dead_code)]
 pub fn sha256_of_bytes(data: &[u8]) -> [u8; 32] {
     let mut hasher = Sha256::new();
     hasher.update(data);
@@ -12,7 +11,6 @@ pub fn sha256_of_bytes(data: &[u8]) -> [u8; 32] {
 }
 
 /// Windows 32位平台上的简单内存访问检查
-#[allow(dead_code)]
 pub fn quick_memory_check_win32(ptr: *mut u8, len: usize) -> bool {
     if len == 0 {
         return true;
@@ -36,7 +34,6 @@ pub fn quick_memory_check_win32(ptr: *mut u8, len: usize) -> bool {
 }
 
 /// 检查切片 `haystack` 是否包含子切片 `needle`
-#[allow(dead_code)]
 pub fn contains_slice<T: PartialEq>(haystack: &[T], needle: &[T]) -> bool {
     if needle.is_empty() {
         return true;
@@ -47,20 +44,28 @@ pub fn contains_slice<T: PartialEq>(haystack: &[T], needle: &[T]) -> bool {
 }
 
 /// 使用 zstd 解压数据，`cap` 是解压后数据的预估大小
-#[allow(dead_code)]
 pub fn decompress_zstd(data: &[u8], cap: usize) -> Vec<u8> {
     zstd::bulk::decompress(data, cap).unwrap()
 }
 
 /// 将 u16 切片转换为带有结尾 NULL 的新 Vec<u16>
 #[inline]
-#[allow(dead_code)]
 pub fn u16_with_null(u16_slice: &[u16]) -> Vec<u16> {
     u16_slice
         .iter()
         .copied()
         .chain(std::iter::once(0u16))
         .collect()
+}
+
+/// 创建一个空切片
+pub const fn empty_slice<'a, T>() -> &'a [T] {
+    unsafe { core::slice::from_raw_parts(core::ptr::NonNull::<T>::dangling().as_ptr(), 0) }
+}
+
+/// 创建一个可变的空切片
+pub const fn empty_slice_mut<'a, T>() -> &'a mut [T] {
+    unsafe { core::slice::from_raw_parts_mut(core::ptr::NonNull::<T>::dangling().as_ptr(), 0) }
 }
 
 /// 从 `*const T` 开始搜索第一个值为 0 的元素，返回 `&[T]`（长度 ≤ max_len）。
@@ -89,13 +94,10 @@ where
     T: From<u8> + PartialEq + Copy,
 {
     unsafe {
-        // 如果是空指针，返回空切片（注意：从任意指针构造 0 长度切片是允许的）
+        // 如果是非法指针，返回空切片（注意：从任意指针构造 0 长度切片是允许的）
         // 或者长度为 0 的情况直接返回空切片
-        if max_len == 0 || ptr.is_null() {
-            return core::slice::from_raw_parts_mut(
-                core::ptr::NonNull::<T>::dangling().as_ptr(),
-                0,
-            );
+        if max_len == 0 || !quick_memory_check_win32(ptr as *mut u8, max_len * size_of::<T>()) {
+            return empty_slice_mut::<'a>();
         }
 
         let zero = T::from(0u8);
@@ -110,5 +112,61 @@ where
 
         // 未找到 0，则以 max_len 返回
         core::slice::from_raw_parts_mut(ptr, max_len)
+    }
+}
+
+/// 从 `*const T` 构造切片，会进行快速内存检查。
+///
+/// # 参数
+/// - `ptr`: 指向数据的指针
+/// - `len`: 期望的切片长度
+///
+/// # 返回值
+/// 如果指针有效则返回指定长度的切片，否则返回空切片
+///
+/// # Safety
+/// - 如果指针有效，必须保证指向至少 `len` 个 `T` 类型元素的有效内存
+/// - `ptr` 必须按 `T` 的对齐方式对齐
+/// - 返回的切片生命周期 `'a` 必须小于等于该内存有效期
+pub unsafe fn slice_from_raw_parts<'a, T>(ptr: *const T, len: usize) -> &'a [T]
+where
+    T: Copy,
+{
+    unsafe {
+        // 长度为 0 或者非法指针时直接返回空切片
+        if len == 0 || !quick_memory_check_win32(ptr as *mut u8, len * core::mem::size_of::<T>()) {
+            return empty_slice::<'a>();
+        }
+
+        // 指针有效，构造切片
+        core::slice::from_raw_parts(ptr, len)
+    }
+}
+
+/// 从 `*mut T` 构造可变切片，会进行快速内存检查。
+///
+/// # 参数  
+/// - `ptr`: 指向数据的可变指针
+/// - `len`: 期望的切片长度
+///
+/// # 返回值
+/// 如果指针有效则返回指定长度的可变切片，否则返回空切片
+///
+/// # Safety
+/// - 如果指针有效，必须保证指向至少 `len` 个 `T` 类型元素的有效可写内存
+/// - `ptr` 必须按 `T` 的对齐方式对齐
+/// - 返回的切片生命周期 `'a` 必须小于等于该内存有效期
+pub unsafe fn slice_from_raw_parts_mut<'a, T>(ptr: *mut T, len: usize) -> &'a mut [T]
+where
+    T: Copy,
+{
+    unsafe {
+        // 长度为 0 或者非法指针时直接返回空切片
+        if len == 0 || !quick_memory_check_win32(ptr as *mut u8, len * core::mem::size_of::<T>()) {
+            return empty_slice_mut::<'a>();
+        }
+
+        // 指针有效，构造可变切片
+        core::slice::from_raw_parts_mut(ptr, len)
     }
 }

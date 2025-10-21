@@ -7,6 +7,7 @@ pub(crate) mod hook_impl;
 pub(crate) mod hook_utils;
 pub(crate) mod mapping;
 pub(crate) mod panic_utils;
+#[allow(dead_code)]
 pub(crate) mod utils;
 
 #[cfg(feature = "patch")]

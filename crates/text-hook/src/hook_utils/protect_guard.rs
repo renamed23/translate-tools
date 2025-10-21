@@ -35,8 +35,8 @@ impl ProtectGuard {
         if size == 0 {
             anyhow::bail!("size must be > 0");
         }
-        if address.is_null() {
-            anyhow::bail!("address is null");
+        if !crate::utils::quick_memory_check_win32(address as *mut u8, size) {
+            anyhow::bail!("address is invalid: ({address:p};{size})");
         }
 
         // 获取系统 page size

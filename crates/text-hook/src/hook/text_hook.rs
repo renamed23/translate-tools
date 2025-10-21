@@ -26,7 +26,8 @@ pub trait TextHook: Send + Sync + 'static {
     unsafe fn text_out_a(&self, hdc: HDC, x: c_int, y: c_int, lp_string: LPCSTR, c: c_int) -> BOOL {
         unsafe {
             let lp_string = lp_string as *const u8;
-            let input_slice = core::slice::from_raw_parts(lp_string, c as usize);
+            // `slice_from_raw_parts`会进行简单的指针检查，若非法返回空切片
+            let input_slice = crate::utils::slice_from_raw_parts(lp_string, c as usize);
 
             // 长度小于等于 `constant::TEXT_STACK_BUF_LEN` 的数据使用栈缓冲区，
             // 否则使用堆缓冲区
@@ -61,7 +62,7 @@ pub trait TextHook: Send + Sync + 'static {
         c: c_int,
     ) -> BOOL {
         unsafe {
-            let input_slice = core::slice::from_raw_parts(lp_string, c as usize);
+            let input_slice = crate::utils::slice_from_raw_parts(lp_string, c as usize);
 
             let mut buf: SmallVec<[u16; constant::TEXT_STACK_BUF_LEN]> =
                 SmallVec::with_capacity(input_slice.len());
@@ -94,7 +95,7 @@ pub trait TextHook: Send + Sync + 'static {
     ) -> BOOL {
         unsafe {
             let lp_string = lp_string as *const u8;
-            let input_slice = core::slice::from_raw_parts(lp_string, c as usize);
+            let input_slice = crate::utils::slice_from_raw_parts(lp_string, c as usize);
 
             let mut buf: SmallVec<[u16; constant::TEXT_STACK_BUF_LEN]> =
                 SmallVec::with_capacity(input_slice.len());
@@ -126,7 +127,7 @@ pub trait TextHook: Send + Sync + 'static {
         lp_size: LPSIZE,
     ) -> BOOL {
         unsafe {
-            let input_slice = core::slice::from_raw_parts(lp_string, c as usize);
+            let input_slice = crate::utils::slice_from_raw_parts(lp_string, c as usize);
 
             let mut buf: SmallVec<[u16; constant::TEXT_STACK_BUF_LEN]> =
                 SmallVec::with_capacity(input_slice.len());
