@@ -25,5 +25,9 @@
         "type": "&[u16]",
         "value": "游戏窗口",
         "encode_to_u16": true
+    },
+    "TEXT_STACK_BUF_LEN": {
+        "type": "usize",
+        "value": 256
     }
 }

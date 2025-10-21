@@ -111,6 +111,7 @@ retour = "0.4.0-alpha.4"
 dynasmrt = "4.0.1"
 phf = { version = "0.13", features = ["macros"] }
 zstd = "0.13"
+smallvec = "1"
 
 [build-dependencies]
 anyhow.workspace = true

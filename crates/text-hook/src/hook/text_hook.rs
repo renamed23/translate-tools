@@ -1,3 +1,4 @@
+use smallvec::SmallVec;
 use std::borrow::Cow;
 use translate_macros::{detour, generate_detours};
 use winapi::ctypes::c_int;
@@ -24,18 +25,25 @@ pub trait TextHook: Send + Sync + 'static {
     )]
     unsafe fn text_out_a(&self, hdc: HDC, x: c_int, y: c_int, lp_string: LPCSTR, c: c_int) -> BOOL {
         unsafe {
-            let input_slice = core::slice::from_raw_parts(lp_string as *const u8, c as usize);
-            let mut buffer = [0u16; 256];
-            let written_count = map_chars(input_slice, &mut buffer);
-            let result = &buffer[..written_count];
+            let lp_string = lp_string as *const u8;
+            let input_slice = core::slice::from_raw_parts(lp_string, c as usize);
+
+            // 长度小于等于 `constant::TEXT_STACK_BUF_LEN` 的数据使用栈缓冲区，
+            // 否则使用堆缓冲区
+            let mut buf: SmallVec<[u16; constant::TEXT_STACK_BUF_LEN]> =
+                SmallVec::with_capacity(input_slice.len());
+            buf.resize(input_slice.len(), 0);
+
+            let written_count = map_chars(input_slice, &mut buf);
+            let slice = &buf[..written_count];
 
             #[cfg(feature = "debug_text_mapping")]
-            match String::from_utf16(result) {
+            match String::from_utf16(slice) {
                 Ok(result) => debug!("draw text '{result}' at ({x}, {y})"),
                 Err(e) => debug!("Convert utf16 to utf8 fails with {e}"),
             }
 
-            HOOK_TEXT_OUT_W.call(hdc, x, y, result.as_ptr(), result.len() as i32)
+            HOOK_TEXT_OUT_W.call(hdc, x, y, slice.as_ptr(), slice.len() as i32)
         }
     }
 
@@ -54,17 +62,21 @@ pub trait TextHook: Send + Sync + 'static {
     ) -> BOOL {
         unsafe {
             let input_slice = core::slice::from_raw_parts(lp_string, c as usize);
-            let mut buffer = [0u16; 256];
-            let written_count = map_wide_chars(input_slice, &mut buffer);
-            let result = &buffer[..written_count];
+
+            let mut buf: SmallVec<[u16; constant::TEXT_STACK_BUF_LEN]> =
+                SmallVec::with_capacity(input_slice.len());
+            buf.resize(input_slice.len(), 0);
+
+            let written_count = map_wide_chars(input_slice, buf.as_mut());
+            let slice = &buf[..written_count];
 
             #[cfg(feature = "debug_text_mapping")]
-            match String::from_utf16(result) {
+            match String::from_utf16(slice) {
                 Ok(result) => debug!("draw text '{result}' at ({x}, {y})"),
                 Err(e) => debug!("Convert utf16 to utf8 fails with {e}"),
             }
 
-            HOOK_TEXT_OUT_W.call(hdc, x, y, result.as_ptr(), result.len() as i32)
+            HOOK_TEXT_OUT_W.call(hdc, x, y, slice.as_ptr(), slice.len() as i32)
         }
     }
 
@@ -81,18 +93,23 @@ pub trait TextHook: Send + Sync + 'static {
         lp_size: LPSIZE,
     ) -> BOOL {
         unsafe {
-            let input_slice = core::slice::from_raw_parts(lp_string as *const u8, c as usize);
-            let mut buffer = [0u16; 256];
-            let written_count = map_chars(input_slice, &mut buffer);
-            let result = &buffer[..written_count];
+            let lp_string = lp_string as *const u8;
+            let input_slice = core::slice::from_raw_parts(lp_string, c as usize);
+
+            let mut buf: SmallVec<[u16; constant::TEXT_STACK_BUF_LEN]> =
+                SmallVec::with_capacity(input_slice.len());
+            buf.resize(input_slice.len(), 0);
+
+            let written_count = map_chars(input_slice, &mut buf);
+            let slice = &buf[..written_count];
 
             #[cfg(feature = "debug_text_mapping")]
-            match String::from_utf16(result) {
+            match String::from_utf16(slice) {
                 Ok(result) => debug!("result: {result}"),
                 Err(e) => debug!("Convert utf16 to utf8 fails with {e}"),
             }
 
-            HOOK_GET_TEXT_EXTENT_POINT_32_W.call(hdc, result.as_ptr(), result.len() as i32, lp_size)
+            HOOK_GET_TEXT_EXTENT_POINT_32_W.call(hdc, slice.as_ptr(), slice.len() as i32, lp_size)
         }
     }
 
@@ -110,17 +127,21 @@ pub trait TextHook: Send + Sync + 'static {
     ) -> BOOL {
         unsafe {
             let input_slice = core::slice::from_raw_parts(lp_string, c as usize);
-            let mut buffer = [0u16; 256];
-            let written_count = map_wide_chars(input_slice, &mut buffer);
-            let result = &buffer[..written_count];
+
+            let mut buf: SmallVec<[u16; constant::TEXT_STACK_BUF_LEN]> =
+                SmallVec::with_capacity(input_slice.len());
+            buf.resize(input_slice.len(), 0);
+
+            let written_count = map_wide_chars(input_slice, &mut buf);
+            let slice = &buf[..written_count];
 
             #[cfg(feature = "debug_text_mapping")]
-            match String::from_utf16(result) {
+            match String::from_utf16(slice) {
                 Ok(result) => debug!("result: {result}"),
                 Err(e) => debug!("Convert utf16 to utf8 fails with {e}"),
             }
 
-            HOOK_GET_TEXT_EXTENT_POINT_32_W.call(hdc, result.as_ptr(), result.len() as i32, lp_size)
+            HOOK_GET_TEXT_EXTENT_POINT_32_W.call(hdc, slice.as_ptr(), slice.len() as i32, lp_size)
         }
     }
 
