@@ -1,8 +1,10 @@
 use translate_macros::{detour, generate_detours};
 use winapi::shared::minwindef::{BOOL, DWORD, LPDWORD, LPVOID};
 use winapi::shared::ntdef::HANDLE;
-use winapi::um::minwinbase::{LPOVERLAPPED, LPSECURITY_ATTRIBUTES, LPWIN32_FIND_DATAA};
-use winapi::um::winnt::LPCSTR;
+use winapi::um::minwinbase::{
+    LPOVERLAPPED, LPSECURITY_ATTRIBUTES, LPWIN32_FIND_DATAA, LPWIN32_FIND_DATAW,
+};
+use winapi::um::winnt::{LPCSTR, LPCWSTR};
 
 use crate::debug;
 
@@ -16,6 +18,24 @@ pub trait FileHook: Send + Sync + 'static {
     unsafe fn create_file_a(
         &self,
         _lp_file_name: LPCSTR,
+        _dw_desired_access: DWORD,
+        _dw_share_mode: DWORD,
+        _lp_security_attributes: LPSECURITY_ATTRIBUTES,
+        _dw_creation_disposition: DWORD,
+        _dw_flags_and_attributes: DWORD,
+        _h_template_file: HANDLE,
+    ) -> HANDLE {
+        unimplemented!()
+    }
+
+    #[detour(
+        dll = "kernel32.dll",
+        symbol = "CreateFileW",
+        fallback = "winapi::um::handleapi::INVALID_HANDLE_VALUE"
+    )]
+    unsafe fn create_file_w(
+        &self,
+        _lp_file_name: LPCWSTR,
         _dw_desired_access: DWORD,
         _dw_share_mode: DWORD,
         _lp_security_attributes: LPSECURITY_ATTRIBUTES,
@@ -103,6 +123,19 @@ pub trait FileHook: Send + Sync + 'static {
 
     #[detour(
         dll = "kernel32.dll",
+        symbol = "FindFirstFileW",
+        fallback = "winapi::um::handleapi::INVALID_HANDLE_VALUE"
+    )]
+    unsafe fn find_first_file_w(
+        &self,
+        _lp_file_name: LPCWSTR,
+        _lp_find_file_data: LPWIN32_FIND_DATAW,
+    ) -> HANDLE {
+        unimplemented!();
+    }
+
+    #[detour(
+        dll = "kernel32.dll",
         symbol = "FindNextFileA",
         fallback = "winapi::shared::minwindef::FALSE"
     )]
@@ -110,6 +143,19 @@ pub trait FileHook: Send + Sync + 'static {
         &self,
         _h_find_file: HANDLE,
         _lp_find_file_data: LPWIN32_FIND_DATAA,
+    ) -> BOOL {
+        unimplemented!();
+    }
+
+    #[detour(
+        dll = "kernel32.dll",
+        symbol = "FindNextFileW",
+        fallback = "winapi::shared::minwindef::FALSE"
+    )]
+    unsafe fn find_next_file_w(
+        &self,
+        _h_find_file: HANDLE,
+        _lp_find_file_data: LPWIN32_FIND_DATAW,
     ) -> BOOL {
         unimplemented!();
     }

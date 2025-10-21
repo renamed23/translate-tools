@@ -319,7 +319,10 @@ pub fn generate_constants_from_json(input: TokenStream) -> TokenStream {
 /// 生成字符映射数据的过程宏
 ///
 /// # 功能描述
-/// 这个宏从映射配置文件和可选的译文文件中生成一个高效的字符映射表，用于在 Shift_JIS 编码和 UTF-16 编码之间进行转换。
+/// 这个宏从映射配置文件和可选的译文文件中生成两个高效的字符映射表：
+/// - SJIS_PHF_MAP: 用于 Shift_JIS 编码到 UTF-16 码点的映射
+/// - UTF16_PHF_MAP: 用于 UTF-16 码点到 UTF-16 码点的直接映射
+///
 /// 生成的映射表使用 Perfect Hash Function (PHF) 实现，提供 O(1) 时间复杂度的查找性能。
 ///
 /// # 输入参数
@@ -345,18 +348,33 @@ pub fn generate_constants_from_json(input: TokenStream) -> TokenStream {
 /// 包含需要处理的文本内容，用于提取所有 JIS0208 字符并创建自映射（字符映射到自身）。
 ///
 /// # 生成规则
-/// 1. 如果提供了译文文件，首先提取其中所有 JIS0208 字符并创建自映射
+///
+/// ## SJIS_PHF_MAP (Shift_JIS → UTF-16)
+/// 1. 如果提供了译文文件，首先提取其中所有 JIS0208 字符并创建自映射（字符映射到自身）
 /// 2. 使用映射配置文件中的映射关系覆盖或添加映射
-/// 3. 将每个键字符编码为 Shift_JIS 双字节编码
-/// 4. 将每个值字符转换为 UTF-16 码点
-/// 5. 生成基于 PHF 的静态映射表
+/// 3. 将每个键字符编码为 Shift_JIS 双字节编码（u16，高字节在前）
+/// 4. 将每个值字符转换为 UTF-16 码点（u16）
+///
+/// ## UTF16_PHF_MAP (UTF-16 → UTF-16)
+/// 1. 仅使用映射配置文件中的映射关系
+/// 2. 将键字符直接转换为 UTF-16 码点（u16）
+/// 3. 将值字符转换为 UTF-16 码点（u16）
+/// 4. 提供 UTF-16 字符到 UTF-16 字符的直接映射
 ///
 /// # 输出
-/// 生成一个静态的 PHF 映射表：
+/// 生成两个静态的 PHF 映射表：
 /// ```rust
+/// // Shift_JIS 编码到 UTF-16 码点的映射
 /// pub(super) static SJIS_PHF_MAP: ::phf::Map<u16, u16> = phf_map! {
-///     0x8340u16 => 0x0041u16,  // "Ａ" -> "A"
-///     0x8341u16 => 0x0042u16,  // "Ｂ" -> "B"
+///     0x8340u16 => 0x0041u16,  // "Ａ" 的 Shift_JIS 编码 -> "A" 的 UTF-16
+///     0x8341u16 => 0x0042u16,  // "Ｂ" 的 Shift_JIS 编码 -> "B" 的 UTF-16
+///     // ...
+/// };
+///
+/// // UTF-16 码点到 UTF-16 码点的直接映射
+/// pub(super) static UTF16_PHF_MAP: ::phf::Map<u16, u16> = phf_map! {
+///     0xFF21u16 => 0x0041u16,  // "Ａ" 的 UTF-16 -> "A" 的 UTF-16
+///     0xFF22u16 => 0x0042u16,  // "Ｂ" 的 UTF-16 -> "B" 的 UTF-16
 ///     // ...
 /// };
 /// ```
@@ -373,8 +391,10 @@ pub fn generate_constants_from_json(input: TokenStream) -> TokenStream {
 /// ```
 ///
 /// # 字符编码说明
-/// - **键**: 原字符 -> Shift_JIS 双字节编码 -> u16（高字节在前）
-/// - **值**: 目标字符 -> UTF-16 码点 -> u16
+/// - **SJIS_PHF_MAP 键**: 原字符 -> Shift_JIS 双字节编码 -> u16（高字节在前）
+/// - **SJIS_PHF_MAP 值**: 目标字符 -> UTF-16 码点 -> u16
+/// - **UTF16_PHF_MAP 键**: 原字符 -> UTF-16 码点 -> u16
+/// - **UTF16_PHF_MAP 值**: 目标字符 -> UTF-16 码点 -> u16
 ///
 /// # 性能特点
 /// - 使用 PHF 实现，编译时构建完美哈希函数
@@ -390,6 +410,8 @@ pub fn generate_constants_from_json(input: TokenStream) -> TokenStream {
 /// - 译文文件为可选，用于生成完整字符集的自映射
 /// - 所有字符映射都是 1:1 的单个字符映射
 /// - 目前不支持 BMP 之外的 Unicode 字符（>0xFFFF）
+/// - UTF16_PHF_MAP 仅包含映射文件中定义的字符，不包含译文文件中的自映射
+/// - 映射键必须通过 JIS0208 校验（可被 Shift_JIS 编码）
 #[proc_macro]
 pub fn generate_mapping_data(input: TokenStream) -> TokenStream {
     generate_mapping_data::generate_mapping_data(input)

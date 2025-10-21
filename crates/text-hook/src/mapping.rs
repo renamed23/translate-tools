@@ -85,3 +85,34 @@ pub fn map_chars(bytes: &[u8], buffer: &mut [u16]) -> usize {
 
     out_pos
 }
+
+/// 映射宽字符并过滤特定字符
+///
+/// # 参数
+/// - `u16_slice`: 输入字符切片
+/// - `buffer`: 输出缓冲区
+///
+/// # 返回值
+/// 写入缓冲区的字符数量
+///
+/// # 注意
+/// 此函数不处理UTF-16代理对，每个u16被独立处理
+#[allow(dead_code)]
+pub fn map_wide_chars(u16_slice: &[u16], buffer: &mut [u16]) -> usize {
+    let mut out_pos = 0;
+
+    for &ch in u16_slice {
+        if out_pos >= buffer.len() {
+            break; // 缓冲区满，提前退出
+        }
+
+        let mapped_ch = mapping_data::UTF16_PHF_MAP.get(&ch).copied().unwrap_or(ch);
+
+        if !constant::CHAR_FILTER.contains(&mapped_ch) {
+            buffer[out_pos] = mapped_ch;
+            out_pos += 1;
+        }
+    }
+
+    out_pos
+}

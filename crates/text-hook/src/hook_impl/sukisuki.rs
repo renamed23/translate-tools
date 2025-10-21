@@ -12,11 +12,11 @@ use winapi::{
     um::wingdi::{
         CLEARTYPE_QUALITY, CreateFontW, DEFAULT_CHARSET, DEFAULT_PITCH, FIXED_PITCH, FW_NORMAL,
         GetViewportOrgEx, OUT_TT_PRECIS, SelectObject, SetBkMode, SetTextColor, SetViewportOrgEx,
-        TRANSPARENT, TextOutW,
+        TRANSPARENT,
     },
 };
 
-use crate::{constant, debug};
+use crate::{constant, debug, hook::text_hook::HOOK_TEXT_OUT_W};
 
 #[derive(Default)]
 struct Layouter {
@@ -203,7 +203,7 @@ pub unsafe extern "C" fn render_text(x: i32, y: i32, text: *const i8) {
         debug!("draw text '{text}' at ({mapped_x}, {mapped_y}) from ({x}, {y})");
 
         styled(hdc, || {
-            TextOutW(
+            HOOK_TEXT_OUT_W.call(
                 hdc,
                 mapped_x,
                 mapped_y,

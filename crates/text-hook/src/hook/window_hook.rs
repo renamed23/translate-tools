@@ -26,7 +26,8 @@ pub trait WindowHook: Send + Sync + 'static {
                     std::mem::size_of::<CREATESTRUCTW>(),
                 );
 
-                let class_bytes = core::ffi::CStr::from_ptr((*params_a).lpszClass).to_bytes();
+                let class_bytes =
+                    crate::utils::slice_until_null((*params_a).lpszClass as *const u8, 512);
                 let class_name =
                     crate::code_cvt::ansi_to_wide_char_with_null(class_bytes).into_boxed_slice();
 
@@ -53,7 +54,7 @@ pub trait WindowHook: Send + Sync + 'static {
                 {
                     let raw_title = {
                         let bytes =
-                            unsafe { core::ffi::CStr::from_ptr(l_param as *const i8).to_bytes() };
+                            unsafe { crate::utils::slice_until_null(l_param as *const u8, 512) };
                         let u16_bytes = crate::code_cvt::ansi_to_wide_char(bytes);
                         String::from_utf16_lossy(&u16_bytes)
                     };
