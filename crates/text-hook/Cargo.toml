@@ -87,7 +87,12 @@ uminom = [
     "generate_full_mapping_data",
     "override_window_title",
 ]
-bruns = ["export_default_dll_main", "text_hook", "override_window_title"]
+bruns = [
+    "export_default_dll_main",
+    "text_hook",
+    "override_window_title",
+    "patch",
+]
 
 [dependencies]
 translate-macros.workspace = true

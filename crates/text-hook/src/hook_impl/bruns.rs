@@ -1,4 +1,4 @@
-use translate_macros::byte_slice;
+use translate_macros::{byte_slice, ffi_catch_unwind};
 use winapi::shared::minwindef::HMODULE;
 
 use crate::hook::CoreHook;
@@ -51,6 +51,19 @@ fn patch_v1(module_addr: *mut u8) {
         // jmp libscr.D6FCE;
         write_bytes(module_addr.add(0x0F4FE), &byte_slice!("E9 CB 7A 0C 00 90")).unwrap();
     }
+
+    unsafe {
+        // jmp libscr.D6FE0;
+        write_asm(module_addr.add(0x3F060), &byte_slice!("E9 7B 7F 09 00")).unwrap();
+
+        // mov eax, memcpy2;
+        let mut code_buf = vec![0xB8];
+        code_buf.extend_from_slice(&(memcpy2 as usize).to_le_bytes());
+        // call eax; jmp libscr.3F065;
+        code_buf.extend_from_slice(&byte_slice!("FF D0 E9 79 80 F6 FF"));
+
+        write_asm(module_addr.add(0xD6FE0), &code_buf).unwrap();
+    }
 }
 
 fn patch_v2(module_addr: *mut u8) {
@@ -72,3 +85,11 @@ fn patch_by_arg1(module_addr: *mut u8) {
 
 impl TextHook for BrunsHook {}
 impl WindowHook for BrunsHook {}
+
+#[ffi_catch_unwind]
+pub unsafe extern "C" fn memcpy2(dst: *mut u8, src: *mut u8, len: usize) {
+    unsafe {
+        core::ptr::copy_nonoverlapping(src, dst, len);
+        crate::patch::process_buffer(dst, len);
+    }
+}
