@@ -29,5 +29,9 @@
     "TEXT_STACK_BUF_LEN": {
         "type": "usize",
         "value": 256
+    },
+    "ARG1": {
+        "type": "&str",
+        "value": ""
     }
 }

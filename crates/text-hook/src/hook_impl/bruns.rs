@@ -1,0 +1,75 @@
+use translate_macros::byte_slice;
+use winapi::shared::minwindef::HMODULE;
+
+use crate::{constant, debug};
+use crate::hook::CoreHook;
+use crate::hook::text_hook::TextHook;
+use crate::hook::window_hook::WindowHook;
+use crate::hook_utils::{write_asm, write_bytes};
+
+#[derive(Default)]
+pub struct BrunsHook;
+
+impl CoreHook for BrunsHook {
+    fn on_process_attach(&self, _hinst_dll: HMODULE) {
+        let Some(handle) = crate::hook_utils::get_module_handle("libscr.dll") else {
+            debug!("get_module_handle failed");
+            return;
+        };
+
+        debug!("patch {handle:p}");
+
+        patch_by_arg1(handle as *mut u8);
+    }
+}
+
+fn patch_v1(module_addr: *mut u8) {
+    // 改路径常量字符，让游戏找不到位图字体文件，并跳过错误报告;
+    // 最终游戏FALLBACK到GDI文本渲染
+    unsafe {
+        // push libscr.DCECC
+        let char_addr = module_addr as usize + 0xDCECC;
+        let mut code_buf = vec![0x68];
+        code_buf.extend_from_slice(&char_addr.to_le_bytes());
+        write_asm(module_addr.add(0x1A29A), &code_buf).unwrap();
+
+        // jmp libscr.sub_1A48C
+        write_asm(module_addr.add(0x1A48C), &byte_slice!("EB 3A")).unwrap();
+
+        // 00 00 -> 5F 00 (`/` -> `_`)
+        write_bytes(module_addr.add(0xDCECC), &byte_slice!("5F 00")).unwrap();
+    }
+
+    // 将 codepage 固定为CP932
+    unsafe {
+        // (push ebp; push ebx; push 0x1; push 0x3A4; jmp MultibytesToWideChar;) * 2
+        write_asm(module_addr.add(0xD6FC0), 
+            &byte_slice!("55 53 6A 01 68 A4 03 00 00 E9 08 85 F3 FF 55 53 6A 01 68 A4 03 00 00 E9 28 85 F3 FF")).unwrap();
+
+        // jmp libscr.D6FC0;
+        write_bytes(module_addr.add(0x0F4D0), &byte_slice!("E9 EB 7A 0C 00 90")).unwrap();
+
+        // jmp libscr.D6FCE;
+        write_bytes(module_addr.add(0x0F4FE), &byte_slice!("E9 CB 7A 0C 00 90")).unwrap();
+    }
+}
+
+fn patch_v2(module_addr: *mut u8) {
+    todo!()
+}
+
+fn patch_v3(module_addr: *mut u8) {
+    todo!()
+}
+
+fn patch_by_arg1(module_addr: *mut u8) {
+    match constant::ARG1 {
+        "v1" => patch_v1(module_addr),
+        "v2" => patch_v2(module_addr),
+        "v3" => patch_v3(module_addr),
+        _ => unreachable!()
+    }
+}
+
+impl TextHook for BrunsHook {}
+impl WindowHook for BrunsHook {}

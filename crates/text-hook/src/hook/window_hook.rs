@@ -1,7 +1,7 @@
 use translate_macros::{detour, generate_detours};
 use winapi::shared::minwindef::{LPARAM, LRESULT, UINT, WPARAM};
 use winapi::shared::windef::HWND;
-use winapi::um::winuser::{CREATESTRUCTA, CREATESTRUCTW, WM_NCCREATE, WM_SETTEXT};
+use winapi::um::winuser::{CREATESTRUCTA, CREATESTRUCTW, GetParent, WM_NCCREATE, WM_SETTEXT};
 
 use crate::{constant, debug};
 
@@ -18,6 +18,10 @@ pub trait WindowHook: Send + Sync + 'static {
         match u_msg {
             WM_NCCREATE => unsafe {
                 let params_a = l_param as *const CREATESTRUCTA;
+                if params_a.is_null() || !(*params_a).hwndParent.is_null() {
+                    return HOOK_DEF_WINDOW_PROC_A.call(h_wnd, u_msg, w_param, l_param);
+                }
+
                 let mut params_w: CREATESTRUCTW = std::mem::zeroed();
 
                 std::ptr::copy_nonoverlapping(
@@ -49,6 +53,12 @@ pub trait WindowHook: Send + Sync + 'static {
                 HOOK_DEF_WINDOW_PROC_W.call(h_wnd, u_msg, w_param, &params_w as *const _ as LPARAM)
             },
             WM_SETTEXT => {
+                unsafe {
+                    if !GetParent(h_wnd).is_null() {
+                        return HOOK_DEF_WINDOW_PROC_W.call(h_wnd, u_msg, w_param, l_param);
+                    }
+                }
+
                 #[cfg(feature = "debug_output")]
                 {
                     let raw_title = {
@@ -85,6 +95,10 @@ pub trait WindowHook: Send + Sync + 'static {
         match u_msg {
             WM_NCCREATE => unsafe {
                 let params_w = l_param as *const CREATESTRUCTW;
+                if params_w.is_null() || !(*params_w).hwndParent.is_null() {
+                    return HOOK_DEF_WINDOW_PROC_W.call(h_wnd, u_msg, w_param, l_param);
+                }
+
                 let mut modified_params: CREATESTRUCTW = std::ptr::read(params_w);
 
                 let window_title = crate::utils::u16_with_null(constant::WINDOW_TITLE);
@@ -114,6 +128,12 @@ pub trait WindowHook: Send + Sync + 'static {
                 )
             },
             WM_SETTEXT => {
+                unsafe {
+                    if !GetParent(h_wnd).is_null() {
+                        return HOOK_DEF_WINDOW_PROC_W.call(h_wnd, u_msg, w_param, l_param);
+                    }
+                }
+
                 #[cfg(feature = "debug_output")]
                 {
                     let raw_title = {
