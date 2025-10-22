@@ -1,11 +1,11 @@
 use translate_macros::byte_slice;
 use winapi::shared::minwindef::HMODULE;
 
-use crate::{constant, debug};
 use crate::hook::CoreHook;
 use crate::hook::text_hook::TextHook;
 use crate::hook::window_hook::WindowHook;
 use crate::hook_utils::{write_asm, write_bytes};
+use crate::{constant, debug};
 
 #[derive(Default)]
 pub struct BrunsHook;
@@ -43,8 +43,7 @@ fn patch_v1(module_addr: *mut u8) {
     // 将 codepage 固定为CP932
     unsafe {
         // (push ebp; push ebx; push 0x1; push 0x3A4; jmp MultibytesToWideChar;) * 2
-        write_asm(module_addr.add(0xD6FC0), 
-            &byte_slice!("55 53 6A 01 68 A4 03 00 00 E9 08 85 F3 FF 55 53 6A 01 68 A4 03 00 00 E9 28 85 F3 FF")).unwrap();
+        write_asm(module_addr.add(0xD6FC0), &byte_slice!("55 53 6A 01 68 A4 03 00 00 E9 08 85 F3 FF 55 53 6A 01 68 A4 03 00 00 E9 28 85 F3 FF")).unwrap();
 
         // jmp libscr.D6FC0;
         write_bytes(module_addr.add(0x0F4D0), &byte_slice!("E9 EB 7A 0C 00 90")).unwrap();
@@ -67,7 +66,7 @@ fn patch_by_arg1(module_addr: *mut u8) {
         "v1" => patch_v1(module_addr),
         "v2" => patch_v2(module_addr),
         "v3" => patch_v3(module_addr),
-        _ => unreachable!()
+        _ => unreachable!(),
     }
 }
 
