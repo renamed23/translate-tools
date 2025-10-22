@@ -67,7 +67,43 @@ fn patch_v1(module_addr: *mut u8) {
 }
 
 fn patch_v2(module_addr: *mut u8) {
-    todo!()
+    unsafe {
+        // push libscr.DEEC4
+        let char_addr = module_addr as usize + 0xDEEC4;
+        let mut code_buf = vec![0x68];
+        code_buf.extend_from_slice(&char_addr.to_le_bytes());
+        write_asm(module_addr.add(0x19EBA), &code_buf).unwrap();
+
+        // jmp libscr.sub_1A0E8
+        write_asm(module_addr.add(0x1A0AC), &byte_slice!("EB 3A")).unwrap();
+
+        // 00 00 -> 5F 00 (`/` -> `_`)
+        write_bytes(module_addr.add(0xDEEC4), &byte_slice!("5F 00")).unwrap();
+    }
+
+    unsafe {
+        // (push ebp; push ebx; push 0x1; push 0x3A4; jmp MultibytesToWideChar;) * 2
+        write_asm(module_addr.add(0xD8FC1), &byte_slice!("55 53 6A 01 68 A4 03 00 00 E9 A7 5F F3 FF 55 53 6A 01 68 A4 03 00 00 E9 C7 5F F3 FF")).unwrap();
+
+        // jmp libscr.D8FC1;
+        write_bytes(module_addr.add(0x0EF70), &byte_slice!("E9 4C A0 0C 00 90")).unwrap();
+
+        // jmp libscr.D8FCF;
+        write_bytes(module_addr.add(0x0EF9E), &byte_slice!("E9 2C A0 0C 00 90")).unwrap();
+    }
+
+    unsafe {
+        // jmp libscr.D8FE1;
+        write_asm(module_addr.add(0x3E3F0), &byte_slice!("E9 EC AB 09 00")).unwrap();
+
+        // mov eax, memcpy2;
+        let mut code_buf = vec![0xB8];
+        code_buf.extend_from_slice(&(memcpy2 as usize).to_le_bytes());
+        // call eax; jmp libscr.3E3F5;
+        code_buf.extend_from_slice(&byte_slice!("FF D0 E9 08 54 F6 FF"));
+
+        write_asm(module_addr.add(0xD8FE1), &code_buf).unwrap();
+    }
 }
 
 fn patch_v3(module_addr: *mut u8) {
