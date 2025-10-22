@@ -106,15 +106,10 @@ fn patch_v2(module_addr: *mut u8) {
     }
 }
 
-fn patch_v3(module_addr: *mut u8) {
-    todo!()
-}
-
 fn patch_by_arg1(module_addr: *mut u8) {
     match constant::ARG1 {
         "v1" => patch_v1(module_addr),
-        "v2" => patch_v2(module_addr),
-        "v3" => patch_v3(module_addr),
+        "v2" | "v3" => patch_v2(module_addr),
         _ => unreachable!(),
     }
 }
