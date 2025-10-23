@@ -38,6 +38,8 @@ generate_full_mapping_data = []
 export_default_dll_main = []
 # 使用`assets/config.json`的`WINDOW_TITLE`字段覆写游戏标题
 override_window_title = ["window_hook"]
+# 模拟日语环境(目前支持很有限)
+emulate_locale = ["locale_hook", "code_cvt_hook"]
 
 # 启用文本相关的钩子
 text_hook = []
@@ -47,6 +49,8 @@ file_hook = []
 locale_hook = []
 # 启动窗口相关的钩子
 window_hook = []
+# 启动转码相关的钩子(MultiByteToWideChar & WideChar...)
+code_cvt_hook = []
 
 # 是否导出钩子函数，实际上如果用detour的话，不需要导出
 export_hooks = []
@@ -92,6 +96,12 @@ bruns = [
     "text_hook",
     "override_window_title",
     "patch",
+]
+bokudvd = [
+    "default_impl",
+    "custom_font",
+    "generate_full_mapping_data",
+    "emulate_locale",
 ]
 
 [dependencies]

@@ -33,7 +33,7 @@ pub fn default_dll_main(hinst_dll: HMODULE, fdw_reason: DWORD, _lpv_reserved: LP
 
     match fdw_reason {
         PROCESS_ATTACH => {
-            #[cfg(feature = "locale_hook")]
+            #[cfg(feature = "emulate_locale")]
             unsafe {
                 use winapi::um::winnls::SetThreadLocale;
                 SetThreadLocale(0x0411)
