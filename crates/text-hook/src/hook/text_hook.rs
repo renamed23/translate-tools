@@ -172,7 +172,7 @@ pub trait TextHook: Send + Sync + 'static {
 
         #[cfg(feature = "debug_text_mapping")]
         match String::from_utf16(result) {
-            Ok(result) => debug!("get_glyph_outline result: {result}"),
+            Ok(result) => debug!("result: {result}"),
             Err(e) => debug!("Convert utf16 to utf8 fails with {e}"),
         }
 
@@ -212,7 +212,7 @@ pub trait TextHook: Send + Sync + 'static {
 
         #[cfg(feature = "debug_text_mapping")]
         match String::from_utf16(result) {
-            Ok(result) => debug!("get_glyph_outline result: {result}"),
+            Ok(result) => debug!("result: {result}"),
             Err(e) => debug!("Convert utf16 to utf8 fails with {e}"),
         }
 

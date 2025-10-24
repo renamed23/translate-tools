@@ -15,7 +15,7 @@ cargo build --release --bin replacement_tool
 
 ```ps
 cd crates/text-hook
-cargo build --release --features default_hook_impl,generate_full_mapping_data
+cargo build --release --features default_impl,generate_full_mapping_data
 ```
 
 编译的DLL在`target/i686-pc-windows-msvc/release`
