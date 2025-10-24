@@ -134,3 +134,32 @@ pub fn create_trampoline_32(target_fn_addr: usize, pre_asm: &[u8], post_asm: &[u
 
     code_buf
 }
+
+/// 解析可修补的32位地址，处理短跳转指令链(最多8次跳转)
+///
+/// 这个函数用于解析可能包含跳转指令的地址，通过跟随相对短跳转(0xEB)指令，
+/// 找到最终的跳转目标地址。这在inline hook中特别有用，
+/// 因为短跳转的字节长度太小会导致inline hook失败
+#[allow(dead_code)]
+pub unsafe fn resolve_patchable_addr_32(mut addr: usize) -> usize {
+    // 防止无限循环
+    const MAX_FOLLOW: usize = 8;
+
+    for _ in 0..MAX_FOLLOW {
+        let opcode = unsafe { *(addr as *const u8) };
+
+        match opcode {
+            0xEB => {
+                let rel = unsafe { *((addr + 1) as *const i8) } as isize;
+                let next = (addr + 2) as isize;
+                addr = (next + rel) as usize;
+                continue;
+            }
+            _ => {
+                break;
+            }
+        }
+    }
+
+    addr
+}

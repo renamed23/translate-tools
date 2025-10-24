@@ -33,14 +33,14 @@ static ENTRY_POINT_ADDR: Lazy<usize> = Lazy::new(|| {
     mi.EntryPoint as usize
 });
 
-static HOOK_ENTRY_POINT: Lazy<retour::GenericDetour<unsafe extern "C" fn()>> = Lazy::new(|| {
-    let ori_entry: unsafe extern "C" fn() = unsafe { core::mem::transmute(*ENTRY_POINT_ADDR) };
+static HOOK_ENTRY_POINT: Lazy<retour::GenericDetour<unsafe extern "C" fn()>> =
+    Lazy::new(|| unsafe {
+        let resolved = crate::hook_utils::resolve_patchable_addr_32(*ENTRY_POINT_ADDR);
+        let ori_entry: unsafe extern "C" fn() = core::mem::transmute(resolved);
 
-    unsafe {
         retour::GenericDetour::new(ori_entry, entry_point)
             .expect("Failed to create detour for EntryPoint")
-    }
-});
+    });
 
 fn delayed_attach() {
     debug!("Delayed attach start...");
