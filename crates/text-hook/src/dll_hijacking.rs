@@ -3,10 +3,10 @@ mod dll {
     translate_macros::generated_exports_from_hijacked_dll!("assets/hijacked");
 }
 
-pub unsafe extern "system" fn load_library() {
+pub unsafe fn load_library() {
     unsafe { dll::load_library() };
 }
 
-pub unsafe extern "system" fn unload_library() {
+pub unsafe fn unload_library() {
     unsafe { dll::unload_library() };
 }
