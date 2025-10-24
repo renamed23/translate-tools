@@ -42,7 +42,10 @@ override_window_title = ["window_hook"]
 emulate_locale = ["locale_hook", "code_cvt_hook"]
 # 启用延迟加载，对于某些特性是必要的
 delayed_attach = []
-# TODO
+# 根据`assets/hijacked`中的PE文件(仅限一个)生成对应的导出函数，
+# 以进行DLL劫持，编译后需要自己改名为对应的DLL文件名，然后放在游戏EXE所在的目录。
+# 在`assets/config.json`的`HIJACKED_DLL_PATH`中可以指定被劫持DLL的路径，
+# 否则默认会在系统目录中寻找
 dll_hijacking = ["delayed_attach"]
 
 # 启用文本相关的钩子
