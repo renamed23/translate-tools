@@ -44,7 +44,24 @@ static HOOK_ENTRY_POINT: Lazy<retour::GenericDetour<unsafe extern "C" fn()>> =
 
 fn delayed_attach() {
     debug!("Delayed attach start...");
+
+    #[cfg(feature = "dll_hijacking")]
+    unsafe {
+        crate::dll_hijacking::load_library()
+    };
+
     crate::hook::hook_instance().on_delayed_attach();
+}
+
+fn delayed_attach_clean() {
+    debug!("Delayed attach clean start...");
+
+    #[cfg(feature = "dll_hijacking")]
+    unsafe {
+        crate::dll_hijacking::unload_library()
+    };
+
+    crate::hook::hook_instance().on_delayed_attach_clean();
 }
 
 unsafe extern "C" fn entry_point() {
@@ -63,10 +80,11 @@ unsafe extern "C" fn entry_point() {
     };
 }
 
-/// 启用延迟附加钩子
+/// 启用入口点钩子
 ///
-/// 在程序入口点被调用时执行延迟附加
-pub fn enable_delayed_attach_hook() {
+/// 安装对程序主入口点的钩子，当入口点被调用时会执行延迟初始化操作。
+/// 这允许在程序完成基本初始化后进行安全的附加操作。
+pub fn enable_entry_point_hook() {
     // 检测是否有入口断点，一般用x32dbg之类的调试器都会有，打印出警告
     #[cfg(feature = "debug_output")]
     {
@@ -79,10 +97,11 @@ pub fn enable_delayed_attach_hook() {
     unsafe { HOOK_ENTRY_POINT.enable().unwrap() };
 }
 
-/// 禁用延迟附加钩子
+/// 禁用入口点钩子
 ///
-/// 此函数会禁用之前启用的入口点钩子，恢复原始的执行流程。
-/// 通常在卸载或清理阶段调用。
-pub fn disable_delayed_attach_hook() {
+/// 禁用入口点钩子，恢复原始的执行流程，并清理延迟初始化相关的资源。
+/// 这个函数应该在 `DllMain` 的 `PROCESS_DETACH` 分支中调用。
+pub fn disable_entry_point_hook() {
+    delayed_attach_clean();
     unsafe { HOOK_ENTRY_POINT.disable().unwrap() };
 }

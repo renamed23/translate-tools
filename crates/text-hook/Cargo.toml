@@ -42,6 +42,8 @@ override_window_title = ["window_hook"]
 emulate_locale = ["locale_hook", "code_cvt_hook"]
 # 启用延迟加载，对于某些特性是必要的
 delayed_attach = []
+# TODO
+dll_hijacking = ["delayed_attach"]
 
 # 启用文本相关的钩子
 text_hook = []

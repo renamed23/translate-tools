@@ -33,5 +33,9 @@
     "ARG1": {
         "type": "&str",
         "value": ""
+    },
+    "HIJACKED_DLL_PATH": {
+        "type": "&str",
+        "value": ""
     }
 }

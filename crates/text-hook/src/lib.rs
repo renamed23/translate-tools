@@ -19,6 +19,9 @@ pub(crate) mod custom_font;
 #[cfg(feature = "delayed_attach")]
 pub(crate) mod delayed_attach;
 
+#[cfg(feature = "dll_hijacking")]
+pub(crate) mod dll_hijacking;
+
 #[allow(dead_code)]
 pub(crate) mod constant {
     translate_macros::generate_constants_from_json!(
