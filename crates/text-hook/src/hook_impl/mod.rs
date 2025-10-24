@@ -52,6 +52,9 @@ pub fn default_dll_main(hinst_dll: HMODULE, fdw_reason: DWORD, _lpv_reserved: LP
             crate::hook::enable_featured_hooks();
 
             crate::hook::hook_instance().on_process_attach(hinst_dll);
+
+            #[cfg(feature = "delayed_attach")]
+            crate::delayed_attach::enable_delayed_attach_hook();
         }
         PROCESS_DETACH => {
             #[cfg(feature = "custom_font")]
@@ -64,6 +67,9 @@ pub fn default_dll_main(hinst_dll: HMODULE, fdw_reason: DWORD, _lpv_reserved: LP
             crate::hook::disable_featured_hooks();
 
             crate::hook::hook_instance().on_process_detach(hinst_dll);
+
+            #[cfg(feature = "delayed_attach")]
+            crate::delayed_attach::disable_delayed_attach_hook();
         }
         _ => {}
     }

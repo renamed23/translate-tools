@@ -12,9 +12,21 @@ translate_macros::expand_by_files!("src/hook" => {
 });
 
 pub trait CoreHook: Send + Sync + 'static {
+    /// 启用钩子，会在`PROCESS_ATTACH`时调用
     fn enable_hooks(&self) {}
+
+    /// 禁用钩子，会在`PROCESS_DETACH`时调用
     fn disable_hooks(&self) {}
+
+    /// 会在主模块入口点时被调用
+    #[cfg(feature = "delayed_attach")]
+    fn on_delayed_attach(&self) {}
+
+    /// 会在`PROCESS_ATTACH`时调用，若有会导致死锁的操作
+    /// 请开启`delayed_attach`特性，并在`on_delayed_attach`中进行
     fn on_process_attach(&self, _hinst_dll: HMODULE) {}
+
+    /// 会在`PROCESS_DETACH`时调用
     fn on_process_detach(&self, _hinst_dll: HMODULE) {}
 }
 

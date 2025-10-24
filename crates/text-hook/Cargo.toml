@@ -40,6 +40,8 @@ export_default_dll_main = []
 override_window_title = ["window_hook"]
 # 模拟日语环境(目前支持很有限)
 emulate_locale = ["locale_hook", "code_cvt_hook"]
+# 启用延迟加载，对于某些特性是必要的
+delayed_attach = []
 
 # 启用文本相关的钩子
 text_hook = []
@@ -121,6 +123,7 @@ winapi = { version = "0.3", features = [
     "stringapiset",
     "consoleapi",
     "errhandlingapi",
+    "psapi",
 ] }
 sha2 = "0.10"
 retour = "0.4.0-alpha.4"
