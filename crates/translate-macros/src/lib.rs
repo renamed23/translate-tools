@@ -4,6 +4,7 @@ pub(crate) mod ffi_catch_unwind;
 pub(crate) mod flate;
 pub(crate) mod generate_constants_from_json;
 pub(crate) mod generate_detours;
+pub(crate) mod generate_exports_from_hijacked_dll;
 pub(crate) mod generate_mapping_data;
 pub(crate) mod generate_patch_data;
 pub(crate) mod search_hook_impls;
@@ -511,4 +512,39 @@ pub fn generate_patch_data(input: TokenStream) -> TokenStream {
 #[proc_macro]
 pub fn expand_by_files(input: TokenStream) -> TokenStream {
     expand_by_files::expand_by_files(input)
+}
+
+/// 为 DLL 劫持生成导出函数包装器
+///
+/// 这个宏会在编译时分析指定的 DLL 文件，自动生成：
+/// - 所有导出函数的地址静态变量
+/// - 对应的跳转包装函数（使用 naked 汇编）
+/// - 动态加载/卸载 DLL 的辅助函数
+///
+/// # 参数
+/// - `input`: 一个字符串字面量，表示包含目标 DLL 的目录路径（相对于 `CARGO_MANIFEST_DIR`）
+///
+/// # 要求
+/// - 指定的目录必须存在且包含且仅包含一个 DLL 文件
+/// - 需要在 Cargo 构建环境中运行（依赖 `CARGO_MANIFEST_DIR` 环境变量）
+/// - 目标 DLL 必须包含命名导出函数
+///
+/// # 生成代码
+/// 宏展开后会生成以下内容：
+/// - `HMOD` - 模块句柄静态变量
+/// - `ADDR_*` - 每个导出函数的地址静态变量（大写下划线命名）
+/// - 每个导出函数的汇编跳转包装器（保持原导出名）
+/// - `load_library()` - 加载 DLL 并解析函数地址
+/// - `unload_library()` - 卸载 DLL 并重置地址
+///
+/// # 示例
+/// ```
+/// generated_exports_from_hijacked_dll!("hijacked_dlls/version");
+/// ```
+///
+/// # 注意
+/// 此宏专为 Windows DLL 劫持场景设计，生成的代码包含 unsafe 操作和平台特定汇编。
+#[proc_macro]
+pub fn generated_exports_from_hijacked_dll(input: TokenStream) -> TokenStream {
+    generate_exports_from_hijacked_dll::generated_exports_from_hijacked_dll(input)
 }

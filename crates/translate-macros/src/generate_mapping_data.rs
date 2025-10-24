@@ -5,6 +5,29 @@ use translate_utils::{jis0208::is_jis0208, text::Text};
 
 use crate::utils::compile_error;
 
+struct PathsInput {
+    mapping: syn::LitStr,
+    translated: Option<syn::LitStr>,
+}
+
+impl syn::parse::Parse for PathsInput {
+    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+        let mapping: syn::LitStr = input.parse()?;
+        if input.is_empty() {
+            return Ok(PathsInput {
+                mapping,
+                translated: None,
+            });
+        }
+        let _comma: syn::Token![,] = input.parse()?;
+        let translated: syn::LitStr = input.parse()?;
+        Ok(PathsInput {
+            mapping,
+            translated: Some(translated),
+        })
+    }
+}
+
 pub fn generate_mapping_data(input: TokenStream) -> TokenStream {
     let parsed = syn::parse_macro_input!(input as PathsInput);
 
@@ -232,27 +255,4 @@ pub fn generate_mapping_data(input: TokenStream) -> TokenStream {
     };
 
     TokenStream::from(final_ts)
-}
-
-struct PathsInput {
-    mapping: syn::LitStr,
-    translated: Option<syn::LitStr>,
-}
-
-impl syn::parse::Parse for PathsInput {
-    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
-        let mapping: syn::LitStr = input.parse()?;
-        if input.is_empty() {
-            return Ok(PathsInput {
-                mapping,
-                translated: None,
-            });
-        }
-        let _comma: syn::Token![,] = input.parse()?;
-        let translated: syn::LitStr = input.parse()?;
-        Ok(PathsInput {
-            mapping,
-            translated: Some(translated),
-        })
-    }
 }

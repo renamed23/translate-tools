@@ -7,6 +7,26 @@ use syn::{LitStr, Token};
 
 use crate::utils::compile_error;
 
+/// 输入解析：两个字符串字面量，分别是 raw_dir 与 translated_dir（相对于 CARGO_MANIFEST_DIR）
+struct PathsInput {
+    raw: LitStr,
+    _arrow: Token![=>],
+    translated: LitStr,
+}
+
+impl Parse for PathsInput {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        let raw: LitStr = input.parse()?;
+        let arrow: Token![=>] = input.parse()?;
+        let translated: LitStr = input.parse()?;
+        Ok(PathsInput {
+            raw,
+            _arrow: arrow,
+            translated,
+        })
+    }
+}
+
 pub fn generate_patch_data(input: TokenStream) -> TokenStream {
     let parsed = syn::parse_macro_input!(input as PathsInput);
     let raw_rel = parsed.raw.value();
@@ -232,24 +252,4 @@ pub fn generate_patch_data(input: TokenStream) -> TokenStream {
     };
 
     TokenStream::from(generated)
-}
-
-/// 输入解析：两个字符串字面量，分别是 raw_dir 与 translated_dir（相对于 CARGO_MANIFEST_DIR）
-struct PathsInput {
-    raw: LitStr,
-    _arrow: Token![=>],
-    translated: LitStr,
-}
-
-impl Parse for PathsInput {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
-        let raw: LitStr = input.parse()?;
-        let arrow: Token![=>] = input.parse()?;
-        let translated: LitStr = input.parse()?;
-        Ok(PathsInput {
-            raw,
-            _arrow: arrow,
-            translated,
-        })
-    }
 }

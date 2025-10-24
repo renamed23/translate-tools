@@ -1,3 +1,4 @@
+use convert_case::Casing;
 use proc_macro::TokenStream;
 use proc_macro2::Span;
 use quote::quote;
@@ -87,7 +88,8 @@ pub fn search_hook_impls(input: TokenStream) -> TokenStream {
                     && let Ok(parsed_file) = syn::parse_file(&file_content)
                 {
                     // 期望的结构体名：PascalCase + "Hook"
-                    let expected_struct_name = crate::utils::to_pascal_case(&feature_name) + "Hook";
+                    let expected_struct_name =
+                        feature_name.to_case(convert_case::Case::Pascal) + "Hook";
                     let expected_ident = Ident::new(&expected_struct_name, Span::call_site());
 
                     // 在文件中查找对应的结构体

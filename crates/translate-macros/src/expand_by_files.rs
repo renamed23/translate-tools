@@ -1,3 +1,4 @@
+use convert_case::Casing;
 use proc_macro::TokenStream;
 use proc_macro2::{Group, Ident, Literal, Span, TokenStream as TokenStream2, TokenTree};
 use quote::{ToTokens, TokenStreamExt};
@@ -69,7 +70,7 @@ pub fn expand_by_files(input: TokenStream) -> TokenStream {
         let file_ident = Ident::new(&file_snake, Span::call_site());
         let file_lit = Literal::string(&file_snake);
 
-        let pascal = crate::utils::to_pascal_case(&file_snake);
+        let pascal = file_snake.to_case(convert_case::Case::Pascal);
         let pascal_ident = Ident::new(&pascal, Span::call_site());
 
         let replaced = replace_tokens(
