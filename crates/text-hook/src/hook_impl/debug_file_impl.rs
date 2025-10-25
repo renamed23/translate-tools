@@ -2,18 +2,22 @@ use std::collections::HashMap;
 use std::sync::RwLock;
 
 use winapi::shared::minwindef::{BOOL, DWORD, LPDWORD, LPVOID, MAX_PATH, TRUE};
-use winapi::shared::ntdef::LPCSTR;
+use winapi::shared::ntdef::{LPCSTR, LPCWSTR};
 use winapi::um::handleapi::INVALID_HANDLE_VALUE;
-use winapi::um::minwinbase::{LPOVERLAPPED, LPSECURITY_ATTRIBUTES, LPWIN32_FIND_DATAA};
+use winapi::um::minwinbase::{
+    LPOVERLAPPED, LPSECURITY_ATTRIBUTES, LPWIN32_FIND_DATAA, LPWIN32_FIND_DATAW,
+};
 use winapi::um::winnt::HANDLE;
 
 use crate::code_cvt::ansi_to_wide_char;
 use crate::debug_msg;
 use crate::hook::CoreHook;
 use crate::hook::file_hook::{
-    FileHook, HOOK_CLOSE_HANDLE, HOOK_CREATE_FILE_A, HOOK_FIND_CLOSE, HOOK_FIND_FIRST_FILE_A,
-    HOOK_FIND_NEXT_FILE_A, HOOK_READ_FILE,
+    FileHook, HOOK_CLOSE_HANDLE, HOOK_CREATE_FILE_A, HOOK_CREATE_FILE_W, HOOK_FIND_CLOSE,
+    HOOK_FIND_FIRST_FILE_A, HOOK_FIND_FIRST_FILE_W, HOOK_FIND_NEXT_FILE_A, HOOK_FIND_NEXT_FILE_W,
+    HOOK_READ_FILE,
 };
+use crate::utils::slice_until_null;
 
 #[derive(Default)]
 pub struct DebugFileImplHook {
@@ -25,10 +29,13 @@ impl CoreHook for DebugFileImplHook {
     fn enable_hooks(&self) {
         unsafe {
             HOOK_CREATE_FILE_A.enable().unwrap();
+            HOOK_CREATE_FILE_W.enable().unwrap();
             HOOK_READ_FILE.enable().unwrap();
             HOOK_CLOSE_HANDLE.enable().unwrap();
             HOOK_FIND_FIRST_FILE_A.enable().unwrap();
+            HOOK_FIND_FIRST_FILE_W.enable().unwrap();
             HOOK_FIND_NEXT_FILE_A.enable().unwrap();
+            HOOK_FIND_NEXT_FILE_W.enable().unwrap();
             HOOK_FIND_CLOSE.enable().unwrap();
         }
     }
@@ -36,10 +43,13 @@ impl CoreHook for DebugFileImplHook {
     fn disable_hooks(&self) {
         unsafe {
             HOOK_CREATE_FILE_A.disable().unwrap();
+            HOOK_CREATE_FILE_W.disable().unwrap();
             HOOK_READ_FILE.disable().unwrap();
             HOOK_CLOSE_HANDLE.disable().unwrap();
             HOOK_FIND_FIRST_FILE_A.disable().unwrap();
+            HOOK_FIND_FIRST_FILE_W.disable().unwrap();
             HOOK_FIND_NEXT_FILE_A.disable().unwrap();
+            HOOK_FIND_NEXT_FILE_W.disable().unwrap();
             HOOK_FIND_CLOSE.disable().unwrap();
         }
     }
@@ -56,11 +66,9 @@ impl FileHook for DebugFileImplHook {
         dw_flags_and_attributes: DWORD,
         h_template_file: HANDLE,
     ) -> HANDLE {
-        // 将lp_file_name转换为String
         let file_name = if !lp_file_name.is_null() {
-            let wide_str =
-                ansi_to_wide_char(unsafe { core::ffi::CStr::from_ptr(lp_file_name).to_bytes() });
-            String::from_utf16_lossy(&wide_str)
+            let ansi_bytes = unsafe { slice_until_null(lp_file_name as *const u8, MAX_PATH) };
+            String::from_utf16_lossy(&ansi_to_wide_char(ansi_bytes))
         } else {
             String::from("(null)")
         };
@@ -70,6 +78,49 @@ impl FileHook for DebugFileImplHook {
         // 调用原始函数
         let result = unsafe {
             HOOK_CREATE_FILE_A.call(
+                lp_file_name,
+                dw_desired_access,
+                dw_share_mode,
+                lp_security_attributes,
+                dw_creation_disposition,
+                dw_flags_and_attributes,
+                h_template_file,
+            )
+        };
+
+        // 如果句柄有效，存入handles
+        if result != INVALID_HANDLE_VALUE
+            && let Ok(mut handles) = self.handles.write()
+        {
+            handles.insert(result as usize, file_name);
+        }
+
+        result
+    }
+
+    unsafe fn create_file_w(
+        &self,
+        lp_file_name: LPCWSTR,
+        dw_desired_access: DWORD,
+        dw_share_mode: DWORD,
+        lp_security_attributes: LPSECURITY_ATTRIBUTES,
+        dw_creation_disposition: DWORD,
+        dw_flags_and_attributes: DWORD,
+        h_template_file: HANDLE,
+    ) -> HANDLE {
+        // 使用工具函数安全地获取宽字符串
+        let file_name = if !lp_file_name.is_null() {
+            let wide_str = unsafe { slice_until_null(lp_file_name, MAX_PATH) };
+            String::from_utf16_lossy(wide_str)
+        } else {
+            String::from("(null)")
+        };
+
+        debug_msg!("CreateFileW called: {}", file_name);
+
+        // 调用原始函数
+        let result = unsafe {
+            HOOK_CREATE_FILE_W.call(
                 lp_file_name,
                 dw_desired_access,
                 dw_share_mode,
@@ -158,11 +209,9 @@ impl FileHook for DebugFileImplHook {
         lp_file_name: LPCSTR,
         lp_find_file_data: LPWIN32_FIND_DATAA,
     ) -> HANDLE {
-        // 将lp_file_name转换为String
         let search_pattern = if !lp_file_name.is_null() {
-            let wide_str =
-                ansi_to_wide_char(unsafe { core::ffi::CStr::from_ptr(lp_file_name).to_bytes() });
-            String::from_utf16_lossy(&wide_str)
+            let ansi_bytes = unsafe { slice_until_null(lp_file_name as *const u8, MAX_PATH) };
+            String::from_utf16_lossy(&ansi_to_wide_char(ansi_bytes))
         } else {
             String::from("(null)")
         };
@@ -181,21 +230,54 @@ impl FileHook for DebugFileImplHook {
             // 打印找到的第一个文件信息
             if !lp_find_file_data.is_null() {
                 let find_data = unsafe { &*lp_find_file_data };
-                let file_u16: Vec<u16> = {
-                    let bytes = unsafe {
-                        core::slice::from_raw_parts(
-                            find_data.cFileName.as_ptr() as *const u8,
-                            find_data.cFileName.len(),
-                        )
-                    };
-                    let end = bytes.iter().position(|&c| c == 0).unwrap_or(MAX_PATH - 1);
-                    crate::code_cvt::ansi_to_wide_char(&bytes[..end])
+                let file_name_bytes = unsafe {
+                    slice_until_null(
+                        find_data.cFileName.as_ptr() as *const u8,
+                        find_data.cFileName.len(),
+                    )
                 };
+                let file_name = String::from_utf16_lossy(&ansi_to_wide_char(file_name_bytes));
 
-                debug_msg!(
-                    "FindFirstFileA found first file: {}",
-                    String::from_utf16_lossy(&file_u16)
-                );
+                debug_msg!("FindFirstFileA found first file: {}", file_name);
+            }
+        }
+
+        result
+    }
+
+    unsafe fn find_first_file_w(
+        &self,
+        lp_file_name: LPCWSTR,
+        lp_find_file_data: LPWIN32_FIND_DATAW,
+    ) -> HANDLE {
+        // 使用工具函数安全地获取宽字符串
+        let search_pattern = if !lp_file_name.is_null() {
+            let wide_str = unsafe { slice_until_null(lp_file_name, MAX_PATH) };
+            String::from_utf16_lossy(wide_str)
+        } else {
+            String::from("(null)")
+        };
+
+        debug_msg!("FindFirstFileW called with pattern: {}", search_pattern);
+
+        // 调用原始函数
+        let result = unsafe { HOOK_FIND_FIRST_FILE_W.call(lp_file_name, lp_find_file_data) };
+
+        // 如果句柄有效，存入find_handles
+        if result != INVALID_HANDLE_VALUE
+            && let Ok(mut find_handles) = self.find_handles.write()
+        {
+            find_handles.insert(result as usize, search_pattern);
+
+            // 打印找到的第一个文件信息
+            if !lp_find_file_data.is_null() {
+                let find_data = unsafe { &*lp_find_file_data };
+                let file_name_wide = unsafe {
+                    slice_until_null(find_data.cFileName.as_ptr(), find_data.cFileName.len())
+                };
+                let file_name = String::from_utf16_lossy(file_name_wide);
+
+                debug_msg!("FindFirstFileW found first file: {}", file_name);
             }
         }
 
@@ -224,21 +306,48 @@ impl FileHook for DebugFileImplHook {
         // 如果调用成功，打印找到的文件名
         if result == TRUE && !lp_find_file_data.is_null() {
             let find_data = unsafe { &*lp_find_file_data };
-            let file_u16: Vec<u16> = {
-                let bytes = unsafe {
-                    core::slice::from_raw_parts(
-                        find_data.cFileName.as_ptr() as *const u8,
-                        find_data.cFileName.len(),
-                    )
-                };
-                let end = bytes.iter().position(|&c| c == 0).unwrap_or(MAX_PATH - 1);
-                crate::code_cvt::ansi_to_wide_char(&bytes[..end])
+            let file_name_bytes = unsafe {
+                slice_until_null(
+                    find_data.cFileName.as_ptr() as *const u8,
+                    find_data.cFileName.len(),
+                )
             };
+            let file_name = String::from_utf16_lossy(&ansi_to_wide_char(file_name_bytes));
 
-            debug_msg!(
-                "FindFirstFileA found first file: {}",
-                String::from_utf16_lossy(&file_u16)
-            );
+            debug_msg!("FindNextFileA found file: {}", file_name);
+        }
+
+        result
+    }
+
+    unsafe fn find_next_file_w(
+        &self,
+        h_find_file: HANDLE,
+        lp_find_file_data: LPWIN32_FIND_DATAW,
+    ) -> BOOL {
+        // 检查句柄是否在find_handles中
+        let search_pattern = if let Ok(find_handles) = self.find_handles.read() {
+            find_handles.get(&(h_find_file as usize)).cloned()
+        } else {
+            None
+        };
+
+        if let Some(pattern) = &search_pattern {
+            debug_msg!("FindNextFileW called for search pattern: {}", pattern);
+        }
+
+        // 调用原始函数
+        let result = unsafe { HOOK_FIND_NEXT_FILE_W.call(h_find_file, lp_find_file_data) };
+
+        // 如果调用成功，打印找到的文件名
+        if result == TRUE && !lp_find_file_data.is_null() {
+            let find_data = unsafe { &*lp_find_file_data };
+            let file_name_wide = unsafe {
+                slice_until_null(find_data.cFileName.as_ptr(), find_data.cFileName.len())
+            };
+            let file_name = String::from_utf16_lossy(file_name_wide);
+
+            debug_msg!("FindNextFileW found file: {}", file_name);
         }
 
         result
