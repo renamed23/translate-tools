@@ -184,10 +184,8 @@ fn try_generate(path: &PathBuf) -> AnyResult<proc_macro2::TokenStream> {
     let c_literals_iter = c_string_literals.iter();
     let c_lits_tokens: Vec<proc_macro2::TokenStream> = c_literals_iter
         .map(|s| {
-            // 生成一个静态字节串常量，例如 b"GetFileVersionInfoA\0"；
-            // 在最终的 load_library 函数中我们会用 `.as_ptr()` 传给 hook_utils
             let lit = proc_macro2::Literal::byte_string(s.as_bytes());
-            quote! { #lit }
+            quote! { #lit.as_ptr() as *const i8 }
         })
         .collect();
 
@@ -215,17 +213,13 @@ fn try_generate(path: &PathBuf) -> AnyResult<proc_macro2::TokenStream> {
                 // 加载真实 DLL（由调用者提供 hook_utils 的实现）
                 let hmod = crate::hook_utils::load_hijacked_library(#dll_basename)
                     .expect("Could not find target DLL");
-                // 准备导出名的 C 字节串数组
-                let names: &[&[u8]] = &[
-                    #(#c_lits_tokens),*
-                ];
-                // 将 names 转成指针数组（null-terminated C 字符串指针）
-                let name_ptrs: Vec<*const i8> = names.iter().map(|s| s.as_ptr() as *const i8).collect();
 
                 // 使用 hook_utils 提供的辅助函数批量获取地址
                 let addrs = crate::hook_utils::get_module_symbol_addrs_from_handle(
                     hmod,
-                    &name_ptrs
+                    &[
+                        #(#c_lits_tokens),*
+                    ]
                 ).expect("Could not get symbol addrs for target DLL");
 
                 // 保存模块句柄
