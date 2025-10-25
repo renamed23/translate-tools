@@ -1,10 +1,13 @@
 use translate_macros::{detour, generate_detours};
-use winapi::shared::minwindef::{BOOL, DWORD, LPDWORD, LPVOID};
-use winapi::shared::ntdef::HANDLE;
-use winapi::um::minwinbase::{
-    LPOVERLAPPED, LPSECURITY_ATTRIBUTES, LPWIN32_FIND_DATAA, LPWIN32_FIND_DATAW,
+use windows_sys::{
+    Win32::{
+        Foundation::HANDLE,
+        Security::SECURITY_ATTRIBUTES,
+        Storage::FileSystem::{WIN32_FIND_DATAA, WIN32_FIND_DATAW},
+        System::IO::OVERLAPPED,
+    },
+    core::{BOOL, PCSTR, PCWSTR},
 };
-use winapi::um::winnt::{LPCSTR, LPCWSTR};
 
 use crate::debug;
 
@@ -13,16 +16,16 @@ pub trait FileHook: Send + Sync + 'static {
     #[detour(
         dll = "kernel32.dll",
         symbol = "CreateFileA",
-        fallback = "winapi::um::handleapi::INVALID_HANDLE_VALUE"
+        fallback = "windows_sys::Win32::Foundation::INVALID_HANDLE_VALUE"
     )]
     unsafe fn create_file_a(
         &self,
-        _lp_file_name: LPCSTR,
-        _dw_desired_access: DWORD,
-        _dw_share_mode: DWORD,
-        _lp_security_attributes: LPSECURITY_ATTRIBUTES,
-        _dw_creation_disposition: DWORD,
-        _dw_flags_and_attributes: DWORD,
+        _lp_file_name: PCSTR,
+        _dw_desired_access: u32,
+        _dw_share_mode: u32,
+        _lp_security_attributes: *const SECURITY_ATTRIBUTES,
+        _dw_creation_disposition: u32,
+        _dw_flags_and_attributes: u32,
         _h_template_file: HANDLE,
     ) -> HANDLE {
         unimplemented!()
@@ -31,16 +34,16 @@ pub trait FileHook: Send + Sync + 'static {
     #[detour(
         dll = "kernel32.dll",
         symbol = "CreateFileW",
-        fallback = "winapi::um::handleapi::INVALID_HANDLE_VALUE"
+        fallback = "windows_sys::Win32::Foundation::INVALID_HANDLE_VALUE"
     )]
     unsafe fn create_file_w(
         &self,
-        _lp_file_name: LPCWSTR,
-        _dw_desired_access: DWORD,
-        _dw_share_mode: DWORD,
-        _lp_security_attributes: LPSECURITY_ATTRIBUTES,
-        _dw_creation_disposition: DWORD,
-        _dw_flags_and_attributes: DWORD,
+        _lp_file_name: PCWSTR,
+        _dw_desired_access: u32,
+        _dw_share_mode: u32,
+        _lp_security_attributes: *const SECURITY_ATTRIBUTES,
+        _dw_creation_disposition: u32,
+        _dw_flags_and_attributes: u32,
         _h_template_file: HANDLE,
     ) -> HANDLE {
         unimplemented!()
@@ -50,22 +53,22 @@ pub trait FileHook: Send + Sync + 'static {
     #[detour(
         dll = "kernel32.dll",
         symbol = "ReadFile",
-        fallback = "winapi::shared::minwindef::FALSE"
+        fallback = "windows_sys::Win32::Foundation::FALSE"
     )]
     unsafe fn read_file(
         &self,
         h_file: HANDLE,
-        lp_buffer: LPVOID,
-        n_number_of_bytes_to_read: DWORD,
-        lp_number_of_bytes_read: LPDWORD,
-        lp_overlapped: LPOVERLAPPED,
+        lp_buffer: *mut u8,
+        n_number_of_bytes_to_read: u32,
+        lp_number_of_bytes_read: *mut u32,
+        lp_overlapped: *mut OVERLAPPED,
     ) -> BOOL {
         #[cfg(not(feature = "read_file_patch_impl"))]
         unimplemented!();
 
         #[cfg(feature = "read_file_patch_impl")]
         unsafe {
-            use winapi::shared::minwindef::FALSE;
+            use windows_sys::Win32::Foundation::FALSE;
 
             let result = HOOK_READ_FILE.call(
                 h_file,
@@ -93,8 +96,7 @@ pub trait FileHook: Send + Sync + 'static {
                 return result;
             };
 
-            let ptr = lp_buffer as *mut u8;
-            crate::patch::process_buffer(ptr, len);
+            crate::patch::process_buffer(lp_buffer, len);
             result
         }
     }
@@ -102,7 +104,7 @@ pub trait FileHook: Send + Sync + 'static {
     #[detour(
         dll = "kernel32.dll",
         symbol = "CloseHandle",
-        fallback = "winapi::shared::minwindef::FALSE"
+        fallback = "windows_sys::Win32::Foundation::FALSE"
     )]
     unsafe fn close_handle(&self, _h_object: HANDLE) -> BOOL {
         unimplemented!();
@@ -111,12 +113,12 @@ pub trait FileHook: Send + Sync + 'static {
     #[detour(
         dll = "kernel32.dll",
         symbol = "FindFirstFileA",
-        fallback = "winapi::um::handleapi::INVALID_HANDLE_VALUE"
+        fallback = "windows_sys::Win32::Foundation::INVALID_HANDLE_VALUE"
     )]
     unsafe fn find_first_file_a(
         &self,
-        _lp_file_name: LPCSTR,
-        _lp_find_file_data: LPWIN32_FIND_DATAA,
+        _lp_file_name: PCSTR,
+        _lp_find_file_data: *mut WIN32_FIND_DATAA,
     ) -> HANDLE {
         unimplemented!();
     }
@@ -124,12 +126,12 @@ pub trait FileHook: Send + Sync + 'static {
     #[detour(
         dll = "kernel32.dll",
         symbol = "FindFirstFileW",
-        fallback = "winapi::um::handleapi::INVALID_HANDLE_VALUE"
+        fallback = "windows_sys::Win32::Foundation::INVALID_HANDLE_VALUE"
     )]
     unsafe fn find_first_file_w(
         &self,
-        _lp_file_name: LPCWSTR,
-        _lp_find_file_data: LPWIN32_FIND_DATAW,
+        _lp_file_name: PCWSTR,
+        _lp_find_file_data: *mut WIN32_FIND_DATAW,
     ) -> HANDLE {
         unimplemented!();
     }
@@ -137,12 +139,12 @@ pub trait FileHook: Send + Sync + 'static {
     #[detour(
         dll = "kernel32.dll",
         symbol = "FindNextFileA",
-        fallback = "winapi::shared::minwindef::FALSE"
+        fallback = "windows_sys::Win32::Foundation::FALSE"
     )]
     unsafe fn find_next_file_a(
         &self,
         _h_find_file: HANDLE,
-        _lp_find_file_data: LPWIN32_FIND_DATAA,
+        _lp_find_file_data: *mut WIN32_FIND_DATAA,
     ) -> BOOL {
         unimplemented!();
     }
@@ -150,12 +152,12 @@ pub trait FileHook: Send + Sync + 'static {
     #[detour(
         dll = "kernel32.dll",
         symbol = "FindNextFileW",
-        fallback = "winapi::shared::minwindef::FALSE"
+        fallback = "windows_sys::Win32::Foundation::FALSE"
     )]
     unsafe fn find_next_file_w(
         &self,
         _h_find_file: HANDLE,
-        _lp_find_file_data: LPWIN32_FIND_DATAW,
+        _lp_find_file_data: *mut WIN32_FIND_DATAW,
     ) -> BOOL {
         unimplemented!();
     }
@@ -163,7 +165,7 @@ pub trait FileHook: Send + Sync + 'static {
     #[detour(
         dll = "kernel32.dll",
         symbol = "FindClose",
-        fallback = "winapi::shared::minwindef::FALSE"
+        fallback = "windows_sys::Win32::Foundation::FALSE"
     )]
     unsafe fn find_close(&self, _h_find_file: HANDLE) -> BOOL {
         unimplemented!();

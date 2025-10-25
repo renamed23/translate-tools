@@ -179,13 +179,12 @@ fn try_generate(path: &PathBuf) -> AnyResult<proc_macro2::TokenStream> {
         static mut HMOD: usize = 0;
     };
 
-    // 生成 load_library 函数（中文注释）
-    // 注意我们构造了一个 &[ *const i8 ] 的数组，但在生成代码时写成 C 风格字节字符串，然后在运行时把它们当作指针传递
+    // 生成 load_library 函数
     let c_literals_iter = c_string_literals.iter();
     let c_lits_tokens: Vec<proc_macro2::TokenStream> = c_literals_iter
         .map(|s| {
             let lit = proc_macro2::Literal::byte_string(s.as_bytes());
-            quote! { #lit.as_ptr() as *const i8 }
+            quote! { #lit.as_ptr() }
         })
         .collect();
 
@@ -243,7 +242,7 @@ fn try_generate(path: &PathBuf) -> AnyResult<proc_macro2::TokenStream> {
         #[allow(static_mut_refs)]
         pub(super) unsafe extern "system" fn unload_library() {
             unsafe {
-                ::winapi::um::libloaderapi::FreeLibrary(HMOD as _);
+                ::windows_sys::Win32::Foundation::FreeLibrary(HMOD as _);
 
                 HMOD = 0;
                 #(#reset_addr_statements)*

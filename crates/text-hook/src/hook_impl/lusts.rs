@@ -1,11 +1,13 @@
-use core::ffi::CStr;
-use std::path::Path;
+use std::{borrow::Cow, path::Path};
 use translate_macros::ffi_catch_unwind;
-use winapi::shared::minwindef::{DWORD, UINT};
-use winapi::shared::ntdef::{LPCSTR, LPSTR};
-use winapi::um::stringapiset::WideCharToMultiByte;
-use winapi::um::winbase::{GetPrivateProfileIntA, GetPrivateProfileStringA};
-use winapi::um::winnls::CP_ACP;
+use windows_sys::{
+    Win32::{
+        Foundation::MAX_PATH,
+        Globalization::{CP_ACP, WideCharToMultiByte},
+        System::WindowsProgramming::{GetPrivateProfileIntA, GetPrivateProfileStringA},
+    },
+    core::{PCSTR, PSTR},
+};
 
 use crate::debug;
 
@@ -36,41 +38,43 @@ fn query_game_ini_int(section: &str, key: &str) -> Option<i32> {
     }
 }
 
-unsafe fn matched_ini(file_name: LPCSTR) -> bool {
-    let file = unsafe { CStr::from_ptr(file_name).to_string_lossy().to_string() };
+unsafe fn matched_ini(file_name: PCSTR) -> bool {
+    let file = unsafe {
+        String::from_utf8_lossy(crate::utils::slice_until_null(file_name, MAX_PATH as _))
+    };
 
-    Path::new(&file)
+    Path::new(file.as_ref())
         .file_name()
         .map(|f| f.to_string_lossy().eq_ignore_ascii_case("Assemblage.INI"))
         .unwrap_or(false)
 }
 
-unsafe fn to_string(app_name: LPCSTR, key_name: LPCSTR) -> (String, String) {
+unsafe fn to_string(app_name: PCSTR, key_name: PCSTR) -> (String, String) {
     let section = if !app_name.is_null() {
-        unsafe { CStr::from_ptr(app_name).to_string_lossy().to_string() }
+        String::from_utf8_lossy(unsafe { crate::utils::slice_until_null(app_name, MAX_PATH as _) })
     } else {
-        "".to_string()
+        Cow::Borrowed("")
     };
 
     let key = if !key_name.is_null() {
-        unsafe { CStr::from_ptr(key_name).to_string_lossy().to_string() }
+        String::from_utf8_lossy(unsafe { crate::utils::slice_until_null(key_name, MAX_PATH as _) })
     } else {
-        "".to_string()
+        Cow::Borrowed("")
     };
 
-    (section, key)
+    (section.into_owned(), key.into_owned())
 }
 
-#[ffi_catch_unwind(0)]
+#[ffi_catch_unwind(0u32)]
 #[unsafe(no_mangle)]
 pub unsafe extern "system" fn get_private_profiles_string(
-    lp_app_name: LPCSTR,
-    lp_key_name: LPCSTR,
-    lp_default: LPCSTR,
-    lp_returned_string: LPSTR,
-    n_size: UINT,
-    lp_file_name: LPCSTR,
-) -> DWORD {
+    lp_app_name: PCSTR,
+    lp_key_name: PCSTR,
+    lp_default: PCSTR,
+    lp_returned_string: PSTR,
+    n_size: u32,
+    lp_file_name: PCSTR,
+) -> u32 {
     unsafe {
         if lp_file_name.is_null() {
             return 0;
@@ -112,7 +116,7 @@ pub unsafe extern "system" fn get_private_profiles_string(
                     0,
                     wide_str.as_ptr(),
                     wide_len,
-                    ansi_ptr as *mut i8,
+                    ansi_ptr,
                     ansi_size,
                     core::ptr::null(),
                     core::ptr::null_mut(),
@@ -129,11 +133,7 @@ pub unsafe extern "system" fn get_private_profiles_string(
                 let copy_len = ansi_buffer.len().min(n_size as usize);
 
                 // 复制到输出缓冲区
-                core::ptr::copy_nonoverlapping(
-                    ansi_buffer.as_ptr(),
-                    lp_returned_string as *mut u8,
-                    copy_len,
-                );
+                core::ptr::copy_nonoverlapping(ansi_buffer.as_ptr(), lp_returned_string, copy_len);
 
                 // 确保在缓冲区不足时正确终止字符串
                 if copy_len < n_size as usize {
@@ -144,7 +144,7 @@ pub unsafe extern "system" fn get_private_profiles_string(
                     *lp_returned_string.add(n_size as usize - 1) = 0;
                 }
 
-                return (copy_len.min(n_size as usize).saturating_sub(1)) as DWORD;
+                return copy_len.min(n_size as usize).saturating_sub(1) as u32;
             }
         }
 
@@ -164,11 +164,11 @@ pub unsafe extern "system" fn get_private_profiles_string(
 #[ffi_catch_unwind(n_default as _)]
 #[unsafe(no_mangle)]
 pub unsafe extern "system" fn get_private_profiles_int(
-    lp_app_name: LPCSTR,
-    lp_key_name: LPCSTR,
+    lp_app_name: PCSTR,
+    lp_key_name: PCSTR,
     n_default: i32,
-    lp_file_name: LPCSTR,
-) -> UINT {
+    lp_file_name: PCSTR,
+) -> u32 {
     unsafe {
         if lp_file_name.is_null() {
             return n_default as _;

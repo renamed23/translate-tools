@@ -1,8 +1,7 @@
 use std::sync::RwLock;
-use winapi::ctypes::c_int;
-use winapi::shared::minwindef::BOOL;
-use winapi::shared::ntdef::LPCSTR;
-use winapi::shared::windef::HDC;
+
+use windows_sys::Win32::Graphics::Gdi::HDC;
+use windows_sys::core::{BOOL, PCSTR};
 
 use crate::debug;
 use crate::hook::CoreHook;
@@ -10,15 +9,15 @@ use crate::hook::text_hook::{HOOK_TEXT_OUT_A, TextHook};
 
 #[derive(Default)]
 pub struct BleedHook {
-    line_max_x: RwLock<Vec<c_int>>,
+    line_max_x: RwLock<Vec<i32>>,
 }
 
 impl BleedHook {
-    fn layout_text(&self, x: c_int, y: c_int) -> (c_int, c_int) {
-        const START_X: c_int = 18;
-        const START_Y: c_int = 19;
-        const MAX_X: c_int = 640 - 35; // 宽度限制
-        const LINE_HEIGHT: c_int = 24;
+    fn layout_text(&self, x: i32, y: i32) -> (i32, i32) {
+        const START_X: i32 = 18;
+        const START_Y: i32 = 19;
+        const MAX_X: i32 = 640 - 35; // 宽度限制
+        const LINE_HEIGHT: i32 = 24;
 
         let mut line_max_x = self.line_max_x.write().unwrap();
 
@@ -45,7 +44,7 @@ impl BleedHook {
         }
 
         // 根据缓存计算之前所有行的最大x和行数
-        let prev_lines_max_x_sum: c_int = line_max_x
+        let prev_lines_max_x_sum: i32 = line_max_x
             .iter()
             .take(line_idx)
             .map(|max_x| (max_x - MAX_X).max(0))
@@ -75,13 +74,13 @@ impl BleedHook {
 impl CoreHook for BleedHook {}
 
 impl TextHook for BleedHook {
-    unsafe fn text_out_a(&self, hdc: HDC, x: c_int, y: c_int, lp_string: LPCSTR, c: c_int) -> BOOL {
+    unsafe fn text_out_a(&self, hdc: HDC, x: i32, y: i32, lp_string: PCSTR, c: i32) -> BOOL {
         if lp_string.is_null() || c <= 0 {
             return 0;
         }
 
         unsafe {
-            let input_slice = core::slice::from_raw_parts(lp_string as *const u8, c as usize);
+            let input_slice = core::slice::from_raw_parts(lp_string, c as usize);
 
             let this = self as *const _ as *mut BleedHook;
             let (new_x, new_y) = this.as_mut().unwrap().layout_text(x, y);
@@ -91,7 +90,7 @@ impl TextHook for BleedHook {
                 hdc,
                 new_x,
                 new_y,
-                input_slice.as_ptr() as LPCSTR,
+                input_slice.as_ptr() as PCSTR,
                 input_slice.len() as i32,
             )
         }

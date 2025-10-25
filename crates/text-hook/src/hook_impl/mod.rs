@@ -1,5 +1,8 @@
 #[allow(unused_imports)]
-use winapi::shared::minwindef::{BOOL, DWORD, FALSE, HMODULE, LPVOID, TRUE};
+use windows_sys::{
+    Win32::Foundation::{FALSE, HMODULE, TRUE},
+    core::BOOL,
+};
 
 // 声明所有的Hook实现的模块文件
 translate_macros::expand_by_files!("src/hook_impl" => {
@@ -12,8 +15,8 @@ translate_macros::expand_by_files!("src/hook_impl" => {
 #[unsafe(no_mangle)]
 pub unsafe extern "system" fn DllMain(
     _hinst_dll: HMODULE,
-    fdw_reason: DWORD,
-    _lpv_reserved: LPVOID,
+    fdw_reason: u32,
+    _lpv_reserved: *mut core::ffi::c_void,
 ) -> BOOL {
     default_dll_main(_hinst_dll, fdw_reason, _lpv_reserved)
 }
@@ -23,7 +26,11 @@ translate_macros::search_hook_impls!("src/hook_impl" => pub type HookImplType);
 
 /// 默认的 DllMain 实现
 #[allow(dead_code)]
-pub fn default_dll_main(hinst_dll: HMODULE, fdw_reason: DWORD, _lpv_reserved: LPVOID) -> BOOL {
+pub fn default_dll_main(
+    hinst_dll: HMODULE,
+    fdw_reason: u32,
+    _lpv_reserved: *mut core::ffi::c_void,
+) -> BOOL {
     use crate::hook::CoreHook;
 
     const PROCESS_ATTACH: u32 = 1;
@@ -33,13 +40,8 @@ pub fn default_dll_main(hinst_dll: HMODULE, fdw_reason: DWORD, _lpv_reserved: LP
 
     match fdw_reason {
         PROCESS_ATTACH => {
-            #[cfg(feature = "emulate_locale")]
-            unsafe {
-                use winapi::um::winnls::SetThreadLocale;
-                SetThreadLocale(0x0411)
-            };
-
             crate::panic_utils::set_debug_panic_hook();
+
             crate::hook::set_hook_instance(HookImplType::default());
 
             #[cfg(feature = "custom_font")]

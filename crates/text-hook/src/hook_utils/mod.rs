@@ -2,13 +2,18 @@ pub mod iat_patch;
 pub mod protect_guard;
 
 use translate_macros::byte_slice;
-use winapi::{
-    shared::{minwindef::HMODULE, ntdef::LPCSTR},
-    um::{
-        libloaderapi::{GetModuleHandleW, GetProcAddress, LoadLibraryW},
-        processthreadsapi::{FlushInstructionCache, GetCurrentProcess},
-        sysinfoapi::GetSystemDirectoryW,
+use windows_sys::{
+    Win32::{
+        Foundation::HMODULE,
+        System::{
+            Diagnostics::Debug::FlushInstructionCache,
+            LibraryLoader::{GetModuleHandleW, GetProcAddress, LoadLibraryW},
+            Memory::{PAGE_EXECUTE_READWRITE, PAGE_READWRITE},
+            SystemInformation::GetSystemDirectoryW,
+            Threading::GetCurrentProcess,
+        },
     },
+    core::PCSTR,
 };
 
 use crate::{constant, hook_utils::protect_guard::ProtectGuard};
@@ -36,21 +41,21 @@ pub fn get_module_handle(module_name: &str) -> Option<HMODULE> {
 
 /// 获取指定模块中单个符号的地址
 #[allow(dead_code)]
-pub fn get_module_symbol_addr(module: &str, symbol: LPCSTR) -> Option<usize> {
+pub fn get_module_symbol_addr(module: &str, symbol: PCSTR) -> Option<usize> {
     let handle = get_module_handle(module)?;
     get_module_symbol_addr_from_handle(handle, symbol)
 }
 
 /// 获取指定模块中多个符号的地址，只有所有符号地址全部找到才返回Some
 #[allow(dead_code)]
-pub fn get_module_symbol_addrs(module: &str, symbols: &[LPCSTR]) -> Option<Vec<usize>> {
+pub fn get_module_symbol_addrs(module: &str, symbols: &[PCSTR]) -> Option<Vec<usize>> {
     let handle = get_module_handle(module)?;
     get_module_symbol_addrs_from_handle(handle, symbols)
 }
 
 /// 从模块句柄获取单个符号的地址
 #[allow(dead_code)]
-pub fn get_module_symbol_addr_from_handle(module: HMODULE, symbol: LPCSTR) -> Option<usize> {
+pub fn get_module_symbol_addr_from_handle(module: HMODULE, symbol: PCSTR) -> Option<usize> {
     Some(get_module_symbol_addrs_from_handle(module, &[symbol])?[0])
 }
 
@@ -58,16 +63,13 @@ pub fn get_module_symbol_addr_from_handle(module: HMODULE, symbol: LPCSTR) -> Op
 #[allow(dead_code)]
 pub fn get_module_symbol_addrs_from_handle(
     module: HMODULE,
-    symbols: &[LPCSTR],
+    symbols: &[PCSTR],
 ) -> Option<Vec<usize>> {
     let mut addrs = Vec::with_capacity(symbols.len());
 
     unsafe {
         for &sym in symbols {
-            let func = GetProcAddress(module, sym);
-            if func.is_null() {
-                return None;
-            }
+            let func = GetProcAddress(module, sym)?;
             addrs.push(func as usize);
         }
     }
@@ -94,12 +96,7 @@ pub fn write_asm(address: *mut u8, data: &[u8]) -> anyhow::Result<()> {
     }
 
     unsafe {
-        ProtectGuard::new(
-            address,
-            data.len(),
-            winapi::um::winnt::PAGE_EXECUTE_READWRITE,
-        )?
-        .write_asm_bytes(data);
+        ProtectGuard::new(address, data.len(), PAGE_EXECUTE_READWRITE)?.write_asm_bytes(data);
     }
 
     Ok(())
@@ -116,8 +113,7 @@ pub fn write_bytes(address: *mut u8, data: &[u8]) -> anyhow::Result<()> {
     }
 
     unsafe {
-        ProtectGuard::new(address, data.len(), winapi::um::winnt::PAGE_READWRITE)?
-            .write_bytes(data);
+        ProtectGuard::new(address, data.len(), PAGE_READWRITE)?.write_bytes(data);
     }
 
     Ok(())

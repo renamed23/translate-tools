@@ -4,15 +4,12 @@ use std::{
     ffi::CStr,
 };
 use translate_macros::ffi_catch_unwind;
-use winapi::{
-    shared::{
-        minwindef::DWORD,
-        windef::{HDC, HFONT, POINT},
-    },
-    um::wingdi::{
+use windows_sys::Win32::{
+    Foundation::POINT,
+    Graphics::Gdi::{
         CLEARTYPE_QUALITY, CreateFontW, DEFAULT_CHARSET, DEFAULT_PITCH, FIXED_PITCH, FW_NORMAL,
-        GetViewportOrgEx, OUT_TT_PRECIS, SelectObject, SetBkMode, SetTextColor, SetViewportOrgEx,
-        TRANSPARENT,
+        GetViewportOrgEx, HDC, HFONT, OUT_TT_PRECIS, SelectObject, SetBkMode, SetTextColor,
+        SetViewportOrgEx, TRANSPARENT,
     },
 };
 
@@ -96,7 +93,7 @@ const TARGET_PX: i32 = 24;
 const ENABLE_SHADOW: bool = true;
 const SHADOW_OFFSET_X: i32 = 2;
 const SHADOW_OFFSET_Y: i32 = 2;
-const FONT_QUALITY: DWORD = CLEARTYPE_QUALITY;
+const FONT_QUALITY: u32 = CLEARTYPE_QUALITY as _;
 
 thread_local! {
     static CACHED_FONT: Cell<Option<HFONT>> = const { Cell::new(None) };
@@ -117,15 +114,15 @@ unsafe fn ensure_font() -> HFONT {
             0,
             0,
             0,
-            FW_NORMAL,
+            FW_NORMAL as _,
             0,
             0,
             0,
-            DEFAULT_CHARSET,
-            OUT_TT_PRECIS,
+            DEFAULT_CHARSET as _,
+            OUT_TT_PRECIS as _,
             0,
             FONT_QUALITY,
-            DEFAULT_PITCH | FIXED_PITCH,
+            (DEFAULT_PITCH | FIXED_PITCH) as _,
             face_u16.as_ptr(),
         );
 
@@ -140,14 +137,14 @@ unsafe fn styled(hdc: HDC, render_fn: impl Fn()) {
 
         let old_obj = SelectObject(hdc, hf as _);
         let old_bkmode = SetBkMode(hdc, TRANSPARENT as i32);
-        let white: DWORD = 0x00FFFFFF;
+        let white: u32 = 0x00FFFFFF;
         let old_color = SetTextColor(hdc, white);
 
         let mut old_pt: POINT = core::mem::zeroed();
         GetViewportOrgEx(hdc, &mut old_pt as *mut POINT);
 
         if ENABLE_SHADOW {
-            let shadow_col: DWORD = 0x00000000;
+            let shadow_col: u32 = 0x00000000;
             SetTextColor(hdc, shadow_col);
             SetViewportOrgEx(
                 hdc,

@@ -1,6 +1,9 @@
 use core::mem;
-use winapi::um::memoryapi::VirtualProtect;
-use winapi::um::sysinfoapi::{GetSystemInfo, SYSTEM_INFO};
+
+use windows_sys::Win32::System::{
+    Memory::VirtualProtect,
+    SystemInformation::{GetSystemInfo, SYSTEM_INFO},
+};
 
 use crate::hook_utils::flush_icache;
 

@@ -193,7 +193,7 @@ pub fn generate_detours(_attr: TokenStream, item: TokenStream) -> TokenStream {
                         ::once_cell::sync::Lazy::new(|| {
                             let address = crate::hook_utils::get_module_symbol_addr(
                                 #dll_lit,
-                                concat!(#symbol_lit, "\0").as_ptr() as ::winapi::shared::ntdef::LPCSTR
+                                ::windows_sys::s!(#symbol_lit)
                             ).expect(concat!("symbol not found: ", #symbol_lit));
                             let ori: #fn_ty_tokens = unsafe { ::core::mem::transmute(address) };
                             unsafe {

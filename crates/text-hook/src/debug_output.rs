@@ -1,11 +1,16 @@
 #[cfg(feature = "debug_output")]
 pub(crate) mod debug_impl {
     use std::sync::Once;
-    use winapi::um::{
-        consoleapi::AllocConsole,
-        debugapi::OutputDebugStringW,
-        wincon::{SetConsoleCP, SetConsoleOutputCP},
-        winnls::CP_UTF8,
+    use windows_sys::Win32::{
+        Foundation::GetLastError,
+        Globalization::CP_UTF8,
+        System::{
+            Console::{AllocConsole, SetConsoleCP, SetConsoleOutputCP},
+            Diagnostics::Debug::{
+                FORMAT_MESSAGE_FROM_SYSTEM, FORMAT_MESSAGE_IGNORE_INSERTS, FormatMessageW,
+                OutputDebugStringW,
+            },
+        },
     };
 
     static CONSOLE_INIT: Once = Once::new();
@@ -29,10 +34,6 @@ pub(crate) mod debug_impl {
     }
 
     pub fn get_system_error_message() -> Option<String> {
-        use winapi::um::errhandlingapi::GetLastError;
-        use winapi::um::winbase::FormatMessageW;
-        use winapi::um::winbase::{FORMAT_MESSAGE_FROM_SYSTEM, FORMAT_MESSAGE_IGNORE_INSERTS};
-
         unsafe {
             let error_code = GetLastError();
 

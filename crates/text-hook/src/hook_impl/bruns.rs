@@ -1,5 +1,5 @@
 use translate_macros::{byte_slice, ffi_catch_unwind};
-use winapi::shared::minwindef::HMODULE;
+use windows_sys::Win32::Foundation::HMODULE;
 
 use crate::hook::CoreHook;
 use crate::hook::text_hook::TextHook;

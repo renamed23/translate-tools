@@ -1,4 +1,4 @@
-use winapi::um::stringapiset::MultiByteToWideChar;
+use windows_sys::Win32::Globalization::MultiByteToWideChar;
 
 use crate::constant;
 

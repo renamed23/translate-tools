@@ -5,7 +5,7 @@
         "encode_to_u16": true
     },
     "CHAR_SET": {
-        "type": "winapi::shared::minwindef::DWORD",
+        "type": "u8",
         "value": 134
     },
     "FONT_FILTER": {

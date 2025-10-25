@@ -1,6 +1,7 @@
 use core::ptr;
-use winapi::um::stringapiset::{MultiByteToWideChar, WideCharToMultiByte};
-use winapi::um::winnls::{CP_ACP, CP_UTF8};
+use windows_sys::Win32::Globalization::{
+    CP_ACP, CP_UTF8, MultiByteToWideChar, WideCharToMultiByte,
+};
 
 use crate::print_system_error_message;
 
@@ -22,8 +23,8 @@ pub fn multi_byte_to_wide_char(bytes: &[u8], code_page: u32) -> Vec<u16> {
         // 计算所需的宽字符缓冲区大小
         let wide_size = MultiByteToWideChar(
             code_page,
-            0, // flags
-            bytes.as_ptr() as *const i8,
+            0,
+            bytes.as_ptr(),
             bytes.len() as i32,
             ptr::null_mut(),
             0,
@@ -42,7 +43,7 @@ pub fn multi_byte_to_wide_char(bytes: &[u8], code_page: u32) -> Vec<u16> {
         let result = MultiByteToWideChar(
             code_page,
             0,
-            bytes.as_ptr() as *const i8,
+            bytes.as_ptr(),
             bytes.len() as i32,
             wide_ptr,
             wide_size,
@@ -92,7 +93,7 @@ pub fn wide_char_to_multi_byte(wide_str: &[u16], code_page: u32) -> Vec<u8> {
         // 计算所需的字节缓冲区大小
         let multi_byte_size = WideCharToMultiByte(
             code_page,
-            0, // flags
+            0,
             wide_str.as_ptr(),
             wide_str.len() as i32,
             ptr::null_mut(),
@@ -116,7 +117,7 @@ pub fn wide_char_to_multi_byte(wide_str: &[u16], code_page: u32) -> Vec<u8> {
             0,
             wide_str.as_ptr(),
             wide_str.len() as i32,
-            multi_byte_ptr as *mut i8,
+            multi_byte_ptr,
             multi_byte_size,
             ptr::null(),
             ptr::null_mut(),

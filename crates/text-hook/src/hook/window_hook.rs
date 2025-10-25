@@ -1,7 +1,8 @@
 use translate_macros::{detour, generate_detours};
-use winapi::shared::minwindef::{LPARAM, LRESULT, UINT, WPARAM};
-use winapi::shared::windef::HWND;
-use winapi::um::winuser::{CREATESTRUCTA, CREATESTRUCTW, GetParent, WM_NCCREATE, WM_SETTEXT};
+use windows_sys::Win32::{
+    Foundation::{HWND, LPARAM, LRESULT, WPARAM},
+    UI::WindowsAndMessaging::{CREATESTRUCTA, CREATESTRUCTW, GetParent, WM_NCCREATE, WM_SETTEXT},
+};
 
 use crate::{constant, debug};
 
@@ -11,7 +12,7 @@ pub trait WindowHook: Send + Sync + 'static {
     unsafe fn def_window_proc_a(
         &self,
         h_wnd: HWND,
-        u_msg: UINT,
+        u_msg: u32,
         w_param: WPARAM,
         l_param: LPARAM,
     ) -> LRESULT {
@@ -30,8 +31,7 @@ pub trait WindowHook: Send + Sync + 'static {
                     std::mem::size_of::<CREATESTRUCTW>(),
                 );
 
-                let class_bytes =
-                    crate::utils::slice_until_null((*params_a).lpszClass as *const u8, 512);
+                let class_bytes = crate::utils::slice_until_null((*params_a).lpszClass, 512);
                 let class_name = crate::code_cvt::ansi_to_wide_char_with_null(class_bytes);
 
                 let window_title = crate::utils::u16_with_null(constant::WINDOW_TITLE);
@@ -43,8 +43,7 @@ pub trait WindowHook: Send + Sync + 'static {
                 {
                     let raw_class = String::from_utf16_lossy(&class_name);
 
-                    let title_bytes =
-                        crate::utils::slice_until_null((*params_a).lpszName as *const u8, 512);
+                    let title_bytes = crate::utils::slice_until_null((*params_a).lpszName, 512);
                     let raw_title =
                         String::from_utf16_lossy(&crate::code_cvt::ansi_to_wide_char(title_bytes));
                     debug!("Get raw class: {raw_class}, raw window title: {raw_title}");
@@ -88,7 +87,7 @@ pub trait WindowHook: Send + Sync + 'static {
     unsafe fn def_window_proc_w(
         &self,
         h_wnd: HWND,
-        u_msg: UINT,
+        u_msg: u32,
         w_param: WPARAM,
         l_param: LPARAM,
     ) -> LRESULT {

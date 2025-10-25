@@ -1,5 +1,7 @@
-use winapi::um::wingdi::{AddFontMemResourceEx, RemoveFontMemResourceEx};
-use winapi::um::winnt::HANDLE;
+use windows_sys::Win32::{
+    Foundation::HANDLE,
+    Graphics::Gdi::{AddFontMemResourceEx, RemoveFontMemResourceEx},
+};
 
 use crate::debug;
 

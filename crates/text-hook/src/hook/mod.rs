@@ -1,5 +1,5 @@
 use once_cell::sync::OnceCell;
-use winapi::shared::minwindef::HMODULE;
+use windows_sys::Win32::Foundation::HMODULE;
 
 use crate::debug;
 use crate::hook_impl::HookImplType;

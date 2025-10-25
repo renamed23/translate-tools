@@ -78,7 +78,7 @@ pub fn byte_slice(input: TokenStream) -> TokenStream {
 ///     dll = "gdi32.dll",                              // 必需，目标动态库名（字符串字面量）
 ///     symbol = "TextOutA",                            // 必需，目标导出符号名（字符串字面量）
 ///     export = "text_out",                            // 可选，生成的 wrapper 导出名（字符串字面量），默认使用 trait 方法名
-///     fallback = "winapi::shared::minwindef::FALSE"   // 可选，捕获 panic/unwind 时的回退值（字符串字面量，内部会解析为 Rust 表达式）
+///     fallback = "FALSE"                              // 可选，捕获 panic/unwind 时的回退值（字符串字面量，内部会解析为 Rust 表达式）
 ///     calling_convention = "system"                   // 可选，调用约定（字符串字面量），默认 "system"
 /// )]
 /// unsafe fn text_out(&self, hdc: HDC, x: c_int, y: c_int, lp: LPCSTR, c: c_int) -> BOOL;
@@ -123,7 +123,7 @@ pub fn detour(_attr: TokenStream, item: TokenStream) -> TokenStream {
 ///         dll = "gdi32.dll",                              // 必需，目标动态库名（字符串字面量）
 ///         symbol = "TextOutA",                            // 必需，目标导出符号名（字符串字面量）
 ///         export = "text_out",                            // 可选，生成的 wrapper 导出名（字符串字面量），默认使用 trait 方法名
-///         fallback = "winapi::shared::minwindef::FALSE"   // 可选，捕获 panic/unwind 时的回退值（字符串字面量，内部会解析为 Rust 表达式）
+///         fallback = "FALSE"                              // 可选，捕获 panic/unwind 时的回退值（字符串字面量，内部会解析为 Rust 表达式）
 ///         calling_convention = "system"                   // 可选，调用约定（字符串字面量），默认 "system"
 ///     )]
 ///     unsafe fn text_out(&self, hdc: HDC, x: c_int, y: c_int, lp: LPCSTR, c: c_int) -> BOOL;

@@ -1,8 +1,8 @@
 use once_cell::sync::Lazy;
 use std::sync::atomic::{AtomicBool, Ordering};
-use winapi::um::{
-    processthreadsapi::GetCurrentProcess,
-    psapi::{GetModuleInformation, MODULEINFO},
+use windows_sys::Win32::System::{
+    ProcessStatus::{GetModuleInformation, MODULEINFO},
+    Threading::GetCurrentProcess,
 };
 
 use crate::{debug, hook::CoreHook, print_system_error_message};

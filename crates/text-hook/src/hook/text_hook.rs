@@ -1,15 +1,16 @@
 use smallvec::SmallVec;
 use std::borrow::Cow;
 use translate_macros::{detour, generate_detours};
-use winapi::ctypes::c_int;
-use winapi::ctypes::c_void;
-use winapi::shared::minwindef::{BOOL, DWORD, LPARAM};
-use winapi::shared::windef::{HDC, HFONT, LPSIZE};
-use winapi::um::wingdi::GLYPHMETRICS;
-use winapi::um::wingdi::LF_FACESIZE;
-use winapi::um::wingdi::{FONTENUMPROCA, FONTENUMPROCW, LOGFONTA, LOGFONTW, MAT2};
-use winapi::um::winnt::LPCSTR;
-use winapi::um::winnt::LPCWSTR;
+use windows_sys::{
+    Win32::{
+        Foundation::{LPARAM, SIZE},
+        Graphics::Gdi::{
+            FONTENUMPROCA, FONTENUMPROCW, GLYPHMETRICS, HDC, HFONT, LF_FACESIZE, LOGFONTA,
+            LOGFONTW, MAT2,
+        },
+    },
+    core::{BOOL, PCSTR, PCWSTR},
+};
 
 use crate::constant;
 use crate::debug;
@@ -21,11 +22,10 @@ pub trait TextHook: Send + Sync + 'static {
     #[detour(
         dll = "gdi32.dll",
         symbol = "TextOutA",
-        fallback = "winapi::shared::minwindef::FALSE"
+        fallback = "windows_sys::Win32::Foundation::FALSE"
     )]
-    unsafe fn text_out_a(&self, hdc: HDC, x: c_int, y: c_int, lp_string: LPCSTR, c: c_int) -> BOOL {
+    unsafe fn text_out_a(&self, hdc: HDC, x: i32, y: i32, lp_string: PCSTR, c: i32) -> BOOL {
         unsafe {
-            let lp_string = lp_string as *const u8;
             // `slice_from_raw_parts`会进行简单的指针检查，若非法返回空切片
             let input_slice = crate::utils::slice_from_raw_parts(lp_string, c as usize);
 
@@ -51,16 +51,9 @@ pub trait TextHook: Send + Sync + 'static {
     #[detour(
         dll = "gdi32.dll",
         symbol = "TextOutW",
-        fallback = "winapi::shared::minwindef::FALSE"
+        fallback = "windows_sys::Win32::Foundation::FALSE"
     )]
-    unsafe fn text_out_w(
-        &self,
-        hdc: HDC,
-        x: c_int,
-        y: c_int,
-        lp_string: LPCWSTR,
-        c: c_int,
-    ) -> BOOL {
+    unsafe fn text_out_w(&self, hdc: HDC, x: i32, y: i32, lp_string: PCWSTR, c: i32) -> BOOL {
         unsafe {
             let input_slice = crate::utils::slice_from_raw_parts(lp_string, c as usize);
 
@@ -84,17 +77,16 @@ pub trait TextHook: Send + Sync + 'static {
     #[detour(
         dll = "gdi32.dll",
         symbol = "GetTextExtentPoint32A",
-        fallback = "winapi::shared::minwindef::FALSE"
+        fallback = "windows_sys::Win32::Foundation::FALSE"
     )]
     unsafe fn get_text_extent_point_32_a(
         &self,
         hdc: HDC,
-        lp_string: LPCSTR,
-        c: c_int,
-        lp_size: LPSIZE,
+        lp_string: PCSTR,
+        c: i32,
+        lp_size: *mut SIZE,
     ) -> BOOL {
         unsafe {
-            let lp_string = lp_string as *const u8;
             let input_slice = crate::utils::slice_from_raw_parts(lp_string, c as usize);
 
             let mut buf: SmallVec<[u16; constant::TEXT_STACK_BUF_LEN]> =
@@ -117,14 +109,14 @@ pub trait TextHook: Send + Sync + 'static {
     #[detour(
         dll = "gdi32.dll",
         symbol = "GetTextExtentPoint32W",
-        fallback = "winapi::shared::minwindef::FALSE"
+        fallback = "windows_sys::Win32::Foundation::FALSE"
     )]
     unsafe fn get_text_extent_point_32_w(
         &self,
         hdc: HDC,
-        lp_string: LPCWSTR,
-        c: c_int,
-        lp_size: LPSIZE,
+        lp_string: PCWSTR,
+        c: i32,
+        lp_size: *mut SIZE,
     ) -> BOOL {
         unsafe {
             let input_slice = crate::utils::slice_from_raw_parts(lp_string, c as usize);
@@ -154,9 +146,9 @@ pub trait TextHook: Send + Sync + 'static {
         format: u32,
         lpgm: *mut GLYPHMETRICS,
         cb_buffer: u32,
-        lpv_buffer: *mut c_void,
+        lpv_buffer: *mut core::ffi::c_void,
         lpmat2: *const MAT2,
-    ) -> DWORD {
+    ) -> u32 {
         let b1 = ((u_char >> 8) & 0xFF) as u8;
         let b2 = (u_char & 0xFF) as u8;
 
@@ -202,9 +194,9 @@ pub trait TextHook: Send + Sync + 'static {
         format: u32,
         lpgm: *mut GLYPHMETRICS,
         cb_buffer: u32,
-        lpv_buffer: *mut c_void,
+        lpv_buffer: *mut core::ffi::c_void,
         lpmat2: *const MAT2,
-    ) -> DWORD {
+    ) -> u32 {
         // 假设都在BMP内，所以直接`u_char as u16`
         let mut buffer = [0u16; 2];
         let written_count = map_wide_chars(&[u_char as u16], &mut buffer);
@@ -241,24 +233,24 @@ pub trait TextHook: Send + Sync + 'static {
     )]
     unsafe fn create_font_a(
         &self,
-        c_height: c_int,
-        c_width: c_int,
-        c_escapement: c_int,
-        c_orientation: c_int,
-        c_weight: c_int,
-        b_italic: DWORD,
-        b_underline: DWORD,
-        b_strike_out: DWORD,
-        i_char_set: DWORD,
-        i_out_precision: DWORD,
-        i_clip_precision: DWORD,
-        i_quality: DWORD,
-        i_pitch_and_family: DWORD,
-        psz_face_name: LPCSTR,
+        c_height: i32,
+        c_width: i32,
+        c_escapement: i32,
+        c_orientation: i32,
+        c_weight: i32,
+        b_italic: u32,
+        b_underline: u32,
+        b_strike_out: u32,
+        i_char_set: u32,
+        i_out_precision: u32,
+        i_clip_precision: u32,
+        i_quality: u32,
+        i_pitch_and_family: u32,
+        psz_face_name: PCSTR,
     ) -> HFONT {
         let face_u16 = {
             let bytes = unsafe {
-                crate::utils::slice_until_null(psz_face_name as *const u8, LF_FACESIZE - 1)
+                crate::utils::slice_until_null(psz_face_name, (LF_FACESIZE - 1) as usize)
             };
             crate::code_cvt::ansi_to_wide_char_with_null(bytes)
         };
@@ -291,20 +283,20 @@ pub trait TextHook: Send + Sync + 'static {
     )]
     unsafe fn create_font_w(
         &self,
-        c_height: c_int,
-        c_width: c_int,
-        c_escapement: c_int,
-        c_orientation: c_int,
-        c_weight: c_int,
-        b_italic: DWORD,
-        b_underline: DWORD,
-        b_strike_out: DWORD,
-        i_char_set: DWORD,
-        i_out_precision: DWORD,
-        i_clip_precision: DWORD,
-        i_quality: DWORD,
-        i_pitch_and_family: DWORD,
-        psz_face_name: LPCWSTR,
+        c_height: i32,
+        c_width: i32,
+        c_escapement: i32,
+        c_orientation: i32,
+        c_weight: i32,
+        b_italic: u32,
+        b_underline: u32,
+        b_strike_out: u32,
+        i_char_set: u32,
+        i_out_precision: u32,
+        i_clip_precision: u32,
+        i_quality: u32,
+        i_pitch_and_family: u32,
+        psz_face_name: PCWSTR,
     ) -> HFONT {
         let mut u16_slice: Cow<[u16]>;
         #[cfg(not(feature = "enum_font_families"))]
@@ -315,7 +307,7 @@ pub trait TextHook: Send + Sync + 'static {
         unsafe {
             u16_slice = Cow::from(crate::utils::slice_until_null(
                 psz_face_name,
-                LF_FACESIZE - 1,
+                (LF_FACESIZE - 1) as usize,
             ));
 
             debug!(
@@ -338,7 +330,7 @@ pub trait TextHook: Send + Sync + 'static {
                 b_italic,
                 b_underline,
                 b_strike_out,
-                constant::CHAR_SET,
+                constant::CHAR_SET as u32,
                 i_out_precision,
                 i_clip_precision,
                 i_quality,
@@ -395,7 +387,7 @@ pub trait TextHook: Send + Sync + 'static {
     )]
     unsafe fn create_font_indirect_w(&self, lplf: *const LOGFONTW) -> HFONT {
         let mut logfontw = unsafe { *lplf };
-        logfontw.lfCharSet = constant::CHAR_SET as u8;
+        logfontw.lfCharSet = constant::CHAR_SET;
 
         // `constant::FONT_FACE` 长度确保不超过 LF_FACESIZE - 1，可以直接复制
         #[cfg(not(feature = "enum_font_families"))]
@@ -435,15 +427,15 @@ pub trait TextHook: Send + Sync + 'static {
         lp_logfont: *mut LOGFONTA,
         lp_enum_font_fam_proc: FONTENUMPROCA,
         l_param: LPARAM,
-        dw_flags: DWORD,
-    ) -> c_int {
+        dw_flags: u32,
+    ) -> i32 {
         #[cfg(not(feature = "enum_font_families"))]
         unimplemented!();
 
         #[cfg(feature = "enum_font_families")]
         unsafe {
             if let Some(font) = lp_logfont.as_mut() {
-                font.lfCharSet = constant::CHAR_SET as u8;
+                font.lfCharSet = constant::CHAR_SET;
             }
             HOOK_ENUM_FONT_FAMILIES_EX_A.call(
                 hdc,
@@ -463,15 +455,15 @@ pub trait TextHook: Send + Sync + 'static {
         lp_logfont: *mut LOGFONTW,
         lp_enum_font_fam_proc: FONTENUMPROCW,
         l_param: LPARAM,
-        dw_flags: DWORD,
-    ) -> c_int {
+        dw_flags: u32,
+    ) -> i32 {
         #[cfg(not(feature = "enum_font_families"))]
         unimplemented!();
 
         #[cfg(feature = "enum_font_families")]
         unsafe {
             if let Some(font) = lp_logfont.as_mut() {
-                font.lfCharSet = constant::CHAR_SET as u8;
+                font.lfCharSet = constant::CHAR_SET;
             }
             HOOK_ENUM_FONT_FAMILIES_EX_W.call(
                 hdc,

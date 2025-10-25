@@ -1,6 +1,6 @@
 use translate_macros::ffi_catch_unwind;
-use winapi::shared::minwindef::HMODULE;
-use winapi::shared::ntdef::LPCSTR;
+#[cfg(feature = "patch_extracting")]
+use windows_sys::{Win32::Foundation::HMODULE, core::PCSTR};
 
 use crate::debug;
 use crate::hook::CoreHook;
@@ -51,11 +51,13 @@ impl WindowHook for UminomHook {}
 
 #[cfg(feature = "patch_extracting")]
 #[ffi_catch_unwind]
-pub unsafe extern "system" fn extract_script(ptr: *mut u8, len: usize, filename: LPCSTR) {
+pub unsafe extern "system" fn extract_script(ptr: *mut u8, len: usize, filename: PCSTR) {
     unsafe {
-        use std::{ffi::CStr, io::Write};
+        use std::io::Write;
+        use windows_sys::Win32::Foundation::MAX_PATH;
 
-        let filename = CStr::from_ptr(filename).to_string_lossy();
+        let filename =
+            String::from_utf8_lossy(crate::utils::slice_until_null(filename, MAX_PATH as _));
         if crate::patch::try_extracting(ptr, len) {
             let new_filename = format!("{filename}.isf");
 
