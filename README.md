@@ -65,9 +65,9 @@ cargo build --release --features default_impl,generate_full_mapping_data
 > 仍然推荐使用修改导入表的方式注入DLL，因为可以精准影响到你想要影响的EXE，比如`chs`版本
 
 
-### custom_font.ttf
+### font
 
-内嵌到DLL的字体，需要开启`custom_font`特性
+`font`目录应该只存放一个字体文件，该字体文件会被内嵌到DLL，需要开启`custom_font`特性
 
 ### mapping.json
 

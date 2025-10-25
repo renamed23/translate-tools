@@ -26,7 +26,7 @@ default_patch_impl = ["patch"]
 patch_extracting = ["patch"]
 # 当该feature开启时，create_font系列函数不再固定字体
 enum_font_families = []
-# 嵌入`assets/custom.ttf`的自定义字体，会使用`AddFontMemResourceEx`让GDI识别
+# 嵌入`assets/font`的自定义字体，会使用`AddFontMemResourceEx`让GDI识别
 custom_font = []
 # 通过读取`assets/translated.json`生成完整的映射数据，
 # 不仅是替身字符，还包括了非映射字符(仅支持jis0208的双字节字符，不支持单字节片假名和CP932的扩展字符)

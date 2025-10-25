@@ -185,18 +185,24 @@ pub fn ffi_catch_unwind(attr: TokenStream, item: TokenStream) -> TokenStream {
     ffi_catch_unwind::ffi_catch_unwind(attr, item)
 }
 
-/// 将文件在编译时压缩并嵌入为静态变量，运行时解压访问。
+/// 将文件或目录中的单个文件在编译时压缩并嵌入为静态变量，运行时解压访问。
 ///
 /// # 语法
 /// ```ignore
-/// flate!([pub] static VARIABLE_NAME: [u8] from "file_path");
+/// flate!([pub] static VARIABLE_NAME: [u8] from "path");
 /// ```
 ///
 /// # 参数说明
 /// - `[pub]`: 可选，如果提供则生成公有的静态变量
 /// - `VARIABLE_NAME`: 静态变量的标识符
 /// - `[u8]`: 类型标记（实际类型为 `LazyLock<Vec<u8>>`）
-/// - `"file_path"`: 相对于 `CARGO_MANIFEST_DIR` 的文件路径
+/// - `"path"`: 相对于 `CARGO_MANIFEST_DIR` 的文件路径或目录路径
+///
+/// # 路径处理规则
+/// - 如果指定的是文件路径，则直接使用该文件
+/// - 如果指定的是目录路径，则检查目录中是否只有一个文件：
+///   - 如果只有一个文件，自动使用该文件
+///   - 如果没有文件或多个文件，编译时报错
 ///
 /// # 返回值类型
 /// 生成的静态变量类型为 `LazyLock<Vec<u8>>`，在首次访问时自动解压数据。
@@ -204,32 +210,38 @@ pub fn ffi_catch_unwind(attr: TokenStream, item: TokenStream) -> TokenStream {
 /// # 特性
 /// - **编译时压缩**: 使用 zstd 算法（级别 0）在编译时压缩文件
 /// - **运行时解压**: 数据在首次访问时解压，避免启动时性能开销
-/// - **路径解析**: 文件路径相对于项目根目录（`CARGO_MANIFEST_DIR`）
-/// - **错误处理**: 编译时检查文件存在性和可读性
+/// - **路径解析**: 支持文件和目录路径，相对于项目根目录（`CARGO_MANIFEST_DIR`）
+/// - **智能路径处理**: 自动处理目录中的单个文件
+/// - **错误处理**: 编译时检查路径存在性、文件可读性和目录文件数量
 ///
 /// # 示例
 /// ```
 /// // 在 crate root 或 mod 中
 /// use your_crate::flate;
 ///
-/// // 嵌入并压缩配置文件
+/// // 嵌入单个文件
 /// flate!(static CONFIG_DATA: [u8] from "config/app.toml");
 ///
+/// // 嵌入目录中的单个文件（当目录中只有一个文件时）
+/// flate!(static ASSET_DATA: [u8] from "assets/single_file_dir");
+///
 /// // 公有的嵌入资源
-/// flate!(pub static ASSET_DATA: [u8] from "assets/image.png");
+/// flate!(pub static IMAGE_DATA: [u8] from "images/logo.png");
 ///
 /// // 使用时
 /// fn use_embedded_data() {
-///     let data = &*CONFIG_DATA; // 首次访问时解压
-///     println!("Config size: {}", data.len());
+///     let config = &*CONFIG_DATA; // 首次访问时解压
+///     let asset = &*ASSET_DATA;
+///     println!("Config size: {}, Asset size: {}", config.len(), asset.len());
 /// }
 /// ```
 ///
 /// # 注意事项
-/// - 文件路径相对于 `CARGO_MANIFEST_DIR`（项目根目录）
+/// - 路径相对于 `CARGO_MANIFEST_DIR`（项目根目录）
 /// - 压缩级别固定为 0（快速压缩）
 /// - 需要运行时解压函数 `crate::patch::decompress_zstd` 的支持
 /// - 生成的静态变量是 `LazyLock<Vec<u8>>` 类型，需要通过 `&*VAR` 访问数据
+/// - 目录路径必须包含且仅包含一个文件，否则编译失败
 #[proc_macro]
 pub fn flate(input: TokenStream) -> TokenStream {
     flate::flate(input)
