@@ -3,7 +3,6 @@
 pub(crate) mod code_cvt;
 pub(crate) mod debug_output;
 pub(crate) mod hook;
-pub(crate) mod hook_impl;
 pub(crate) mod mapping;
 
 #[allow(dead_code)]

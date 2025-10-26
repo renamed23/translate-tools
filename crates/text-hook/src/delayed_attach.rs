@@ -5,7 +5,7 @@ use windows_sys::Win32::System::{
     Threading::GetCurrentProcess,
 };
 
-use crate::{debug, hook::CoreHook, print_system_error_message};
+use crate::{debug, hook::traits::CoreHook, print_system_error_message};
 
 static ENTRY_POINT_ADDR: Lazy<usize> = Lazy::new(|| {
     let hmod = crate::utils::win32::get_module_handle("").unwrap();

@@ -1,9 +1,7 @@
 use translate_macros::{byte_slice, ffi_catch_unwind};
 use windows_sys::Win32::Foundation::HMODULE;
 
-use crate::hook::CoreHook;
-use crate::hook::text_hook::TextHook;
-use crate::hook::window_hook::WindowHook;
+use crate::hook::traits::{CoreHook, TextHook, WindowHook};
 use crate::utils::mem::patch::{write_asm, write_bytes};
 use crate::{constant, debug};
 

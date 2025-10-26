@@ -2,10 +2,10 @@ use translate_macros::ffi_catch_unwind;
 #[cfg(feature = "patch_extracting")]
 use windows_sys::{Win32::Foundation::HMODULE, core::PCSTR};
 
-use crate::debug;
-use crate::hook::CoreHook;
-use crate::hook::text_hook::TextHook;
-use crate::hook::window_hook::WindowHook;
+use crate::{
+    debug,
+    hook::traits::{CoreHook, TextHook, WindowHook},
+};
 
 #[derive(Default)]
 pub struct UminomHook;

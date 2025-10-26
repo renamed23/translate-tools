@@ -5,7 +5,7 @@ use windows_sys::{
 };
 
 // 声明所有的Hook实现的模块文件
-translate_macros::expand_by_files!("src/hook_impl" => {
+translate_macros::expand_by_files!("src/hook/impls" => {
     #[cfg(feature = __file_str__)]
     pub mod __file__;
 });
@@ -22,7 +22,7 @@ pub unsafe extern "system" fn DllMain(
 }
 
 // 在`src/hook_impl`搜索可用的Hook实现类型
-translate_macros::search_hook_impls!("src/hook_impl" => pub type HookImplType);
+translate_macros::search_hook_impls!("src/hook/impls" => pub type HookImplType);
 
 /// 默认的 DllMain 实现
 #[allow(dead_code)]
@@ -31,7 +31,7 @@ pub fn default_dll_main(
     fdw_reason: u32,
     _lpv_reserved: *mut core::ffi::c_void,
 ) -> BOOL {
-    use crate::hook::CoreHook;
+    use crate::hook::traits::CoreHook;
 
     const PROCESS_ATTACH: u32 = 1;
     const PROCESS_DETACH: u32 = 0;

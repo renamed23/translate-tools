@@ -13,7 +13,7 @@ use windows_sys::Win32::{
     },
 };
 
-use crate::{constant, debug, hook::text_hook::HOOK_TEXT_OUT_W};
+use crate::{constant, debug, hook::traits::text_hook::HOOK_TEXT_OUT_W};
 
 #[derive(Default)]
 struct Layouter {

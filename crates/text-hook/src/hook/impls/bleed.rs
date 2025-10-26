@@ -4,8 +4,8 @@ use windows_sys::Win32::Graphics::Gdi::HDC;
 use windows_sys::core::{BOOL, PCSTR};
 
 use crate::debug;
-use crate::hook::CoreHook;
-use crate::hook::text_hook::{HOOK_TEXT_OUT_A, TextHook};
+use crate::hook::traits::text_hook::HOOK_TEXT_OUT_A;
+use crate::hook::traits::{CoreHook, TextHook};
 
 #[derive(Default)]
 pub struct BleedHook {
