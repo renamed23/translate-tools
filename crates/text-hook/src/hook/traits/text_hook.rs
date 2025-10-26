@@ -33,7 +33,7 @@ pub trait TextHook: Send + Sync + 'static {
             // 否则使用堆缓冲区
             let mut buf: SmallVec<[u16; constant::TEXT_STACK_BUF_LEN]> =
                 SmallVec::with_capacity(input_slice.len());
-            buf.resize(input_slice.len(), 0);
+            buf.set_len(input_slice.len());
 
             let written_count = map_chars(input_slice, &mut buf);
             let slice = &buf[..written_count];
@@ -59,7 +59,7 @@ pub trait TextHook: Send + Sync + 'static {
 
             let mut buf: SmallVec<[u16; constant::TEXT_STACK_BUF_LEN]> =
                 SmallVec::with_capacity(input_slice.len());
-            buf.resize(input_slice.len(), 0);
+            buf.set_len(input_slice.len());
 
             let written_count = map_wide_chars(input_slice, buf.as_mut());
             let slice = &buf[..written_count];
@@ -91,7 +91,7 @@ pub trait TextHook: Send + Sync + 'static {
 
             let mut buf: SmallVec<[u16; constant::TEXT_STACK_BUF_LEN]> =
                 SmallVec::with_capacity(input_slice.len());
-            buf.resize(input_slice.len(), 0);
+            buf.set_len(input_slice.len());
 
             let written_count = map_chars(input_slice, &mut buf);
             let slice = &buf[..written_count];
@@ -123,7 +123,7 @@ pub trait TextHook: Send + Sync + 'static {
 
             let mut buf: SmallVec<[u16; constant::TEXT_STACK_BUF_LEN]> =
                 SmallVec::with_capacity(input_slice.len());
-            buf.resize(input_slice.len(), 0);
+            buf.set_len(input_slice.len());
 
             let written_count = map_wide_chars(input_slice, &mut buf);
             let slice = &buf[..written_count];

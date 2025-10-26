@@ -1,32 +1,38 @@
 use ntapi::ntnls::NLSTABLEINFO;
 use ntapi::ntrtl::RtlInitNlsTables;
 use ntapi::ntrtl::RtlResetRtlTranslations;
+use scopeguard::defer;
+use windows_sys::Win32::Foundation::MAX_PATH;
 use windows_sys::Win32::System::Memory::{
     MEM_COMMIT, MEM_RESERVE, PAGE_READONLY, PAGE_READWRITE, VirtualAlloc, VirtualProtect,
 };
+use windows_sys::Win32::System::Registry::HKEY;
+use windows_sys::Win32::System::Registry::{
+    HKEY_LOCAL_MACHINE, KEY_READ, REG_SZ, RegCloseKey, RegOpenKeyExW, RegQueryValueExW,
+};
+use windows_sys::w;
 
 use crate::utils::mem::align_up;
+use crate::utils::mem::slice_until_null;
 use crate::utils::win32::with_wow64_redirection_disabled;
 use crate::{debug, print_system_error_message};
 
-pub unsafe fn set_process_nls_tables(
+unsafe fn set_process_nls_tables(
     ansi_file: &str,
     oem_file: &str,
     lang_file: &str,
 ) -> anyhow::Result<()> {
     let (ansi_buf, oem_buf, lang_buf) = with_wow64_redirection_disabled(|| {
-        let sysdir = crate::utils::win32::get_system_directory().unwrap();
-        let ansi_path = format!("{}\\{}", sysdir, ansi_file);
-        let oem_path = format!("{}\\{}", sysdir, oem_file);
-        let lang_path = format!("{}\\{}", sysdir, lang_file);
-
-        let ansi_buf = std::fs::read(&ansi_path)?;
-        let oem_buf = std::fs::read(&oem_path)?;
-        let lang_buf = std::fs::read(&lang_path)?;
-
-        anyhow::Ok((ansi_buf, oem_buf, lang_buf))
+        let sysdir = crate::utils::win32::get_system_directory()
+            .ok_or_else(|| anyhow::anyhow!("Get system directory fails"))?;
+        anyhow::Ok((
+            std::fs::read(format!("{}\\{}", sysdir, ansi_file))?,
+            std::fs::read(format!("{}\\{}", sysdir, oem_file))?,
+            std::fs::read(format!("{}\\{}", sysdir, lang_file))?,
+        ))
     })?;
 
+    // 对齐内存到16字节边界
     let a_len = align_up(ansi_buf.len(), 16);
     let o_len = align_up(oem_buf.len(), 16);
     let l_len = align_up(lang_buf.len(), 16);
@@ -46,36 +52,39 @@ pub unsafe fn set_process_nls_tables(
         }
 
         let base = mem as *mut u8;
-        core::ptr::copy_nonoverlapping(ansi_buf.as_ptr(), base, ansi_buf.len());
-        if a_len > ansi_buf.len() {
-            core::ptr::write_bytes(base.add(ansi_buf.len()), 0, a_len - ansi_buf.len());
-        }
-        let oem_base = base.add(a_len);
-        core::ptr::copy_nonoverlapping(oem_buf.as_ptr(), oem_base, oem_buf.len());
-        if o_len > oem_buf.len() {
-            core::ptr::write_bytes(oem_base.add(oem_buf.len()), 0, o_len - oem_buf.len());
-        }
-        let lang_base = base.add(a_len + o_len);
-        core::ptr::copy_nonoverlapping(lang_buf.as_ptr(), lang_base, lang_buf.len());
-        if l_len > lang_buf.len() {
-            core::ptr::write_bytes(lang_base.add(lang_buf.len()), 0, l_len - lang_buf.len());
+        let buffers = [(&ansi_buf, a_len), (&oem_buf, o_len), (&lang_buf, l_len)];
+        let mut offset = 0;
+
+        for (buffer, aligned_len) in buffers {
+            let dest = base.add(offset);
+            core::ptr::copy_nonoverlapping(buffer.as_ptr(), dest, buffer.len());
+            if aligned_len > buffer.len() {
+                core::ptr::write_bytes(dest.add(buffer.len()), 0, aligned_len - buffer.len());
+            }
+
+            offset += aligned_len;
         }
 
+        // 将内存保护改为只读
         let mut old_prot: u32 = 0;
         if VirtualProtect(mem, total, PAGE_READONLY, &mut old_prot) == 0 {
             print_system_error_message!();
             anyhow::bail!("VirtualProtect failed");
         }
 
-        let mut table_info: NLSTABLEINFO = core::mem::zeroed();
         let ansi_ptr = base as *mut u16;
-        let oem_ptr = oem_base as *mut u16;
-        let case_ptr = lang_base as *mut u16;
+        let oem_ptr = base.add(a_len) as *mut u16;
+        let case_ptr = base.add(a_len + o_len) as *mut u16;
 
+        let mut table_info: NLSTABLEINFO = core::mem::zeroed();
+
+        // 初始化NLS表
         RtlInitNlsTables(ansi_ptr, oem_ptr, case_ptr, &mut table_info);
 
+        // 重置运行时翻译表
         RtlResetRtlTranslations(&mut table_info);
 
+        // 获取当前进程的PEB并更新代码页数据指针
         let Some(peb) = crate::utils::nt::get_current_peb() else {
             anyhow::bail!("get_current_peb fails");
         };
@@ -90,16 +99,76 @@ pub unsafe fn set_process_nls_tables(
     Ok(())
 }
 
+fn get_nls_filename_from_registry() -> anyhow::Result<String> {
+    let mut hkey: HKEY = core::ptr::null_mut();
+
+    let result = unsafe {
+        RegOpenKeyExW(
+            HKEY_LOCAL_MACHINE,
+            w!("SYSTEM\\CurrentControlSet\\Control\\Nls\\CodePage"),
+            0,
+            KEY_READ,
+            &mut hkey,
+        )
+    };
+
+    if result != 0 {
+        print_system_error_message!();
+        anyhow::bail!("Failed to open registry key");
+    }
+
+    defer!(unsafe {
+        RegCloseKey(hkey);
+    });
+
+    let mut data_type: u32 = 0;
+    let mut data: [u16; MAX_PATH as _] = [0; MAX_PATH as _];
+    let mut data_size = (data.len() * size_of::<u16>()) as u32;
+
+    let query_result = unsafe {
+        RegQueryValueExW(
+            hkey,
+            w!("932"),
+            core::ptr::null_mut(),
+            &mut data_type,
+            data.as_mut_ptr() as *mut u8,
+            &mut data_size,
+        )
+    };
+
+    if query_result != 0 {
+        print_system_error_message!();
+        anyhow::bail!("Failed to query registry value");
+    }
+
+    if data_type != REG_SZ {
+        anyhow::bail!("Registry value is not a string type");
+    }
+
+    Ok(String::from_utf16_lossy(unsafe {
+        slice_until_null(data.as_ptr(), data.len())
+    }))
+}
+
 pub fn init_japanese_nls_example() {
+    let ansi_file = match get_nls_filename_from_registry() {
+        Ok(filename) => filename,
+        Err(e) => {
+            debug!("Failed to get NLS filename from registry: {e}, using default");
+            "C_932.NLS".to_string()
+        }
+    };
+
     unsafe {
-        if let Err(e) = set_process_nls_tables("C_932.NLS", "C_932.NLS", "l_intl.nls") {
+        if let Err(e) = set_process_nls_tables(&ansi_file, &ansi_file, "l_intl.nls") {
             debug!("init nls fails with {e}");
+            return;
         }
 
-        // 下面是测试代码，不要管
+        // 测试代码：日文字符串"こんにちは"的Shift-JIS编码
         let s = String::from_utf16_lossy(&crate::code_cvt::ansi_to_wide_char(&[
             0x82, 0xB1, 0x82, 0xF1, 0x82, 0xC9, 0x82, 0xBF, 0x82, 0xCD,
         ]));
-        debug!("{s}");
+        debug!("{s}"); // 应该输出"こんにちは"
     }
 }
