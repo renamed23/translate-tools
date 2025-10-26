@@ -2,7 +2,7 @@
 pub(crate) mod debug_impl {
     use std::sync::Once;
     use windows_sys::Win32::{
-        Foundation::GetLastError,
+        Foundation::{GetLastError, NTSTATUS, RtlNtStatusToDosError},
         Globalization::CP_UTF8,
         System::{
             Console::{AllocConsole, SetConsoleCP, SetConsoleOutputCP},
@@ -36,12 +36,24 @@ pub(crate) mod debug_impl {
     pub fn get_system_error_message() -> Option<String> {
         unsafe {
             let error_code = GetLastError();
+            get_system_error_message_from_ec(error_code)
+        }
+    }
 
+    pub fn get_system_error_message_from_ntstatus(status: NTSTATUS) -> Option<String> {
+        unsafe {
+            let error_code = RtlNtStatusToDosError(status);
+            get_system_error_message_from_ec(error_code)
+        }
+    }
+
+    pub fn get_system_error_message_from_ec(ec: u32) -> Option<String> {
+        unsafe {
             let mut buffer = [0u16; 512];
             let result = FormatMessageW(
                 FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
                 core::ptr::null_mut(),
-                error_code,
+                ec,
                 0, // 使用系统默认语言
                 buffer.as_mut_ptr(),
                 buffer.len() as u32,
@@ -99,10 +111,34 @@ macro_rules! debug_msg {
 
 #[macro_export]
 macro_rules! print_system_error_message {
-    ($($arg:tt)*) => {{
+    () => {{
         #[cfg(feature = "debug_output")]
         {
             if let Some(msg) = $crate::debug_output::debug_impl::get_system_error_message() {
+                $crate::debug!("[system error]: {}", msg);
+            }
+        }
+        #[cfg(not(feature = "debug_output"))]
+        {}
+    }};
+    (EC $ec: expr) => {{
+        #[cfg(feature = "debug_output")]
+        {
+            if let Some(msg) =
+                $crate::debug_output::debug_impl::get_system_error_message_from_ec($ec)
+            {
+                $crate::debug!("[system error]: {}", msg);
+            }
+        }
+        #[cfg(not(feature = "debug_output"))]
+        {}
+    }};
+    (NT $ntstatus: expr) => {{
+        #[cfg(feature = "debug_output")]
+        {
+            if let Some(msg) =
+                $crate::debug_output::debug_impl::get_system_error_message_from_ntstatus($ntstatus)
+            {
                 $crate::debug!("[system error]: {}", msg);
             }
         }

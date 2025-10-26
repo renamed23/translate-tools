@@ -1,5 +1,3 @@
-use core::ptr;
-
 use windows_sys::Win32::Foundation::HMODULE;
 use windows_sys::Win32::System::Diagnostics::Debug::{
     IMAGE_DIRECTORY_ENTRY_IMPORT, IMAGE_NT_HEADERS32,
@@ -46,12 +44,11 @@ pub unsafe fn patch_iat(
 
         for ((func_name, hook_addr), &real_addr) in functions.iter().zip(real_addrs.iter()) {
             // 查找 IAT 条目
-            let iat_entry_ptr = find_iat_entry_32(target_mod, real_addr as _);
-            if iat_entry_ptr.is_null() {
+            let Some(iat_entry_ptr) = find_iat_entry_32(target_mod, real_addr as _) else {
                 anyhow::bail!(
                     "IAT entry for {source_dll_name}!{func_name:?} not found in {target_mod_name}",
-                );
-            }
+                )
+            };
 
             // 写入 hook 地址
             write_bytes(iat_entry_ptr as _, &hook_addr.to_ne_bytes())?;
@@ -63,25 +60,25 @@ pub unsafe fn patch_iat(
     }
 }
 
-/// 找到指定模组的指定导入函数地址的IAT入口地址
+/// 找到指定模组的指定导入函数地址的IAT入口地址，若为None表示失败，若为Some，那么返回的指针绝不会为null
 #[allow(dead_code)]
-pub unsafe fn find_iat_entry_32(module: HMODULE, target_ptr: usize) -> *mut usize {
+pub unsafe fn find_iat_entry_32(module: HMODULE, target_ptr: usize) -> Option<*mut usize> {
     unsafe {
         let base = module as usize;
         let dos = base as *const IMAGE_DOS_HEADER;
 
         if dos.is_null() || (*dos).e_magic != IMAGE_DOS_SIGNATURE {
-            return ptr::null_mut();
+            return None;
         }
 
         let nt = (base as isize + (*dos).e_lfanew as isize) as *const IMAGE_NT_HEADERS32;
         if nt.is_null() {
-            return ptr::null_mut();
+            return None;
         }
 
         let import_dir = (*nt).OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT as usize];
         if import_dir.VirtualAddress == 0 {
-            return ptr::null_mut();
+            return None;
         }
 
         let mut imp = (base + import_dir.VirtualAddress as usize) as *const IMAGE_IMPORT_DESCRIPTOR;
@@ -91,13 +88,13 @@ pub unsafe fn find_iat_entry_32(module: HMODULE, target_ptr: usize) -> *mut usiz
                 let mut thunk = (base + first_thunk) as *mut u32;
                 while !thunk.is_null() && *thunk != 0 {
                     if *thunk as usize == target_ptr {
-                        return thunk as *mut usize;
+                        return Some(thunk as *mut usize);
                     }
                     thunk = thunk.add(1);
                 }
             }
             imp = imp.add(1);
         }
-        ptr::null_mut()
+        None
     }
 }

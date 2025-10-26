@@ -147,3 +147,29 @@ pub fn quick_memory_check_win32(ptr: *mut u8, len: usize) -> bool {
 
     true
 }
+
+/// 将给定值向上对齐到指定对齐粒度的倍数。
+///
+/// 这个函数计算大于等于 `value` 的最小值，该值必须是 `alignment` 的倍数。
+/// 常用于内存对齐、缓冲区大小调整等场景。
+///
+/// # 参数
+/// - `value`: 需要对齐的原始值
+/// - `alignment`: 对齐粒度，必须是 2 的幂次方（虽然函数不强制检查）
+///
+/// # 返回值
+/// 返回向上对齐后的值，该值是 `alignment` 的倍数
+///
+/// # 示例
+/// ```
+/// assert_eq!(align_up(7, 8), 8);
+/// assert_eq!(align_up(16, 8), 16);
+/// assert_eq!(align_up(17, 16), 32);
+/// assert_eq!(align_up(0, 4), 0);
+/// ```
+///
+/// # 注意
+/// 如果 `alignment` 为 0，函数会 panic（由于除零错误）
+pub fn align_up(value: usize, alignment: usize) -> usize {
+    value.div_ceil(alignment) * alignment
+}

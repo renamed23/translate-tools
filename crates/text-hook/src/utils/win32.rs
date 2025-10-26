@@ -1,6 +1,8 @@
+use scopeguard::defer;
 use windows_sys::{
     Win32::{
         Foundation::HMODULE,
+        Storage::FileSystem::{Wow64DisableWow64FsRedirection, Wow64RevertWow64FsRedirection},
         System::{
             LibraryLoader::{GetModuleHandleW, GetProcAddress, LoadLibraryW},
             SystemInformation::GetSystemDirectoryW,
@@ -9,7 +11,7 @@ use windows_sys::{
     core::PCSTR,
 };
 
-use crate::constant;
+use crate::{constant, print_system_error_message};
 
 /// 获取模块句柄的包装函数
 /// 当module_name为空字符串时，获取当前进程的模块句柄
@@ -27,7 +29,12 @@ pub fn get_module_handle(module_name: &str) -> Option<HMODULE> {
 
         unsafe {
             let handle = GetModuleHandleW(module_wide.as_ptr());
-            if handle.is_null() { None } else { Some(handle) }
+            if handle.is_null() {
+                print_system_error_message!();
+                None
+            } else {
+                Some(handle)
+            }
         }
     }
 }
@@ -76,6 +83,7 @@ pub fn get_system_directory() -> Option<String> {
     // 获取系统目录缓冲区大小
     let size = unsafe { GetSystemDirectoryW(core::ptr::null_mut(), 0) };
     if size == 0 {
+        print_system_error_message!();
         return None;
     }
 
@@ -100,7 +108,12 @@ pub fn get_system_directory() -> Option<String> {
 pub fn load_library(path: &str) -> Option<HMODULE> {
     let path: Vec<u16> = path.encode_utf16().chain(core::iter::once(0)).collect();
     let handle = unsafe { LoadLibraryW(path.as_ptr()) };
-    if handle.is_null() { None } else { Some(handle) }
+    if handle.is_null() {
+        print_system_error_message!();
+        None
+    } else {
+        Some(handle)
+    }
 }
 
 /// 加载被劫持的DLL库
@@ -125,4 +138,37 @@ pub fn load_hijacked_library(dll_name: &str) -> Option<HMODULE> {
         // 直接从自定义劫持路径加载
         load_library(constant::HIJACKED_DLL_PATH)
     }
+}
+
+/// 在禁用 WOW64 文件系统重定向的情况下执行回调函数。
+///
+/// WOW64 文件系统重定向是 32 位应用程序在 64 位 Windows 上运行时，
+/// 将系统目录（如 System32）重定向到 SysWOW64 的机制。
+/// 此函数禁用该重定向，使得回调函数可以访问真实的系统目录，
+/// 然后在回调执行完毕后恢复重定向（仅在禁用成功的情况下）。
+///
+/// # 参数
+///
+/// * `callback` - 要在禁用 WOW64 重定向状态下执行的回调函数
+///
+/// # 返回值
+///
+/// 返回回调函数的执行结果
+pub fn with_wow64_redirection_disabled<F, R>(callback: F) -> R
+where
+    F: FnOnce() -> R,
+{
+    let mut old_state = core::ptr::null_mut();
+    let success = unsafe { Wow64DisableWow64FsRedirection(&mut old_state) != 0 };
+
+    #[cfg(feature = "debug_output")]
+    if !success {
+        print_system_error_message!();
+    }
+
+    defer!(if success {
+        unsafe { Wow64RevertWow64FsRedirection(old_state) };
+    });
+
+    callback()
 }
