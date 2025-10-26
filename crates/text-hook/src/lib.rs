@@ -4,9 +4,8 @@ pub(crate) mod code_cvt;
 pub(crate) mod debug_output;
 pub(crate) mod hook;
 pub(crate) mod hook_impl;
-pub(crate) mod hook_utils;
 pub(crate) mod mapping;
-pub(crate) mod panic_utils;
+
 #[allow(dead_code)]
 pub(crate) mod utils;
 
@@ -21,6 +20,9 @@ pub(crate) mod delayed_attach;
 
 #[cfg(feature = "dll_hijacking")]
 pub(crate) mod dll_hijacking;
+
+#[cfg(feature = "emulate_locale")]
+pub(crate) mod emulate_locale;
 
 #[allow(dead_code)]
 pub(crate) mod constant {

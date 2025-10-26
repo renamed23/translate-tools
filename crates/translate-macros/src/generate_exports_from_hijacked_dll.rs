@@ -204,17 +204,17 @@ fn try_generate(path: &PathBuf) -> AnyResult<proc_macro2::TokenStream> {
     let load_fn = quote! {
         #[allow(static_mut_refs)]
         pub(super) unsafe extern "system" fn load_library() {
-            // 在运行时从 crate::hook_utils 加载被劫持的真实 DLL 并解析符号地址
-            // 1) 使用 crate::hook_utils::load_hijacked_library 以确保加载目标真实模块（例如 version.dll）
-            // 2) 使用 crate::hook_utils::get_module_symbol_addrs_from_handle 来一次性获取我们需要的导出地址数组
+            // 在运行时从 crate::utils::win32 加载被劫持的真实 DLL 并解析符号地址
+            // 1) 使用 crate::utils::win32::load_hijacked_library 以确保加载目标真实模块（例如 version.dll）
+            // 2) 使用 crate::utils::win32::get_module_symbol_addrs_from_handle 来一次性获取我们需要的导出地址数组
             // 3) 将地址写入上面生成的静态变量
             unsafe {
-                // 加载真实 DLL（由调用者提供 hook_utils 的实现）
-                let hmod = crate::hook_utils::load_hijacked_library(#dll_basename)
+                // 加载真实 DLL
+                let hmod = crate::utils::win32::load_hijacked_library(#dll_basename)
                     .expect("Could not find target DLL");
 
-                // 使用 hook_utils 提供的辅助函数批量获取地址
-                let addrs = crate::hook_utils::get_module_symbol_addrs_from_handle(
+                // 使用 crate 提供的辅助函数批量获取地址
+                let addrs = crate::utils::win32::get_module_symbol_addrs_from_handle(
                     hmod,
                     &[
                         #(#c_lits_tokens),*

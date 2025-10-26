@@ -40,7 +40,10 @@ pub fn default_dll_main(
 
     match fdw_reason {
         PROCESS_ATTACH => {
-            crate::panic_utils::set_debug_panic_hook();
+            crate::utils::panic::set_debug_panic_hook();
+
+            #[cfg(feature = "emulate_locale")]
+            crate::emulate_locale::init_japanese_nls_example();
 
             crate::hook::set_hook_instance(HookImplType::default());
 

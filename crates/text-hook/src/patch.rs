@@ -1,7 +1,4 @@
-use crate::{
-    debug,
-    utils::{quick_memory_check_win32, sha256_of_bytes},
-};
+use crate::{debug, utils::sha256_of_bytes};
 
 mod patch_data {
     translate_macros::generate_patch_data!("assets/raw" => "assets/translated");
@@ -40,7 +37,7 @@ pub fn get_filename(src: &[u8]) -> Option<&str> {
 pub unsafe fn try_patching(ptr: *mut u8, len: usize) -> bool {
     debug!("Buffer len: {len}",);
 
-    if !quick_memory_check_win32(ptr, len) {
+    if !crate::utils::mem::quick_memory_check_win32(ptr, len) {
         return false;
     }
 
@@ -76,7 +73,7 @@ pub unsafe fn try_patching(ptr: *mut u8, len: usize) -> bool {
 pub unsafe fn try_extracting(ptr: *mut u8, len: usize) -> bool {
     debug!("Buffer len: {len}");
 
-    if !quick_memory_check_win32(ptr, len) {
+    if !crate::utils::mem::quick_memory_check_win32(ptr, len) {
         return false;
     }
 

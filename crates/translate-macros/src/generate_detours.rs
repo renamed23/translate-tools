@@ -191,7 +191,7 @@ pub fn generate_detours(_attr: TokenStream, item: TokenStream) -> TokenStream {
                     // 自动生成：once_cell Lazy 的 retour detour 静态
                     pub static #static_ident: ::once_cell::sync::Lazy<retour::GenericDetour<#fn_ty_tokens>> =
                         ::once_cell::sync::Lazy::new(|| {
-                            let address = crate::hook_utils::get_module_symbol_addr(
+                            let address = crate::utils::win32::get_module_symbol_addr(
                                 #dll_lit,
                                 ::windows_sys::s!(#symbol_lit)
                             ).expect(concat!("symbol not found: ", #symbol_lit));

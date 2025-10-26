@@ -9,7 +9,7 @@ use windows_sys::{
     core::{PCSTR, PSTR},
 };
 
-use crate::debug;
+use crate::{debug, utils::mem::slice_until_null};
 
 fn query_game_ini_string(section: &str, key: &str) -> Option<String> {
     match (section, key) {
@@ -39,9 +39,7 @@ fn query_game_ini_int(section: &str, key: &str) -> Option<i32> {
 }
 
 unsafe fn matched_ini(file_name: PCSTR) -> bool {
-    let file = unsafe {
-        String::from_utf8_lossy(crate::utils::slice_until_null(file_name, MAX_PATH as _))
-    };
+    let file = unsafe { String::from_utf8_lossy(slice_until_null(file_name, MAX_PATH as _)) };
 
     Path::new(file.as_ref())
         .file_name()
@@ -51,13 +49,13 @@ unsafe fn matched_ini(file_name: PCSTR) -> bool {
 
 unsafe fn to_string(app_name: PCSTR, key_name: PCSTR) -> (String, String) {
     let section = if !app_name.is_null() {
-        String::from_utf8_lossy(unsafe { crate::utils::slice_until_null(app_name, MAX_PATH as _) })
+        String::from_utf8_lossy(unsafe { slice_until_null(app_name, MAX_PATH as _) })
     } else {
         Cow::Borrowed("")
     };
 
     let key = if !key_name.is_null() {
-        String::from_utf8_lossy(unsafe { crate::utils::slice_until_null(key_name, MAX_PATH as _) })
+        String::from_utf8_lossy(unsafe { slice_until_null(key_name, MAX_PATH as _) })
     } else {
         Cow::Borrowed("")
     };

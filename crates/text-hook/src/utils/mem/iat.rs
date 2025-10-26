@@ -10,7 +10,8 @@ use windows_sys::Win32::System::SystemServices::{
 use windows_sys::core::PCSTR;
 
 use crate::debug;
-use crate::hook_utils::{get_module_handle, get_module_symbol_addrs, write_bytes};
+use crate::utils::mem::patch::write_bytes;
+use crate::utils::win32::{get_module_handle, get_module_symbol_addrs};
 
 /// 通用的 IAT 修补函数
 ///

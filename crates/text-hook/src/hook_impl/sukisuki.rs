@@ -108,7 +108,7 @@ unsafe fn ensure_font() -> HFONT {
 
         debug!("Creating Font...");
 
-        let face_u16 = crate::utils::u16_with_null(constant::FONT_FACE);
+        let face_u16 = crate::code_cvt::u16_with_null(constant::FONT_FACE);
         let hf = CreateFontW(
             -TARGET_PX,
             0,

@@ -196,3 +196,13 @@ pub fn wide_char_to_utf8_with_null(wide_str: &[u16]) -> Vec<u8> {
 pub fn wide_char_to_ansi_with_null(wide_str: &[u16]) -> Vec<u8> {
     wide_char_to_multi_byte_with_null(wide_str, CP_ACP)
 }
+
+/// 将 u16 切片转换为带有结尾 NULL 的新 Vec<u16>
+#[inline]
+pub fn u16_with_null(u16_slice: &[u16]) -> Vec<u16> {
+    u16_slice
+        .iter()
+        .copied()
+        .chain(std::iter::once(0u16))
+        .collect()
+}

@@ -8,7 +8,7 @@ use windows_sys::Win32::System::{
 use crate::{debug, hook::CoreHook, print_system_error_message};
 
 static ENTRY_POINT_ADDR: Lazy<usize> = Lazy::new(|| {
-    let hmod = crate::hook_utils::get_module_handle("").unwrap();
+    let hmod = crate::utils::win32::get_module_handle("").unwrap();
 
     let mut mi = MODULEINFO {
         lpBaseOfDll: core::ptr::null_mut(),
@@ -35,7 +35,7 @@ static ENTRY_POINT_ADDR: Lazy<usize> = Lazy::new(|| {
 
 static HOOK_ENTRY_POINT: Lazy<retour::GenericDetour<unsafe extern "C" fn()>> =
     Lazy::new(|| unsafe {
-        let resolved = crate::hook_utils::resolve_patchable_addr_32(*ENTRY_POINT_ADDR);
+        let resolved = crate::utils::mem::patch::resolve_patchable_addr_32(*ENTRY_POINT_ADDR);
         let ori_entry: unsafe extern "C" fn() = core::mem::transmute(resolved);
 
         retour::GenericDetour::new(ori_entry, entry_point)

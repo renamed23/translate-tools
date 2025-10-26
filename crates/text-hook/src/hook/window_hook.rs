@@ -31,10 +31,10 @@ pub trait WindowHook: Send + Sync + 'static {
                     std::mem::size_of::<CREATESTRUCTW>(),
                 );
 
-                let class_bytes = crate::utils::slice_until_null((*params_a).lpszClass, 512);
+                let class_bytes = crate::utils::mem::slice_until_null((*params_a).lpszClass, 512);
                 let class_name = crate::code_cvt::ansi_to_wide_char_with_null(class_bytes);
 
-                let window_title = crate::utils::u16_with_null(constant::WINDOW_TITLE);
+                let window_title = crate::code_cvt::u16_with_null(constant::WINDOW_TITLE);
 
                 params_w.lpszClass = class_name.as_ptr();
                 params_w.lpszName = window_title.as_ptr();
@@ -43,7 +43,8 @@ pub trait WindowHook: Send + Sync + 'static {
                 {
                     let raw_class = String::from_utf16_lossy(&class_name);
 
-                    let title_bytes = crate::utils::slice_until_null((*params_a).lpszName, 512);
+                    let title_bytes =
+                        crate::utils::mem::slice_until_null((*params_a).lpszName, 512);
                     let raw_title =
                         String::from_utf16_lossy(&crate::code_cvt::ansi_to_wide_char(title_bytes));
                     debug!("Get raw class: {raw_class}, raw window title: {raw_title}");
@@ -61,15 +62,16 @@ pub trait WindowHook: Send + Sync + 'static {
                 #[cfg(feature = "debug_output")]
                 {
                     let raw_title = {
-                        let bytes =
-                            unsafe { crate::utils::slice_until_null(l_param as *const u8, 512) };
+                        let bytes = unsafe {
+                            crate::utils::mem::slice_until_null(l_param as *const u8, 512)
+                        };
                         let u16_bytes = crate::code_cvt::ansi_to_wide_char(bytes);
                         String::from_utf16_lossy(&u16_bytes)
                     };
                     debug!("Get raw window title: {raw_title}");
                 }
 
-                let window_title = crate::utils::u16_with_null(constant::WINDOW_TITLE);
+                let window_title = crate::code_cvt::u16_with_null(constant::WINDOW_TITLE);
                 unsafe {
                     HOOK_DEF_WINDOW_PROC_W.call(
                         h_wnd,
@@ -100,19 +102,20 @@ pub trait WindowHook: Send + Sync + 'static {
 
                 let mut modified_params: CREATESTRUCTW = std::ptr::read(params_w);
 
-                let window_title = crate::utils::u16_with_null(constant::WINDOW_TITLE);
+                let window_title = crate::code_cvt::u16_with_null(constant::WINDOW_TITLE);
                 modified_params.lpszName = window_title.as_ptr();
 
                 #[cfg(feature = "debug_output")]
                 {
                     let raw_class = {
                         let class_slice =
-                            crate::utils::slice_until_null((*params_w).lpszClass, 512);
+                            crate::utils::mem::slice_until_null((*params_w).lpszClass, 512);
                         String::from_utf16_lossy(class_slice)
                     };
 
                     let raw_title = {
-                        let title_slice = crate::utils::slice_until_null((*params_w).lpszName, 512);
+                        let title_slice =
+                            crate::utils::mem::slice_until_null((*params_w).lpszName, 512);
                         String::from_utf16_lossy(title_slice)
                     };
 
@@ -136,14 +139,15 @@ pub trait WindowHook: Send + Sync + 'static {
                 #[cfg(feature = "debug_output")]
                 {
                     let raw_title = {
-                        let title_slice =
-                            unsafe { crate::utils::slice_until_null(l_param as *const u16, 512) };
+                        let title_slice = unsafe {
+                            crate::utils::mem::slice_until_null(l_param as *const u16, 512)
+                        };
                         String::from_utf16_lossy(title_slice)
                     };
                     debug!("Get raw window title: {raw_title}");
                 }
 
-                let window_title = crate::utils::u16_with_null(constant::WINDOW_TITLE);
+                let window_title = crate::code_cvt::u16_with_null(constant::WINDOW_TITLE);
                 unsafe {
                     HOOK_DEF_WINDOW_PROC_W.call(
                         h_wnd,

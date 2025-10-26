@@ -27,7 +27,7 @@ pub trait TextHook: Send + Sync + 'static {
     unsafe fn text_out_a(&self, hdc: HDC, x: i32, y: i32, lp_string: PCSTR, c: i32) -> BOOL {
         unsafe {
             // `slice_from_raw_parts`会进行简单的指针检查，若非法返回空切片
-            let input_slice = crate::utils::slice_from_raw_parts(lp_string, c as usize);
+            let input_slice = crate::utils::mem::slice_from_raw_parts(lp_string, c as usize);
 
             // 长度小于等于 `constant::TEXT_STACK_BUF_LEN` 的数据使用栈缓冲区，
             // 否则使用堆缓冲区
@@ -55,7 +55,7 @@ pub trait TextHook: Send + Sync + 'static {
     )]
     unsafe fn text_out_w(&self, hdc: HDC, x: i32, y: i32, lp_string: PCWSTR, c: i32) -> BOOL {
         unsafe {
-            let input_slice = crate::utils::slice_from_raw_parts(lp_string, c as usize);
+            let input_slice = crate::utils::mem::slice_from_raw_parts(lp_string, c as usize);
 
             let mut buf: SmallVec<[u16; constant::TEXT_STACK_BUF_LEN]> =
                 SmallVec::with_capacity(input_slice.len());
@@ -87,7 +87,7 @@ pub trait TextHook: Send + Sync + 'static {
         lp_size: *mut SIZE,
     ) -> BOOL {
         unsafe {
-            let input_slice = crate::utils::slice_from_raw_parts(lp_string, c as usize);
+            let input_slice = crate::utils::mem::slice_from_raw_parts(lp_string, c as usize);
 
             let mut buf: SmallVec<[u16; constant::TEXT_STACK_BUF_LEN]> =
                 SmallVec::with_capacity(input_slice.len());
@@ -119,7 +119,7 @@ pub trait TextHook: Send + Sync + 'static {
         lp_size: *mut SIZE,
     ) -> BOOL {
         unsafe {
-            let input_slice = crate::utils::slice_from_raw_parts(lp_string, c as usize);
+            let input_slice = crate::utils::mem::slice_from_raw_parts(lp_string, c as usize);
 
             let mut buf: SmallVec<[u16; constant::TEXT_STACK_BUF_LEN]> =
                 SmallVec::with_capacity(input_slice.len());
@@ -250,7 +250,7 @@ pub trait TextHook: Send + Sync + 'static {
     ) -> HFONT {
         let face_u16 = {
             let bytes = unsafe {
-                crate::utils::slice_until_null(psz_face_name, (LF_FACESIZE - 1) as usize)
+                crate::utils::mem::slice_until_null(psz_face_name, (LF_FACESIZE - 1) as usize)
             };
             crate::code_cvt::ansi_to_wide_char_with_null(bytes)
         };
@@ -301,11 +301,11 @@ pub trait TextHook: Send + Sync + 'static {
         let mut u16_slice: Cow<[u16]>;
         #[cfg(not(feature = "enum_font_families"))]
         {
-            u16_slice = Cow::from(crate::utils::u16_with_null(constant::FONT_FACE));
+            u16_slice = Cow::from(crate::code_cvt::u16_with_null(constant::FONT_FACE));
         }
         #[cfg(feature = "enum_font_families")]
         unsafe {
-            u16_slice = Cow::from(crate::utils::slice_until_null(
+            u16_slice = Cow::from(crate::utils::mem::slice_until_null(
                 psz_face_name,
                 (LF_FACESIZE - 1) as usize,
             ));
@@ -316,7 +316,7 @@ pub trait TextHook: Send + Sync + 'static {
             );
 
             if constant::FONT_FILTER.contains(&&*u16_slice) {
-                u16_slice = Cow::from(crate::utils::u16_with_null(constant::FONT_FACE));
+                u16_slice = Cow::from(crate::code_cvt::u16_with_null(constant::FONT_FACE));
             }
         };
 
@@ -366,7 +366,7 @@ pub trait TextHook: Send + Sync + 'static {
 
         let face_u16 = {
             let u8_slice = unsafe {
-                crate::utils::slice_until_null(
+                crate::utils::mem::slice_until_null(
                     logfona.lfFaceName.as_ptr() as *const u8,
                     logfona.lfFaceName.len() - 1, // 最后一个字节必须为null
                 )
@@ -392,13 +392,13 @@ pub trait TextHook: Send + Sync + 'static {
         // `constant::FONT_FACE` 长度确保不超过 LF_FACESIZE - 1，可以直接复制
         #[cfg(not(feature = "enum_font_families"))]
         {
-            let face_u16 = crate::utils::u16_with_null(constant::FONT_FACE);
+            let face_u16 = crate::code_cvt::u16_with_null(constant::FONT_FACE);
             logfontw.lfFaceName[..face_u16.len()].copy_from_slice(face_u16.as_slice());
         }
         #[cfg(feature = "enum_font_families")]
         {
             let u16_slice = unsafe {
-                crate::utils::slice_until_null(
+                crate::utils::mem::slice_until_null(
                     logfontw.lfFaceName.as_ptr(),
                     logfontw.lfFaceName.len() - 1, // 最后一个字节必须为null
                 )
@@ -410,7 +410,7 @@ pub trait TextHook: Send + Sync + 'static {
             );
 
             if constant::FONT_FILTER.contains(&u16_slice) {
-                let face_u16 = crate::utils::u16_with_null(constant::FONT_FACE);
+                let face_u16 = crate::code_cvt::u16_with_null(constant::FONT_FACE);
                 logfontw.lfFaceName[..face_u16.len()].copy_from_slice(face_u16.as_slice());
             }
         };

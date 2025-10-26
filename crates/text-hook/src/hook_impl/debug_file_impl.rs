@@ -11,14 +11,13 @@ use windows_sys::{
     core::{BOOL, PCSTR, PCWSTR},
 };
 
-use crate::hook::CoreHook;
 use crate::hook::file_hook::{
     FileHook, HOOK_CLOSE_HANDLE, HOOK_CREATE_FILE_A, HOOK_CREATE_FILE_W, HOOK_FIND_CLOSE,
     HOOK_FIND_FIRST_FILE_A, HOOK_FIND_FIRST_FILE_W, HOOK_FIND_NEXT_FILE_A, HOOK_FIND_NEXT_FILE_W,
     HOOK_READ_FILE,
 };
-use crate::utils::slice_until_null;
 use crate::{code_cvt::ansi_to_wide_char, debug_msg};
+use crate::{hook::CoreHook, utils::mem::slice_until_null};
 
 #[derive(Default)]
 pub struct DebugFileImplHook {

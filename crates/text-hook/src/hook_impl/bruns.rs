@@ -4,7 +4,7 @@ use windows_sys::Win32::Foundation::HMODULE;
 use crate::hook::CoreHook;
 use crate::hook::text_hook::TextHook;
 use crate::hook::window_hook::WindowHook;
-use crate::hook_utils::{write_asm, write_bytes};
+use crate::utils::mem::patch::{write_asm, write_bytes};
 use crate::{constant, debug};
 
 #[derive(Default)]
@@ -12,7 +12,7 @@ pub struct BrunsHook;
 
 impl CoreHook for BrunsHook {
     fn on_process_attach(&self, _hinst_dll: HMODULE) {
-        let Some(handle) = crate::hook_utils::get_module_handle("libscr.dll") else {
+        let Some(handle) = crate::utils::win32::get_module_handle("libscr.dll") else {
             debug!("get_module_handle failed");
             return;
         };

@@ -39,7 +39,7 @@ export_default_dll_main = []
 # 使用`assets/config.json`的`WINDOW_TITLE`字段覆写游戏标题
 override_window_title = ["window_hook"]
 # 模拟日语环境(目前支持很有限)
-emulate_locale = ["locale_hook", "code_cvt_hook"]
+emulate_locale = []
 # 启用延迟加载，对于某些特性是必要的
 delayed_attach = []
 # 根据`assets/hijacked`中的PE文件(仅限一个)生成对应的导出函数，
@@ -52,8 +52,6 @@ dll_hijacking = ["delayed_attach"]
 text_hook = []
 # 启用文件相关的钩子
 file_hook = []
-# 启用区域相关的钩子
-locale_hook = []
 # 启动窗口相关的钩子
 window_hook = []
 # 启动转码相关的钩子(MultiByteToWideChar & WideChar...)
@@ -117,18 +115,22 @@ translate-utils.workspace = true
 anyhow.workspace = true
 once_cell.workspace = true
 
-winapi = { version = "0.3", features = [
-    "winuser",
-    "wingdi",
-    "libloaderapi",
-    "memoryapi",
-    "debugapi",
-    "processthreadsapi",
-    "winbase",
-    "stringapiset",
-    "consoleapi",
-    "errhandlingapi",
-    "psapi",
+windows-sys = { version = "0.61", features = [
+    "Win32_Foundation",
+    "Win32_UI_WindowsAndMessaging",
+    "Win32_Graphics_Gdi",
+    "Win32_System_LibraryLoader",
+    "Win32_System_Memory",
+    "Win32_System_Diagnostics_Debug",
+    "Win32_System_Threading",
+    "Win32_System_SystemInformation",
+    "Win32_Globalization",
+    "Win32_System_Console",
+    "Win32_System_ProcessStatus",
+    "Win32_System_IO",
+    "Win32_Security",
+    "Win32_System_SystemServices",
+    "Win32_System_WindowsProgramming",
 ] }
 sha2 = "0.10"
 retour = "0.4.0-alpha.4"
@@ -136,6 +138,8 @@ dynasmrt = "4.0.1"
 phf = { version = "0.13", features = ["macros"] }
 zstd = "0.13"
 smallvec = "1"
+ntapi = "0.4"
+scopeguard = "1"
 
 [build-dependencies]
 anyhow.workspace = true

@@ -168,7 +168,6 @@ pub fn generate_detours(attr: TokenStream, item: TokenStream) -> TokenStream {
 ///     // 原始函数体保持不变；若内部 panic 则返回 FALSE
 ///     const PROCESS_ATTACH: DWORD = 1;
 ///     if fdw_reason == PROCESS_ATTACH {
-///         crate::panic_utils::set_debug_panic_hook();
 ///         crate::hook::set_hook_instance(Box::new(DefaultHook));
 ///
 ///         #[cfg(feature = "custom_font")]

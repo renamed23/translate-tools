@@ -5,7 +5,7 @@ use windows_sys::Win32::System::{
     SystemInformation::{GetSystemInfo, SYSTEM_INFO},
 };
 
-use crate::hook_utils::flush_icache;
+use crate::utils::mem::patch::flush_icache;
 
 /// RAII 内存保护守卫
 /// 在构造时修改内存保护，在析构时自动恢复原来的保护
@@ -38,7 +38,7 @@ impl ProtectGuard {
         if size == 0 {
             anyhow::bail!("size must be > 0");
         }
-        if !crate::utils::quick_memory_check_win32(address as *mut u8, size) {
+        if !crate::utils::mem::quick_memory_check_win32(address as *mut u8, size) {
             anyhow::bail!("address is invalid: ({address:p};{size})");
         }
 

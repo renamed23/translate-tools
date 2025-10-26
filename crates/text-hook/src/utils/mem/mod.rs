@@ -1,62 +1,6 @@
-use sha2::{Digest, Sha256};
-
-/// 返回输入字节的sha256哈希值
-pub fn sha256_of_bytes(data: &[u8]) -> [u8; 32] {
-    let mut hasher = Sha256::new();
-    hasher.update(data);
-    let result = hasher.finalize();
-    let mut arr = [0u8; 32];
-    arr.copy_from_slice(&result);
-    arr
-}
-
-/// Windows 32位平台上的简单内存访问检查
-pub fn quick_memory_check_win32(ptr: *mut u8, len: usize) -> bool {
-    if len == 0 {
-        return true;
-    }
-
-    // 32位 Windows 用户空间典型地址范围
-    let addr = ptr as usize;
-
-    // 32位地址范围：0x00010000 - 0x7FFEFFFF
-    // 避免 NULL 指针区域和小地址区域
-    if !(0x00010000..=0x7FFEFFFF).contains(&addr) {
-        return false;
-    }
-
-    // 检查地址 + len 是否会越界
-    if addr.saturating_add(len - 1) > 0x7FFEFFFF {
-        return false;
-    }
-
-    true
-}
-
-/// 检查切片 `haystack` 是否包含子切片 `needle`
-pub fn contains_slice<T: PartialEq>(haystack: &[T], needle: &[T]) -> bool {
-    if needle.is_empty() {
-        return true;
-    }
-    haystack
-        .windows(needle.len())
-        .any(|window| window == needle)
-}
-
-/// 使用 zstd 解压数据，`cap` 是解压后数据的预估大小
-pub fn decompress_zstd(data: &[u8], cap: usize) -> Vec<u8> {
-    zstd::bulk::decompress(data, cap).unwrap()
-}
-
-/// 将 u16 切片转换为带有结尾 NULL 的新 Vec<u16>
-#[inline]
-pub fn u16_with_null(u16_slice: &[u16]) -> Vec<u16> {
-    u16_slice
-        .iter()
-        .copied()
-        .chain(std::iter::once(0u16))
-        .collect()
-}
+pub(crate) mod iat;
+pub(crate) mod patch;
+pub(crate) mod protect_guard;
 
 /// 创建一个空切片
 pub const fn empty_slice<'a, T>() -> &'a [T] {
@@ -169,4 +113,37 @@ where
         // 指针有效，构造可变切片
         core::slice::from_raw_parts_mut(ptr, len)
     }
+}
+
+/// 检查切片 `haystack` 是否包含子切片 `needle`
+pub fn contains_slice<T: PartialEq>(haystack: &[T], needle: &[T]) -> bool {
+    if needle.is_empty() {
+        return true;
+    }
+    haystack
+        .windows(needle.len())
+        .any(|window| window == needle)
+}
+
+/// Windows 32位平台上的简单内存访问检查
+pub fn quick_memory_check_win32(ptr: *mut u8, len: usize) -> bool {
+    if len == 0 {
+        return true;
+    }
+
+    // 32位 Windows 用户空间典型地址范围
+    let addr = ptr as usize;
+
+    // 32位地址范围：0x00010000 - 0x7FFEFFFF
+    // 避免 NULL 指针区域和小地址区域
+    if !(0x00010000..=0x7FFEFFFF).contains(&addr) {
+        return false;
+    }
+
+    // 检查地址 + len 是否会越界
+    if addr.saturating_add(len - 1) > 0x7FFEFFFF {
+        return false;
+    }
+
+    true
 }
