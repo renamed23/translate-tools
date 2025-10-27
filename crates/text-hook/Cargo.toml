@@ -47,6 +47,8 @@ delayed_attach = []
 # 在`assets/config.json`的`HIJACKED_DLL_PATH`中可以指定被劫持DLL的路径，
 # 否则默认会在系统目录中寻找
 dll_hijacking = ["delayed_attach"]
+# 禁止映射文本
+no_text_mapping = []
 
 # 启用文本相关的钩子
 text_hook = []
@@ -114,6 +116,7 @@ mizukake = [
     "text_hook",
     "generate_full_mapping_data",
     "dll_hijacking",
+    "no_text_mapping",
 ]
 
 [dependencies]

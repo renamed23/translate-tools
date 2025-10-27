@@ -481,16 +481,18 @@ pub fn enable_featured_hooks() {
     unsafe {
         HOOK_CREATE_FONT_A.enable().unwrap();
         HOOK_CREATE_FONT_INDIRECT_A.enable().unwrap();
-        HOOK_GET_GLYPH_OUTLINE_A.enable().unwrap();
-        HOOK_TEXT_OUT_A.enable().unwrap();
-        HOOK_GET_TEXT_EXTENT_POINT_32_A.enable().unwrap();
-
-        // W版本钩子
         HOOK_CREATE_FONT_W.enable().unwrap();
         HOOK_CREATE_FONT_INDIRECT_W.enable().unwrap();
-        HOOK_GET_GLYPH_OUTLINE_W.enable().unwrap();
-        HOOK_TEXT_OUT_W.enable().unwrap();
-        HOOK_GET_TEXT_EXTENT_POINT_32_W.enable().unwrap();
+
+        #[cfg(not(feature = "no_text_mapping"))]
+        {
+            HOOK_GET_GLYPH_OUTLINE_A.enable().unwrap();
+            HOOK_TEXT_OUT_A.enable().unwrap();
+            HOOK_GET_TEXT_EXTENT_POINT_32_A.enable().unwrap();
+            HOOK_GET_GLYPH_OUTLINE_W.enable().unwrap();
+            HOOK_TEXT_OUT_W.enable().unwrap();
+            HOOK_GET_TEXT_EXTENT_POINT_32_W.enable().unwrap();
+        }
     }
 
     #[cfg(feature = "enum_font_families")]
@@ -506,16 +508,18 @@ pub fn disable_featured_hooks() {
     unsafe {
         HOOK_CREATE_FONT_A.disable().unwrap();
         HOOK_CREATE_FONT_INDIRECT_A.disable().unwrap();
-        HOOK_GET_GLYPH_OUTLINE_A.disable().unwrap();
-        HOOK_TEXT_OUT_A.disable().unwrap();
-        HOOK_GET_TEXT_EXTENT_POINT_32_A.disable().unwrap();
-
-        // W版本钩子
         HOOK_CREATE_FONT_W.disable().unwrap();
         HOOK_CREATE_FONT_INDIRECT_W.disable().unwrap();
-        HOOK_GET_GLYPH_OUTLINE_W.disable().unwrap();
-        HOOK_TEXT_OUT_W.disable().unwrap();
-        HOOK_GET_TEXT_EXTENT_POINT_32_W.disable().unwrap();
+
+        #[cfg(not(feature = "no_text_mapping"))]
+        {
+            HOOK_GET_GLYPH_OUTLINE_A.disable().unwrap();
+            HOOK_TEXT_OUT_A.disable().unwrap();
+            HOOK_GET_TEXT_EXTENT_POINT_32_A.disable().unwrap();
+            HOOK_GET_GLYPH_OUTLINE_W.disable().unwrap();
+            HOOK_TEXT_OUT_W.disable().unwrap();
+            HOOK_GET_TEXT_EXTENT_POINT_32_W.disable().unwrap();
+        }
     }
 
     #[cfg(feature = "enum_font_families")]
