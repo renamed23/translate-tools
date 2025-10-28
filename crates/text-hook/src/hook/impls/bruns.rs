@@ -131,8 +131,8 @@ fn patch_nerbor() {
     }
 
     unsafe {
-        // (push ebp; push ebx; push 0x1; push 0x3A8; jmp MultibytesToWideChar;) * 2
-        write_asm(module_addr.add(0x132FC1), &byte_slice!("55 53 6A 01 68 A8 03 00 00 E9 77 F9 EE FF 55 53 6A 01 68 A8 03 00 00 E9 97 F9 EE FF")).unwrap();
+        // (push ebp; push ebx; push 0x1; push 0x3A4; jmp MultibytesToWideChar;) * 2
+        write_asm(module_addr.add(0x132FC1), &byte_slice!("55 53 6A 01 68 A4 03 00 00 E9 77 F9 EE FF 55 53 6A 01 68 A4 03 00 00 E9 97 F9 EE FF")).unwrap();
 
         // jmp exe.132FC1;
         write_bytes(module_addr.add(0x22940), &byte_slice!("E9 7C 06 11 00 90")).unwrap();
