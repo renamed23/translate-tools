@@ -20,8 +20,8 @@ debug_text_mapping = ["debug_output"]
 patch = []
 # 截获ReadFile来实现patch
 read_file_patch_impl = ["patch", "file_hook"]
-# 默认的patch导出函数实现
-default_patch_impl = ["patch"]
+# 导出patch的处理函数，可以用于外部汇编进行IAT调用
+export_patch_process_fn = ["patch"]
 # 提取补丁而不是替换补丁
 patch_extracting = ["patch"]
 # 当该feature开启时，create_font系列函数不再固定字体
@@ -75,8 +75,8 @@ sukisuki = ["default_impl", "generate_full_mapping_data"]
 ao_vo = ["patch", "default_impl"]
 noise = ["patch", "default_impl"]
 lusts = ["default_impl"]
-lucky_crosse = ["default_impl", "default_patch_impl"]
-cosmos = ["default_impl", "default_patch_impl"]
+lucky_crosse = ["default_impl", "export_patch_process_fn"]
+cosmos = ["default_impl", "export_patch_process_fn"]
 # 非C社的c4
 c4 = [
     "patch",

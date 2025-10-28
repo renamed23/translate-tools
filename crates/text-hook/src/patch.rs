@@ -164,7 +164,9 @@ pub unsafe fn try_extracting(ptr: *mut u8, len: usize) -> bool {
     }
 }
 
-#[cfg(feature = "default_patch_impl")]
+/// 相比于`process_buffer_ffi`，它会导出函数，可以直接通过外部汇编进行IAT调用。
+/// 如果直接在DLL内修补，那么不需要导出，直接使用`process_buffer_ffi`就可以了。
+#[cfg(feature = "export_patch_process_fn")]
 #[translate_macros::ffi_catch_unwind]
 #[unsafe(no_mangle)]
 pub unsafe extern "system" fn replace_script(ptr: *mut u8, len: usize) {
@@ -172,7 +174,9 @@ pub unsafe extern "system" fn replace_script(ptr: *mut u8, len: usize) {
 }
 
 /// 处理传入的缓冲区，进行修补或提取。
-/// 返回`true`表示修补或提取成功
+/// 返回`true`表示修补或提取成功。
+///
+/// 仅限RUST内部使用，若要用于外部代码，请使用`process_buffer_ffi`
 #[inline(always)]
 pub fn process_buffer(ptr: *mut u8, len: usize) -> bool {
     unsafe {
@@ -182,4 +186,10 @@ pub fn process_buffer(ptr: *mut u8, len: usize) -> bool {
         #[cfg(feature = "patch_extracting")]
         return try_extracting(ptr, len);
     }
+}
+
+/// FFI版本的`process_buffer`
+#[translate_macros::ffi_catch_unwind]
+pub unsafe extern "system" fn process_buffer_ffi(dst: *mut u8, len: usize) {
+    process_buffer(dst, len);
 }

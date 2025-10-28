@@ -2,7 +2,7 @@ use translate_macros::{byte_slice, ffi_catch_unwind};
 use windows_sys::Win32::Foundation::HMODULE;
 
 use crate::hook::traits::{CoreHook, TextHook, WindowHook};
-use crate::utils::mem::patch::{write_asm, write_bytes};
+use crate::utils::mem::patch::{create_trampoline_32, write_asm, write_bytes};
 use crate::{constant, debug};
 
 #[derive(Default)]
@@ -10,18 +10,17 @@ pub struct BrunsHook;
 
 impl CoreHook for BrunsHook {
     fn on_process_attach(&self, _hinst_dll: HMODULE) {
-        let Some(handle) = crate::utils::win32::get_module_handle("libscr.dll") else {
-            debug!("get_module_handle failed");
-            return;
-        };
-
-        debug!("patch {handle:p}");
-
-        patch_by_arg1(handle as *mut u8);
+        patch_by_arg1();
     }
 }
 
-fn patch_v1(module_addr: *mut u8) {
+fn patch_v1() {
+    let Some(handle) = crate::utils::win32::get_module_handle("libscr.dll") else {
+        debug!("get_module_handle failed");
+        return;
+    };
+    let module_addr = handle as *mut u8;
+
     // 改路径常量字符，让游戏找不到位图字体文件，并跳过错误报告;
     // 最终游戏FALLBACK到GDI文本渲染
     unsafe {
@@ -64,7 +63,13 @@ fn patch_v1(module_addr: *mut u8) {
     }
 }
 
-fn patch_v2(module_addr: *mut u8) {
+fn patch_v2() {
+    let Some(handle) = crate::utils::win32::get_module_handle("libscr.dll") else {
+        debug!("get_module_handle failed");
+        return;
+    };
+    let module_addr = handle as *mut u8;
+
     unsafe {
         // push libscr.DEEC4
         let char_addr = module_addr as usize + 0xDEEC4;
@@ -104,10 +109,59 @@ fn patch_v2(module_addr: *mut u8) {
     }
 }
 
-fn patch_by_arg1(module_addr: *mut u8) {
+fn patch_nerbor() {
+    let Some(handle) = crate::utils::win32::get_module_handle("") else {
+        debug!("get_module_handle failed");
+        return;
+    };
+    let module_addr = handle as *mut u8;
+
+    unsafe {
+        // push exe.134368
+        let char_addr = module_addr as usize + 0x134368;
+        let mut code_buf = vec![0x68];
+        code_buf.extend_from_slice(&char_addr.to_le_bytes());
+        write_asm(module_addr.add(0x70D23), &code_buf).unwrap();
+
+        // jmp exe.sub_71080
+        write_asm(module_addr.add(0x7104A), &byte_slice!("EB 34")).unwrap();
+
+        // 00 00 -> 5F 00 (`/` -> `_`)
+        write_bytes(module_addr.add(0x134368), &byte_slice!("5F 00")).unwrap();
+    }
+
+    unsafe {
+        // (push ebp; push ebx; push 0x1; push 0x3A8; jmp MultibytesToWideChar;) * 2
+        write_asm(module_addr.add(0x132FC1), &byte_slice!("55 53 6A 01 68 A8 03 00 00 E9 77 F9 EE FF 55 53 6A 01 68 A8 03 00 00 E9 97 F9 EE FF")).unwrap();
+
+        // jmp exe.132FC1;
+        write_bytes(module_addr.add(0x22940), &byte_slice!("E9 7C 06 11 00 90")).unwrap();
+
+        // jmp exe.132FCF;
+        write_bytes(module_addr.add(0x2296E), &byte_slice!("E9 5C 06 11 00 90")).unwrap();
+    }
+
+    unsafe {
+        // jmp exe.132F90;
+        write_asm(module_addr.add(0x11FD1B), &byte_slice!("E9 70 32 01 00")).unwrap();
+
+        let code_buf = create_trampoline_32(
+            crate::patch::process_buffer_ffi as _,
+            // mov eax,[esp+0x48]; movebx,[esp+0x70]; push eax; push ebx;
+            &byte_slice!("8B 44 24 48 8B 5C 24 70 50 53"),
+            // mov esi,eax; add esp,8; jmp 11FD20;
+            &byte_slice!("8B F0 83 C4 08 E9 71 CD FE FF"),
+        );
+
+        write_asm(module_addr.add(0x132F90), &code_buf).unwrap();
+    }
+}
+
+fn patch_by_arg1() {
     match constant::ARG1 {
-        "v1" => patch_v1(module_addr),
-        "v2" | "v3" => patch_v2(module_addr),
+        "v1" => patch_v1(),
+        "v2" | "v3" => patch_v2(),
+        "隣人" => patch_nerbor(),
         _ => unreachable!(),
     }
 }
