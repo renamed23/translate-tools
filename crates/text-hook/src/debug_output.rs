@@ -72,6 +72,15 @@ pub(crate) mod debug_impl {
 }
 
 #[macro_export]
+macro_rules! fn_name {
+    () => {{
+        fn __fn_name_marker() {}
+        let name = std::any::type_name_of_val(&__fn_name_marker);
+        name.strip_suffix("::__fn_name_marker").unwrap_or(name)
+    }};
+}
+
+#[macro_export]
 macro_rules! debug {
     ($($arg:tt)*) => {
         {
@@ -79,7 +88,7 @@ macro_rules! debug {
             {
                 $crate::debug_output::debug_impl::debug(&format!(
                     "[{}:{}] {}",
-                    file!(),
+                    $crate::fn_name!(),
                     line!(),
                     format_args!($($arg)*)
                 ));
