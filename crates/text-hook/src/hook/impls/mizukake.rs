@@ -1,9 +1,7 @@
-use translate_macros::byte_slice;
 use windows_sys::Win32::Foundation::HMODULE;
 
 use crate::debug;
 use crate::hook::traits::{CoreHook, TextHook};
-use crate::utils::mem::patch::{create_trampoline_32, write_asm};
 
 #[derive(Default)]
 pub struct MizukakeHook;
@@ -20,21 +18,42 @@ impl CoreHook for MizukakeHook {
         let module_addr = handle as *mut u8;
 
         unsafe {
-            // jmp mizukake_chs.222F80;
-            write_asm(module_addr.add(0x1A8F1C), &byte_slice!("E9 5F A0 07 00")).unwrap();
-
-            let code_buf = create_trampoline_32(
-                replace_script as _,
-                // mov ecx,[esp+0x40]; mov edx,[esp+0x3C]; mov eax,[esp+0x28]; mov ebx,[esp+0x24];
-                // push ecx; push edx; push eax; push ebx;
-                &byte_slice!("8B 4C 24 40 8B 54 24 3C 8B 44 24 28 8B 5C 24 24 51 52 50 53"),
-                // pop edi; pop esi; pop ebx; mov esp,ebp; pop ebp; ret 0xC
-                &byte_slice!("5F 5E 5B 8B E5 5D C2 0C 00"),
-            );
-
-            write_asm(module_addr.add(0x222F80), &code_buf).unwrap();
+            crate::utils::mem::patch::write_jmp_instruction(
+                module_addr.add(0x1A8F1C),
+                trampoline as _,
+            )
+            .unwrap();
         }
     }
+}
+
+#[unsafe(naked)]
+#[unsafe(link_section = ".text")]
+unsafe extern "system" fn trampoline() {
+    std::arch::naked_asm!(
+        "
+        pushad;
+        pushfd;
+        mov ecx,[esp+0x40];
+        mov edx,[esp+0x3C]; 
+        mov eax,[esp+0x28];
+        mov ebx,[esp+0x24];
+        push ecx;
+        push edx;
+        push eax;
+        push ebx;
+        call {0};
+        popfd;
+        popad;
+        pop edi; 
+        pop esi; 
+        pop ebx; 
+        mov esp,ebp; 
+        pop ebp; 
+        ret 0xC
+        ",
+        sym replace_script,
+    );
 }
 
 impl TextHook for MizukakeHook {}

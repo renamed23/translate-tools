@@ -107,3 +107,47 @@ pub unsafe fn resolve_patchable_addr_32(mut addr: usize) -> usize {
 
     addr
 }
+
+/// 在指定地址写入32位相对跳转指令（E9 jmp）
+///
+/// 该函数用于在指定的内存地址处写入一个5字节的`jmp`指令，该指令会跳转到目标函数。
+/// 使用相对寻址方式，计算从`jmp`指令下一条指令到目标函数的偏移量。
+///
+/// # 参数
+///
+/// - `patch_address`: 要写入`jmp`指令的内存地址
+/// - `target_function`: 要跳转到的目标函数地址
+///
+/// # 返回值
+///
+/// 返回`anyhow::Result<()>`，成功时返回`Ok(())`，失败时返回错误信息。
+///
+/// # 错误
+///
+/// 如果相对偏移量超出32位有符号整数范围（±2GB），则返回错误。
+pub unsafe fn write_jmp_instruction(
+    patch_address: *mut u8,
+    target_function: *const u8,
+) -> anyhow::Result<()> {
+    let next = unsafe { patch_address.add(5) } as isize;
+    let target = target_function as isize;
+
+    let offset = target.wrapping_sub(next);
+
+    // 验证偏移量范围
+    let rel32 = i32::try_from(offset).map_err(|_| {
+        anyhow::anyhow!(
+            "rel32 out of range: target={:#x}, next={:#x}, diff={:#x}",
+            target as usize,
+            next as usize,
+            offset
+        )
+    })?;
+
+    // 在栈上构建机器码
+    let mut opcode = [0u8; 5];
+    opcode[0] = 0xE9;
+    opcode[1..5].copy_from_slice(&rel32.to_le_bytes());
+
+    write_asm(patch_address, &opcode)
+}
