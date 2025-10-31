@@ -88,7 +88,7 @@ fn generate_pool(path: Vec<String>, output: String, cp932: bool) -> Result<()> {
     for file in files {
         let text = Text::from_path(&file)?;
 
-        for Item { name, message } in &text.items {
+        for Item { name, message, .. } in &text.items {
             if let Some(name) = name {
                 pool.exclude_used_chars(name);
             }

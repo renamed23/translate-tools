@@ -1,35 +1,82 @@
 use anyhow::{Context, Result};
-use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::collections::HashSet;
 use std::fs;
 use std::path::Path;
 
 /// 单条条目
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Item {
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
     pub message: String,
+    /// 存储完整的 JSON 数据以保留未知字段
+    pub raw_data: Value,
 }
 
 impl Item {
-    pub fn new(contents: impl Into<String>) -> Self {
+    pub fn new(message: impl Into<String>) -> Self {
+        let message = message.into();
         Self {
             name: None,
-            message: contents.into(),
+            message: message.clone(),
+            raw_data: serde_json::json!({
+                "message": message
+            }),
         }
     }
 
-    pub fn with_name(name: impl Into<String>, contents: impl Into<String>) -> Self {
+    pub fn with_name(name: impl Into<String>, message: impl Into<String>) -> Self {
+        let name_str = name.into();
+        let message = message.into();
         Self {
-            name: Some(name.into()),
-            message: contents.into(),
+            name: Some(name_str.clone()),
+            message: message.clone(),
+            raw_data: serde_json::json!({
+                "name": name_str,
+                "message": message
+            }),
         }
+    }
+
+    /// 从 JSON Value 创建 Item
+    pub fn from_value(value: &Value) -> Result<Self> {
+        let name = value
+            .get("name")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string());
+
+        let message = value
+            .get("message")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| anyhow::anyhow!("Item 缺少 message 字段"))?
+            .to_string();
+
+        Ok(Self {
+            name,
+            message,
+            raw_data: value.clone(),
+        })
+    }
+
+    /// 将 Item 转换回 JSON Value，保留所有原始字段
+    pub fn to_value(&self) -> Value {
+        let mut data = self.raw_data.clone();
+
+        // 更新 name 和 message 字段，确保它们是最新的
+        if let Some(name) = &self.name {
+            data["name"] = Value::String(name.clone());
+        } else {
+            let _ = data.as_object_mut().map(|obj| obj.remove("name"));
+        }
+
+        data["message"] = Value::String(self.message.clone());
+
+        data
     }
 }
 
 /// 封装文本内容的数组
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default)]
 pub struct Text {
     pub items: Vec<Item>,
 }
@@ -42,9 +89,16 @@ impl Text {
 
     /// 从 JSON 字符串解析（期待 JSON array of objects）
     pub fn from_string(s: &str) -> Result<Self> {
-        serde_json::from_str::<Vec<Item>>(s)
-            .map(|items| Self { items })
-            .context("解析 Text 字符串失败")
+        let values: Vec<Value> = serde_json::from_str(s).context("解析 Text 字符串失败")?;
+
+        let mut items = Vec::new();
+        for value in values {
+            let item =
+                Item::from_value(&value).with_context(|| format!("解析 Item 失败: {}", value))?;
+            items.push(item);
+        }
+
+        Ok(Self { items })
     }
 
     /// 从文件路径读取并解析
@@ -56,7 +110,8 @@ impl Text {
 
     /// 序列化为 pretty JSON 字符串
     pub fn to_string(&self) -> Result<String> {
-        serde_json::to_string_pretty(&self.items).context("序列化 Text 失败")
+        let values: Vec<Value> = self.items.iter().map(|item| item.to_value()).collect();
+        serde_json::to_string_pretty(&values).context("序列化 Text 失败")
     }
 
     /// 序列化并写入指定路径（覆盖）
@@ -96,6 +151,7 @@ impl Text {
     /// 根据 (name, message) 去重，保留首次出现的顺序
     ///
     /// name 为 None 与 Some("") 被视为不同（Option 区分）
+    /// 注意：去重时会保留第一个出现的条目的所有原始数据
     pub fn dedup(&mut self) {
         let mut seen = HashSet::new();
         let mut out = Vec::with_capacity(self.items.len());
@@ -109,6 +165,7 @@ impl Text {
     }
 
     /// 根据 message 去重，忽略 name，保留首次出现的顺序
+    /// 注意：去重时会保留第一个出现的条目的所有原始数据
     pub fn dedup_by_message(&mut self) {
         let mut seen = HashSet::new();
         let mut out = Vec::with_capacity(self.items.len());
@@ -131,15 +188,19 @@ impl Text {
     }
 
     /// 生成新的文本，对每个 value 应用映射函数（保持 pairs 的顺序）
+    /// 注意：原始数据会被保留，只有 name 和 message 会被更新
     pub fn generate_text<F>(&self, mut mapper: F) -> Result<Self>
     where
         F: FnMut(&Option<String>, &String) -> Result<(Option<String>, String)>,
     {
         let mut items = Vec::with_capacity(self.len());
 
-        for Item { name, message } in &self.items {
-            let (name, message) = mapper(name, message)?;
-            items.push(Item { name, message });
+        for item in &self.items {
+            let (new_name, new_message) = mapper(&item.name, &item.message)?;
+            let mut new_item = item.clone();
+            new_item.name = new_name;
+            new_item.message = new_message;
+            items.push(new_item);
         }
 
         Ok(Self { items })
