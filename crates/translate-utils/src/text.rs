@@ -133,6 +133,11 @@ impl Text {
         self.items.push(item);
     }
 
+    /// 追加一个条目
+    pub fn add_item(&mut self, item: Item) {
+        self.items.push(item);
+    }
+
     /// 获取指定位置的内容文本
     pub fn get_message(&self, index: usize) -> Option<&String> {
         self.items.get(index).map(|i| &i.message)
