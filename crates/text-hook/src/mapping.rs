@@ -116,3 +116,67 @@ pub fn map_wide_chars(u16_slice: &[u16], buffer: &mut [u16]) -> usize {
 
     out_pos
 }
+
+/// 将指定shift-jis字节中的替身字符映射为指定的字符并转换为utf16
+///
+/// # 参数
+/// - `bytes`: 输入的shift-jis字节序列
+///
+/// # 返回值
+/// 返回转换后的utf16字符向量
+#[allow(dead_code)]
+pub fn map_chars_to_vec(bytes: &[u8]) -> Vec<u16> {
+    let mut buffer = vec![0; bytes.len()];
+    let len = map_chars(bytes, &mut buffer);
+    buffer.truncate(len);
+    buffer
+}
+
+/// 将指定shift-jis字节中的替身字符映射为指定的字符并转换为以null结尾的utf16
+///
+/// # 参数
+/// - `bytes`: 输入的shift-jis字节序列
+///
+/// # 返回值
+/// 返回转换后的以null结尾的utf16字符向量
+#[allow(dead_code)]
+pub fn map_chars_to_vec_with_null(bytes: &[u8]) -> Vec<u16> {
+    let mut result = map_chars_to_vec(bytes);
+    result.push(0);
+    result
+}
+
+/// 映射宽字符并过滤特定字符
+///
+/// # 参数
+/// - `u16_slice`: 输入字符切片
+///
+/// # 返回值
+/// 返回映射和过滤后的字符向量
+///
+/// # 注意
+/// 此函数不处理UTF-16代理对，每个u16被独立处理
+#[allow(dead_code)]
+pub fn map_wide_chars_to_vec(u16_slice: &[u16]) -> Vec<u16> {
+    let mut buffer = vec![0; u16_slice.len()];
+    let len = map_wide_chars(u16_slice, &mut buffer);
+    buffer.truncate(len);
+    buffer
+}
+
+/// 映射宽字符并过滤特定字符，返回以null结尾的向量
+///
+/// # 参数
+/// - `u16_slice`: 输入字符切片
+///
+/// # 返回值
+/// 返回映射和过滤后的以null结尾的字符向量
+///
+/// # 注意
+/// 此函数不处理UTF-16代理对，每个u16被独立处理
+#[allow(dead_code)]
+pub fn map_wide_chars_to_vec_with_null(u16_slice: &[u16]) -> Vec<u16> {
+    let mut result = map_wide_chars_to_vec(u16_slice);
+    result.push(0);
+    result
+}

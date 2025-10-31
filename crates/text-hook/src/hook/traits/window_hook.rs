@@ -34,14 +34,16 @@ pub trait WindowHook: Send + Sync + 'static {
                 let class_bytes = crate::utils::mem::slice_until_null((*params_a).lpszClass, 512);
                 let class_name = crate::code_cvt::ansi_to_wide_char_with_null(class_bytes);
 
-                let window_title = if cfg!(feature = "override_window_title")
-                    && (*params_a).hwndParent.is_null()
-                {
-                    crate::code_cvt::u16_with_null(constant::WINDOW_TITLE)
+                let text_slice = crate::utils::mem::slice_until_null((*params_a).lpszName, 512);
+
+                let window_title = if (*params_a).hwndParent.is_null() {
+                    if cfg!(feature = "override_window_title") {
+                        crate::code_cvt::u16_with_null(constant::WINDOW_TITLE)
+                    } else {
+                        crate::mapping::map_chars_to_vec_with_null(text_slice)
+                    }
                 } else {
-                    crate::code_cvt::ansi_to_wide_char_with_null(
-                        crate::utils::mem::slice_until_null((*params_a).lpszName, 512),
-                    )
+                    crate::code_cvt::ansi_to_wide_char_with_null(text_slice)
                 };
 
                 params_w.lpszClass = class_name.as_ptr();
@@ -50,11 +52,8 @@ pub trait WindowHook: Send + Sync + 'static {
                 #[cfg(feature = "debug_output")]
                 {
                     let raw_class = String::from_utf16_lossy(&class_name);
-
-                    let title_bytes =
-                        crate::utils::mem::slice_until_null((*params_a).lpszName, 512);
                     let raw_title =
-                        String::from_utf16_lossy(&crate::code_cvt::ansi_to_wide_char(title_bytes));
+                        String::from_utf16_lossy(&crate::code_cvt::ansi_to_wide_char(text_slice));
                     debug!("Get raw class: {raw_class}, raw window title: {raw_title}");
                 }
 
@@ -66,20 +65,22 @@ pub trait WindowHook: Send + Sync + 'static {
                     return HOOK_DEF_WINDOW_PROC_A.call(h_wnd, u_msg, w_param, l_param);
                 }
 
-                let text = if cfg!(feature = "override_window_title") && GetParent(h_wnd).is_null()
-                {
-                    crate::code_cvt::u16_with_null(constant::WINDOW_TITLE)
+                let text_slice = crate::utils::mem::slice_until_null(text_ptr, 512);
+
+                let text = if GetParent(h_wnd).is_null() {
+                    if cfg!(feature = "override_window_title") {
+                        crate::code_cvt::u16_with_null(constant::WINDOW_TITLE)
+                    } else {
+                        crate::mapping::map_chars_to_vec_with_null(text_slice)
+                    }
                 } else {
-                    crate::code_cvt::ansi_to_wide_char_with_null(
-                        crate::utils::mem::slice_until_null(text_ptr, 512),
-                    )
+                    crate::code_cvt::ansi_to_wide_char_with_null(text_slice)
                 };
 
                 #[cfg(feature = "debug_output")]
                 {
                     let raw_text = {
-                        let bytes = crate::utils::mem::slice_until_null(text_ptr, 512);
-                        let u16_bytes = crate::code_cvt::ansi_to_wide_char(bytes);
+                        let u16_bytes = crate::code_cvt::ansi_to_wide_char(text_slice);
                         String::from_utf16_lossy(&u16_bytes)
                     };
                     debug!("Get raw window text: {raw_text}");
