@@ -36,7 +36,7 @@ generate_full_mapping_data = []
 # 导出默认的DllMain，内部使用`default_dll_main`，
 # 使用`HookImplType::default()`作为钩子实例
 export_default_dll_main = []
-# 使用`assets/config.json`的`WINDOW_TITLE`字段覆写游戏标题
+# 使用`assets/config.json`的`WINDOW_TITLE`字段覆写游戏主窗口标题
 override_window_title = ["window_hook"]
 # 模拟日语环境(目前支持很有限)
 emulate_locale = []

@@ -1,7 +1,5 @@
 use core::ptr;
-use windows_sys::Win32::Globalization::{
-    CP_ACP, CP_UTF8, MultiByteToWideChar, WideCharToMultiByte,
-};
+use windows_sys::Win32::Globalization::{CP_UTF8, MultiByteToWideChar, WideCharToMultiByte};
 
 use crate::print_system_error_message;
 
@@ -158,7 +156,7 @@ pub fn utf8_to_wide_char(bytes: &[u8]) -> Vec<u16> {
 /// 便捷函数：将ANSI字节切片转换为宽字符字符串
 #[allow(dead_code)]
 pub fn ansi_to_wide_char(bytes: &[u8]) -> Vec<u16> {
-    multi_byte_to_wide_char(bytes, CP_ACP)
+    multi_byte_to_wide_char(bytes, crate::constant::ANSI_CODE_PAGE)
 }
 
 /// 便捷函数：将宽字符切片转换为UTF-8字节向量
@@ -170,7 +168,7 @@ pub fn wide_char_to_utf8(wide_str: &[u16]) -> Vec<u8> {
 /// 便捷函数：将宽字符切片转换为ANSI字节向量
 #[allow(dead_code)]
 pub fn wide_char_to_ansi(wide_str: &[u16]) -> Vec<u8> {
-    wide_char_to_multi_byte(wide_str, CP_ACP)
+    wide_char_to_multi_byte(wide_str, crate::constant::ANSI_CODE_PAGE)
 }
 
 /// 便捷函数：将UTF-8字节切片转换为宽字符字符串（以null结尾）
@@ -182,7 +180,7 @@ pub fn utf8_to_wide_char_with_null(bytes: &[u8]) -> Vec<u16> {
 /// 便捷函数：将ANSI字节切片转换为宽字符字符串（以null结尾）
 #[allow(dead_code)]
 pub fn ansi_to_wide_char_with_null(bytes: &[u8]) -> Vec<u16> {
-    multi_byte_to_wide_char_with_null(bytes, CP_ACP)
+    multi_byte_to_wide_char_with_null(bytes, crate::constant::ANSI_CODE_PAGE)
 }
 
 /// 便捷函数：将宽字符切片转换为UTF-8字节向量（以null结尾）
@@ -194,7 +192,7 @@ pub fn wide_char_to_utf8_with_null(wide_str: &[u16]) -> Vec<u8> {
 /// 便捷函数：将宽字符切片转换为ANSI字节向量（以null结尾）
 #[allow(dead_code)]
 pub fn wide_char_to_ansi_with_null(wide_str: &[u16]) -> Vec<u8> {
-    wide_char_to_multi_byte_with_null(wide_str, CP_ACP)
+    wide_char_to_multi_byte_with_null(wide_str, crate::constant::ANSI_CODE_PAGE)
 }
 
 /// 将 u16 切片转换为带有结尾 NULL 的新 Vec<u16>
