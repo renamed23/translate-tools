@@ -36,14 +36,23 @@ pub unsafe extern "system" fn enum_fonts_proc_a(
     lparam: LPARAM,
 ) -> i32 {
     unsafe {
+        if lplf.is_null() || lparam == 0 {
+            return 0;
+        }
+
         let info = &*(lparam as *const EnumFontInfo);
+
+        let Some(original_proc) = info.original_proc_a else {
+            debug!("original_proc_a is None");
+            return 0;
+        };
 
         let mut modified_lf = *lplf;
         modified_lf.lfCharSet = constant::ENUM_FONT_PROC_CHAR_SET;
 
         debug!("Enuming font...");
 
-        (info.original_proc_a.unwrap())(&modified_lf, lptm, font_type, info.original_lparam)
+        original_proc(&modified_lf, lptm, font_type, info.original_lparam)
     }
 }
 
@@ -54,13 +63,22 @@ pub unsafe extern "system" fn enum_fonts_proc_w(
     lparam: LPARAM,
 ) -> i32 {
     unsafe {
+        if lplf.is_null() || lparam == 0 {
+            return 0;
+        }
+
         let info = &*(lparam as *const EnumFontInfo);
+
+        let Some(original_proc) = info.original_proc_w else {
+            debug!("original_proc_w is None");
+            return 0;
+        };
 
         let mut modified_lf = *lplf;
         modified_lf.lfCharSet = constant::ENUM_FONT_PROC_CHAR_SET;
 
         debug!("Enuming font...");
 
-        (info.original_proc_w.unwrap())(&modified_lf, lptm, font_type, info.original_lparam)
+        original_proc(&modified_lf, lptm, font_type, info.original_lparam)
     }
 }
