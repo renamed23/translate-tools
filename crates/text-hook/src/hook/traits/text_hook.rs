@@ -16,6 +16,10 @@ use crate::constant;
 use crate::debug;
 use crate::mapping::map_chars;
 use crate::mapping::map_wide_chars;
+#[cfg(feature = "enum_font_families")]
+use crate::utils::trait_impls::enum_font_proc::{
+    EnumFontInfo, enum_fonts_proc_a, enum_fonts_proc_w,
+};
 
 #[generate_detours]
 pub trait TextHook: Send + Sync + 'static {
@@ -434,14 +438,17 @@ pub trait TextHook: Send + Sync + 'static {
 
         #[cfg(feature = "enum_font_families")]
         unsafe {
+            let info = EnumFontInfo::from_ansi(l_param, lp_enum_font_fam_proc);
+
             if let Some(font) = lp_logfont.as_mut() {
                 font.lfCharSet = constant::CHAR_SET;
             }
+
             HOOK_ENUM_FONT_FAMILIES_EX_A.call(
                 hdc,
                 lp_logfont,
-                lp_enum_font_fam_proc,
-                l_param,
+                Some(enum_fonts_proc_a),
+                &info as *const _ as LPARAM,
                 dw_flags,
             )
         }
@@ -462,15 +469,117 @@ pub trait TextHook: Send + Sync + 'static {
 
         #[cfg(feature = "enum_font_families")]
         unsafe {
+            let info = EnumFontInfo::from_wide(l_param, lp_enum_font_fam_proc);
+
             if let Some(font) = lp_logfont.as_mut() {
                 font.lfCharSet = constant::CHAR_SET;
             }
             HOOK_ENUM_FONT_FAMILIES_EX_W.call(
                 hdc,
                 lp_logfont,
-                lp_enum_font_fam_proc,
-                l_param,
+                Some(enum_fonts_proc_w),
+                &info as *const _ as LPARAM,
                 dw_flags,
+            )
+        }
+    }
+
+    #[allow(unused_variables)]
+    #[detour(dll = "gdi32.dll", symbol = "EnumFontFamiliesA", fallback = "0")]
+    unsafe fn enum_font_families_a(
+        &self,
+        hdc: HDC,
+        lpsz_family: PCSTR,
+        lp_enum_font_fam_proc: FONTENUMPROCA,
+        l_param: LPARAM,
+    ) -> i32 {
+        #[cfg(not(feature = "enum_font_families"))]
+        unimplemented!();
+
+        #[cfg(feature = "enum_font_families")]
+        unsafe {
+            let info = EnumFontInfo::from_ansi(l_param, lp_enum_font_fam_proc);
+
+            HOOK_ENUM_FONT_FAMILIES_A.call(
+                hdc,
+                lpsz_family,
+                Some(enum_fonts_proc_a),
+                &info as *const _ as LPARAM,
+            )
+        }
+    }
+
+    #[allow(unused_variables)]
+    #[detour(dll = "gdi32.dll", symbol = "EnumFontFamiliesW", fallback = "0")]
+    unsafe fn enum_font_families_w(
+        &self,
+        hdc: HDC,
+        lpsz_family: PCWSTR,
+        lp_enum_font_fam_proc: FONTENUMPROCW,
+        l_param: LPARAM,
+    ) -> i32 {
+        #[cfg(not(feature = "enum_font_families"))]
+        unimplemented!();
+
+        #[cfg(feature = "enum_font_families")]
+        unsafe {
+            let info = EnumFontInfo::from_wide(l_param, lp_enum_font_fam_proc);
+
+            HOOK_ENUM_FONT_FAMILIES_W.call(
+                hdc,
+                lpsz_family,
+                Some(enum_fonts_proc_w),
+                &info as *const _ as LPARAM,
+            )
+        }
+    }
+
+    #[allow(unused_variables)]
+    #[detour(dll = "gdi32.dll", symbol = "EnumFontsA", fallback = "0")]
+    unsafe fn enum_fonts_a(
+        &self,
+        hdc: HDC,
+        lpsz_face: PCSTR,
+        lp_enum_font_proc: FONTENUMPROCA,
+        l_param: LPARAM,
+    ) -> i32 {
+        #[cfg(not(feature = "enum_font_families"))]
+        unimplemented!();
+
+        #[cfg(feature = "enum_font_families")]
+        unsafe {
+            let info = EnumFontInfo::from_ansi(l_param, lp_enum_font_proc);
+
+            HOOK_ENUM_FONTS_A.call(
+                hdc,
+                lpsz_face,
+                Some(enum_fonts_proc_a),
+                &info as *const _ as LPARAM,
+            )
+        }
+    }
+
+    #[allow(unused_variables)]
+    #[detour(dll = "gdi32.dll", symbol = "EnumFontsW", fallback = "0")]
+    unsafe fn enum_fonts_w(
+        &self,
+        hdc: HDC,
+        lpsz_face: PCWSTR,
+        lp_enum_font_proc: FONTENUMPROCW,
+        l_param: LPARAM,
+    ) -> i32 {
+        #[cfg(not(feature = "enum_font_families"))]
+        unimplemented!();
+
+        #[cfg(feature = "enum_font_families")]
+        unsafe {
+            let info = EnumFontInfo::from_wide(l_param, lp_enum_font_proc);
+
+            HOOK_ENUM_FONTS_W.call(
+                hdc,
+                lpsz_face,
+                Some(enum_fonts_proc_w),
+                &info as *const _ as LPARAM,
             )
         }
     }
@@ -499,6 +608,10 @@ pub fn enable_featured_hooks() {
     unsafe {
         HOOK_ENUM_FONT_FAMILIES_EX_A.enable().unwrap();
         HOOK_ENUM_FONT_FAMILIES_EX_W.enable().unwrap();
+        HOOK_ENUM_FONT_FAMILIES_A.enable().unwrap();
+        HOOK_ENUM_FONT_FAMILIES_W.enable().unwrap();
+        HOOK_ENUM_FONTS_A.enable().unwrap();
+        HOOK_ENUM_FONTS_W.enable().unwrap();
     }
     debug!("Text Hooked!");
 }
@@ -526,6 +639,10 @@ pub fn disable_featured_hooks() {
     unsafe {
         HOOK_ENUM_FONT_FAMILIES_EX_A.disable().unwrap();
         HOOK_ENUM_FONT_FAMILIES_EX_W.disable().unwrap();
+        HOOK_ENUM_FONT_FAMILIES_A.disable().unwrap();
+        HOOK_ENUM_FONT_FAMILIES_W.disable().unwrap();
+        HOOK_ENUM_FONTS_A.disable().unwrap();
+        HOOK_ENUM_FONTS_W.disable().unwrap();
     }
     debug!("Text Unhooked!");
 }

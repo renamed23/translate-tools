@@ -8,6 +8,10 @@
         "type": "u8",
         "value": 134
     },
+    "ENUM_FONT_PROC_CHAR_SET": {
+        "type": "u8",
+        "value": 128
+    },
     "FONT_FILTER": {
         "type": "&[&[u16]]",
         "value": [
