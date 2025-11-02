@@ -1,9 +1,9 @@
-use translate_macros::{detour, generate_detours};
+use translate_macros::{detour, detour_trait};
 use windows_sys::core::{BOOL, PCSTR, PCWSTR, PSTR, PWSTR};
 
 use crate::debug;
 
-#[generate_detours]
+#[detour_trait]
 pub trait CodeCvtHook: Send + Sync + 'static {
     #[detour(dll = "kernel32.dll", symbol = "MultiByteToWideChar", fallback = "0")]
     unsafe fn multi_byte_to_wide_char(

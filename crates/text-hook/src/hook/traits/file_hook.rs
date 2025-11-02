@@ -1,4 +1,4 @@
-use translate_macros::{detour, generate_detours};
+use translate_macros::{detour, detour_trait};
 use windows_sys::{
     Win32::{
         Foundation::HANDLE,
@@ -11,7 +11,7 @@ use windows_sys::{
 
 use crate::debug;
 
-#[generate_detours]
+#[detour_trait]
 pub trait FileHook: Send + Sync + 'static {
     #[detour(
         dll = "kernel32.dll",

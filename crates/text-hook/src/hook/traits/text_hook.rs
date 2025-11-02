@@ -1,6 +1,6 @@
 use smallvec::SmallVec;
 use std::borrow::Cow;
-use translate_macros::{detour, generate_detours};
+use translate_macros::{detour, detour_trait};
 use windows_sys::{
     Win32::{
         Foundation::{LPARAM, SIZE},
@@ -21,7 +21,7 @@ use crate::utils::trait_impls::enum_font_proc::{
     EnumFontInfo, enum_fonts_proc_a, enum_fonts_proc_w,
 };
 
-#[generate_detours]
+#[detour_trait]
 pub trait TextHook: Send + Sync + 'static {
     #[detour(
         dll = "gdi32.dll",

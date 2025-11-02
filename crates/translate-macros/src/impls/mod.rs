@@ -19,12 +19,11 @@ macro_rules! syn_bail2 {
 }
 
 pub(crate) mod byte_slice;
-// pub(crate) mod detour;
+pub(crate) mod detour;
 pub(crate) mod expand_by_files;
 pub(crate) mod ffi_catch_unwind;
 pub(crate) mod flate;
 pub(crate) mod generate_constants_from_json;
-pub(crate) mod generate_detours;
 pub(crate) mod generate_exports_from_hijacked_dll;
 pub(crate) mod generate_mapping_data;
 pub(crate) mod generate_patch_data;

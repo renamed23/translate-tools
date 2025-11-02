@@ -1,4 +1,4 @@
-use translate_macros::{detour, generate_detours};
+use translate_macros::{detour, detour_trait};
 use windows_sys::Win32::{
     Foundation::{HWND, LPARAM, LRESULT, WPARAM},
     UI::WindowsAndMessaging::{CREATESTRUCTA, CREATESTRUCTW, GetParent, WM_NCCREATE, WM_SETTEXT},
@@ -6,7 +6,7 @@ use windows_sys::Win32::{
 
 use crate::{constant, debug};
 
-#[generate_detours]
+#[detour_trait]
 pub trait WindowHook: Send + Sync + 'static {
     #[detour(dll = "user32.dll", symbol = "DefWindowProcA", fallback = "0")]
     unsafe fn def_window_proc_a(
