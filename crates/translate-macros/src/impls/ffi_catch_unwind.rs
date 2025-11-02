@@ -1,15 +1,15 @@
-use proc_macro::TokenStream;
+use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{Expr, ItemFn, parse_macro_input};
+use syn::{Expr, ItemFn};
 
-pub fn ffi_catch_unwind(attr: TokenStream, item: TokenStream) -> TokenStream {
+pub fn ffi_catch_unwind(attr: TokenStream, item: TokenStream) -> syn::Result<TokenStream> {
     let fallback: Expr = if attr.is_empty() {
         syn::parse_quote! { () }
     } else {
-        parse_macro_input!(attr as Expr)
+        syn::parse2::<Expr>(attr)?
     };
 
-    let mut func = parse_macro_input!(item as ItemFn);
+    let mut func = syn::parse2::<ItemFn>(item)?;
     let block = &func.block;
 
     let new_block = quote! {{
@@ -21,7 +21,7 @@ pub fn ffi_catch_unwind(attr: TokenStream, item: TokenStream) -> TokenStream {
 
     func.block = syn::parse2(new_block).expect("解析生成块失败");
 
-    TokenStream::from(quote! {
+    Ok(quote! {
         #func
     })
 }

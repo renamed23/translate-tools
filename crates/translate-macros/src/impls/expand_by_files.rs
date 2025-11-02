@@ -1,48 +1,47 @@
 use convert_case::Casing;
-use proc_macro::TokenStream;
-use proc_macro2::{Group, Ident, Literal, Span, TokenStream as TokenStream2, TokenTree};
+use proc_macro2::{Group, Ident, Literal, Span, TokenStream, TokenTree};
 use quote::{ToTokens, TokenStreamExt};
 use std::fs;
 use std::path::PathBuf;
 use syn::parse::{Parse, ParseStream};
 use syn::{Block, LitStr, Token};
 
-pub fn expand_by_files(input: TokenStream) -> TokenStream {
-    let args = syn::parse_macro_input!(input as Args);
+struct Args {
+    path: LitStr,
+    template: Block,
+}
+
+impl Parse for Args {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        let path: LitStr = input.parse()?;
+        let _token: Token![=>] = input.parse()?;
+        let template: Block = input.parse()?;
+        Ok(Args { path, template })
+    }
+}
+
+pub fn expand_by_files(input: TokenStream) -> syn::Result<TokenStream> {
+    let args = syn::parse2::<Args>(input)?;
     let rel = args.path.value();
 
     let manifest_dir = match std::env::var("CARGO_MANIFEST_DIR") {
         Ok(s) => s,
-        Err(e) => {
-            return syn::Error::new_spanned(
-                args.path,
-                format!("无法获取 CARGO_MANIFEST_DIR: {}", e),
-            )
-            .to_compile_error()
-            .into();
-        }
+        Err(e) => syn_bail!(args.path, "无法获取 CARGO_MANIFEST_DIR: {}", e),
     };
 
     let mut full_path = PathBuf::from(manifest_dir);
     full_path.push(rel);
 
-    let mut template_ts = TokenStream2::new();
+    let mut template_ts = TokenStream::new();
     for stmt in args.template.stmts.iter() {
         template_ts.extend(stmt.to_token_stream());
     }
 
-    let mut output = TokenStream2::new();
+    let mut output = TokenStream::new();
 
     let read_dir = match fs::read_dir(&full_path) {
         Ok(rd) => rd,
-        Err(e) => {
-            return syn::Error::new_spanned(
-                args.path,
-                format!("读取目录失败 `{}`: {}", full_path.display(), e),
-            )
-            .to_compile_error()
-            .into();
-        }
+        Err(e) => syn_bail!(args.path, "读取目录失败 `{}`: {}", full_path.display(), e),
     };
 
     for entry in read_dir.flatten() {
@@ -85,10 +84,9 @@ pub fn expand_by_files(input: TokenStream) -> TokenStream {
         output.extend(replaced);
     }
 
-    TokenStream::from(output)
+    Ok(output)
 }
 
-/// replacement bag
 struct Replacement {
     file_ident: Ident,
     file_lit: Literal,
@@ -96,8 +94,8 @@ struct Replacement {
 }
 
 /// 递归遍历 tokenstream，遇到特定 Ident 时尝试替换
-fn replace_tokens(ts: TokenStream2, r: Replacement) -> TokenStream2 {
-    let mut out = TokenStream2::new();
+fn replace_tokens(ts: TokenStream, r: Replacement) -> TokenStream {
+    let mut out = TokenStream::new();
     let iter = ts.into_iter().peekable();
 
     for tt in iter {
@@ -140,18 +138,4 @@ fn replace_tokens(ts: TokenStream2, r: Replacement) -> TokenStream2 {
     }
 
     out
-}
-
-struct Args {
-    path: LitStr,
-    template: Block,
-}
-
-impl Parse for Args {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
-        let path: LitStr = input.parse()?;
-        let _token: Token![=>] = input.parse()?;
-        let template: Block = input.parse()?;
-        Ok(Args { path, template })
-    }
 }

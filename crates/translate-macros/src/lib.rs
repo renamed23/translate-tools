@@ -1,13 +1,4 @@
-pub(crate) mod byte_slice;
-pub(crate) mod expand_by_files;
-pub(crate) mod ffi_catch_unwind;
-pub(crate) mod flate;
-pub(crate) mod generate_constants_from_json;
-pub(crate) mod generate_detours;
-pub(crate) mod generate_exports_from_hijacked_dll;
-pub(crate) mod generate_mapping_data;
-pub(crate) mod generate_patch_data;
-pub(crate) mod search_hook_impls;
+pub(crate) mod impls;
 pub(crate) mod utils;
 
 use proc_macro::TokenStream;
@@ -63,7 +54,10 @@ use proc_macro::TokenStream;
 /// 这使得结果可以直接用于需要 `[u8; N]` 类型的上下文。
 #[proc_macro]
 pub fn byte_slice(input: TokenStream) -> TokenStream {
-    byte_slice::byte_slice(input)
+    match impls::byte_slice::byte_slice(input.into()) {
+        Ok(ts) => ts.into(),
+        Err(err) => err.into_compile_error().into(),
+    }
 }
 
 /// 标记属性：`#[detour(...)]`
@@ -134,7 +128,7 @@ pub fn detour(_attr: TokenStream, item: TokenStream) -> TokenStream {
 /// ```
 #[proc_macro_attribute]
 pub fn generate_detours(attr: TokenStream, item: TokenStream) -> TokenStream {
-    generate_detours::generate_detours(attr, item)
+    impls::generate_detours::generate_detours(attr, item)
 }
 
 /// 为 FFI 导出的函数自动生成 panic 捕获包装的属性宏实现。
@@ -181,7 +175,10 @@ pub fn generate_detours(attr: TokenStream, item: TokenStream) -> TokenStream {
 /// ```
 #[proc_macro_attribute]
 pub fn ffi_catch_unwind(attr: TokenStream, item: TokenStream) -> TokenStream {
-    ffi_catch_unwind::ffi_catch_unwind(attr, item)
+    match impls::ffi_catch_unwind::ffi_catch_unwind(attr.into(), item.into()) {
+        Ok(ts) => ts.into(),
+        Err(err) => err.into_compile_error().into(),
+    }
 }
 
 /// 将文件或目录中的单个文件在编译时压缩并嵌入为静态变量，运行时解压访问。
@@ -243,7 +240,7 @@ pub fn ffi_catch_unwind(attr: TokenStream, item: TokenStream) -> TokenStream {
 /// - 目录路径必须包含且仅包含一个文件，否则编译失败
 #[proc_macro]
 pub fn flate(input: TokenStream) -> TokenStream {
-    flate::flate(input)
+    impls::flate::flate(input)
 }
 
 /// 一个过程宏，用于自动搜索并生成条件编译的钩子实现类型别名。
@@ -280,7 +277,7 @@ pub fn flate(input: TokenStream) -> TokenStream {
 /// ```
 #[proc_macro]
 pub fn search_hook_impls(input: TokenStream) -> TokenStream {
-    search_hook_impls::search_hook_impls(input)
+    impls::search_hook_impls::search_hook_impls(input)
 }
 
 /// 从 JSON 配置文件生成 Rust 常量的过程宏
@@ -325,7 +322,7 @@ pub fn search_hook_impls(input: TokenStream) -> TokenStream {
 /// - 数组类型会生成为切片引用 `&[...]`
 #[proc_macro]
 pub fn generate_constants_from_json(input: TokenStream) -> TokenStream {
-    generate_constants_from_json::generate_constants_from_json(input)
+    impls::generate_constants_from_json::generate_constants_from_json(input)
 }
 
 /// 生成字符映射数据的过程宏
@@ -426,7 +423,7 @@ pub fn generate_constants_from_json(input: TokenStream) -> TokenStream {
 /// - 映射键必须通过 JIS0208 校验（可被 Shift_JIS 编码）
 #[proc_macro]
 pub fn generate_mapping_data(input: TokenStream) -> TokenStream {
-    generate_mapping_data::generate_mapping_data(input)
+    impls::generate_mapping_data::generate_mapping_data(input)
 }
 
 /// 生成补丁数据的过程宏
@@ -489,7 +486,7 @@ pub fn generate_mapping_data(input: TokenStream) -> TokenStream {
 /// ```
 #[proc_macro]
 pub fn generate_patch_data(input: TokenStream) -> TokenStream {
-    generate_patch_data::generate_patch_data(input)
+    impls::generate_patch_data::generate_patch_data(input)
 }
 
 /// 一个过程宏，用于根据指定目录下的 Rust 文件批量生成代码。
@@ -522,7 +519,10 @@ pub fn generate_patch_data(input: TokenStream) -> TokenStream {
 /// ```
 #[proc_macro]
 pub fn expand_by_files(input: TokenStream) -> TokenStream {
-    expand_by_files::expand_by_files(input)
+    match impls::expand_by_files::expand_by_files(input.into()) {
+        Ok(ts) => ts.into(),
+        Err(err) => err.into_compile_error().into(),
+    }
 }
 
 /// 为 DLL 劫持生成导出函数包装器
@@ -557,5 +557,5 @@ pub fn expand_by_files(input: TokenStream) -> TokenStream {
 /// 此宏专为 Windows DLL 劫持场景设计，生成的代码包含 unsafe 操作和平台特定汇编。
 #[proc_macro]
 pub fn generated_exports_from_hijacked_dll(input: TokenStream) -> TokenStream {
-    generate_exports_from_hijacked_dll::generated_exports_from_hijacked_dll(input)
+    impls::generate_exports_from_hijacked_dll::generated_exports_from_hijacked_dll(input)
 }
