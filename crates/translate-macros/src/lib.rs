@@ -108,9 +108,6 @@ pub fn detour(_attr: TokenStream, item: TokenStream) -> TokenStream {
 /// # 用法
 ///
 /// ```rust
-/// use detour_gen::detour_trait;
-/// use detour_gen::detour;
-///
 /// #[detour_trait]
 /// pub trait Hook: Send + Sync + 'static {
 ///     #[detour(
