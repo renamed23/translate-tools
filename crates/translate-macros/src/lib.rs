@@ -63,7 +63,7 @@ pub fn byte_slice(input: TokenStream) -> TokenStream {
 /// 标记属性：`#[detour(...)]`
 ///
 /// 将某个 trait 方法标记为“需要为其生成导出 wrapper 与 detour 静态”的元数据属性。
-/// 此属性本身为 no-op（不修改被标注项），仅作为元数据供 `#[generate_detours]` 读取与处理。
+/// 此属性本身为 no-op（不修改被标注项），仅作为元数据供 `#[detour_trait]` 读取与处理。
 ///
 /// # 语法
 ///
@@ -90,7 +90,7 @@ pub fn detour(_attr: TokenStream, item: TokenStream) -> TokenStream {
     item
 }
 
-/// 在 trait 上自动生成 detour：`#[generate_detours]`
+/// 在 trait 上自动生成 detour：`#[detour_trait]`
 ///
 /// 应用于 trait 定义。该宏遍历 trait 中的每个方法，对于带有 `#[detour(...)]` 标记的 trait 方法，
 /// 宏会基于方法签名自动生成两类项：
@@ -102,16 +102,16 @@ pub fn detour(_attr: TokenStream, item: TokenStream) -> TokenStream {
 ///    `once_cell::sync::Lazy<retour::GenericDetour<unsafe extern "system" fn(...) -> Ret>>`，
 ///    该静态在首次访问时会查找 `dll` 的 `symbol` 地址并尝试注册 detour（使用 `retour::GenericDetour::new`）。
 ///
-/// `generate_detours` 只负责生成 wrapper 与 detour 静态；它**不**自动触发静态初始化（即不会自动在 crate 初始化时启用 detour）。
+/// `detour_trait` 只负责生成 wrapper 与 detour 静态；它**不**自动触发静态初始化（即不会自动在 crate 初始化时启用 detour）。
 /// 若需要在程序启动时启用 detour，请在适当时机主动引用对应的 `HOOK_<NAME>` 静态或显式触发初始化。
 ///
 /// # 用法
 ///
 /// ```rust
-/// use detour_gen::generate_detours;
+/// use detour_gen::detour_trait;
 /// use detour_gen::detour;
 ///
-/// #[generate_detours]
+/// #[detour_trait]
 /// pub trait Hook: Send + Sync + 'static {
 ///     #[detour(
 ///         dll = "gdi32.dll",                              // 必需，目标动态库名（字符串字面量）
@@ -127,8 +127,35 @@ pub fn detour(_attr: TokenStream, item: TokenStream) -> TokenStream {
 /// }
 /// ```
 #[proc_macro_attribute]
-pub fn generate_detours(attr: TokenStream, item: TokenStream) -> TokenStream {
-    match impls::generate_detours::generate_detours(attr.into(), item.into()) {
+pub fn detour_trait(attr: TokenStream, item: TokenStream) -> TokenStream {
+    match impls::detour::detour_trait::detour_trait(attr.into(), item.into()) {
+        Ok(ts) => ts.into(),
+        Err(err) => err.into_compile_error().into(),
+    }
+}
+
+/// 为函数自动生成detour：`#[detour_fn(...)]`
+///
+/// # 语法
+///
+/// ```rust
+/// #[detour_fn(
+///     dll = "gdi32.dll",                              // 必需，目标动态库名（字符串字面量）
+///     symbol = "TextOutA",                            // 必需，目标导出符号名（字符串字面量）
+///     fallback = "FALSE"                              // 可选，捕获 panic/unwind 时的回退值（字符串字面量，内部会解析为 Rust 表达式）
+/// )]
+/// unsafe extern "system" fn text_out(hdc: HDC, x: c_int, y: c_int, lp: LPCSTR, c: c_int) -> BOOL;
+/// ```
+///
+/// # 字段说明
+///
+/// * `dll`：**必需**。目标模块名称（字符串字面量），用于运行时查找符号地址，例如 `"gdi32.dll"`。
+/// * `symbol`：**必需**。目标导出符号名（字符串字面量），例如 `"TextOutA"`。
+/// * `fallback`：可选。字符串字面量，内容将被解析为 Rust 表达式作为 wrapper 在捕获 panic/unwind 时的返回值。
+///   建议显式提供 `fallback`；若不提供，宏默认用 `Default::default()`，但当返回类型不实现 `Default` 时会导致编译错误。
+#[proc_macro_attribute]
+pub fn detour_fn(attr: TokenStream, item: TokenStream) -> TokenStream {
+    match impls::detour::detour_fn::detour_fn(attr.into(), item.into()) {
         Ok(ts) => ts.into(),
         Err(err) => err.into_compile_error().into(),
     }
