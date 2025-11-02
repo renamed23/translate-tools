@@ -1,10 +1,10 @@
-use proc_macro::TokenStream;
+use proc_macro2::{Span, TokenStream};
 use quote::quote;
-use std::env;
-use std::fs;
 use std::path::PathBuf;
 use syn::parse::{Parse, ParseStream};
-use syn::{Ident, LitStr, Token};
+use syn::{Ident, LitByteStr, LitStr, Token};
+
+use crate::utils::get_full_path_by_manifest;
 
 /// 语法解析： [pub] static NAME: [u8] from "path"
 struct FlateInput {
@@ -27,7 +27,7 @@ impl Parse for FlateInput {
 
         let from_kw: Ident = input.parse()?;
         if from_kw != "from" {
-            return Err(syn::Error::new_spanned(from_kw, "需要关键字 `from`"));
+            syn_bail!(from_kw, "需要关键字 `from`");
         }
         let path: LitStr = input.parse()?;
 
@@ -35,17 +35,67 @@ impl Parse for FlateInput {
     }
 }
 
+pub fn flate(input: TokenStream) -> syn::Result<TokenStream> {
+    let input = syn::parse2::<FlateInput>(input)?;
+
+    let name_ident = &input.name;
+    let pub_token = if input.pub_kw.is_some() {
+        quote! { pub }
+    } else {
+        quote! {}
+    };
+
+    // 确定目标文件路径
+    let target_file_path = match determine_target_file_path(&input.path.value()) {
+        Ok(path) => path,
+        Err(e) => {
+            syn_bail!(input.path, "路径解析失败: {}", e);
+        }
+    };
+
+    let file_bytes = match std::fs::read(&target_file_path) {
+        Ok(b) => b,
+        Err(e) => {
+            syn_bail!(
+                input.path,
+                "读取文件失败 `{}`: {}",
+                target_file_path.display(),
+                e
+            );
+        }
+    };
+
+    let compressed: Vec<u8> = match zstd::bulk::compress(&file_bytes, 0) {
+        Ok(v) => v,
+        Err(e) => {
+            syn_bail!(input.path, "zstd 压缩失败: {}", e);
+        }
+    };
+
+    let bytes = LitByteStr::new(&compressed, Span::call_site());
+    let bytes_tokens = quote! { #bytes };
+    let file_len = file_bytes.len();
+    let runtime_fn_path = quote! { crate::utils::decompress_zstd };
+
+    let expanded = quote! {
+        #pub_token static #name_ident: ::std::sync::LazyLock<Vec<u8>> = ::std::sync::LazyLock::new(|| {
+            #runtime_fn_path(#bytes_tokens, #file_len)
+        });
+    };
+
+    Ok(expanded)
+}
+
 /// 确定目标文件路径
 fn determine_target_file_path(rel_path: &str) -> anyhow::Result<PathBuf> {
-    let manifest_dir = env::var("CARGO_MANIFEST_DIR")?;
-    let full_path = PathBuf::from(&manifest_dir).join(rel_path);
+    let full_path = get_full_path_by_manifest(rel_path).unwrap();
 
     if full_path.is_file() {
         return Ok(full_path);
     }
 
     if full_path.is_dir() {
-        let entries: Vec<_> = fs::read_dir(&full_path)?.collect::<Result<Vec<_>, _>>()?;
+        let entries: Vec<_> = std::fs::read_dir(&full_path)?.collect::<Result<Vec<_>, _>>()?;
 
         let files: Vec<_> = entries
             .into_iter()
@@ -63,59 +113,4 @@ fn determine_target_file_path(rel_path: &str) -> anyhow::Result<PathBuf> {
     } else {
         anyhow::bail!("路径不存在或不是文件/目录: {}", full_path.display())
     }
-}
-
-pub fn flate(input: TokenStream) -> TokenStream {
-    let input = syn::parse_macro_input!(input as FlateInput);
-
-    let name_ident = &input.name;
-    let pub_token = if input.pub_kw.is_some() {
-        quote! { pub }
-    } else {
-        quote! {}
-    };
-
-    // 确定目标文件路径
-    let target_file_path = match determine_target_file_path(&input.path.value()) {
-        Ok(path) => path,
-        Err(e) => {
-            return syn::Error::new_spanned(input.path, format!("路径解析失败: {}", e))
-                .to_compile_error()
-                .into();
-        }
-    };
-
-    let file_bytes = match fs::read(&target_file_path) {
-        Ok(b) => b,
-        Err(e) => {
-            return syn::Error::new_spanned(
-                input.path,
-                format!("读取文件失败 `{}`: {}", target_file_path.display(), e),
-            )
-            .to_compile_error()
-            .into();
-        }
-    };
-
-    let compressed: Vec<u8> = match zstd::bulk::compress(&file_bytes, 0) {
-        Ok(v) => v,
-        Err(e) => {
-            return syn::Error::new_spanned(input.path, format!("zstd 压缩失败: {}", e))
-                .to_compile_error()
-                .into();
-        }
-    };
-
-    let bytes = syn::LitByteStr::new(&compressed, proc_macro2::Span::call_site());
-    let bytes_tokens = quote! { #bytes };
-    let file_len = file_bytes.len();
-    let runtime_fn_path = quote! { crate::utils::decompress_zstd };
-
-    let expanded = quote! {
-        #pub_token static #name_ident: ::std::sync::LazyLock<Vec<u8>> = ::std::sync::LazyLock::new(|| {
-            #runtime_fn_path(#bytes_tokens, #file_len)
-        });
-    };
-
-    TokenStream::from(expanded)
 }

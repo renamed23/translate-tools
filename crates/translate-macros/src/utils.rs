@@ -1,10 +1,7 @@
-use proc_macro::TokenStream;
-use quote::quote;
+use std::path::{Path, PathBuf};
 
-/// 生成 compile_error!(...) 的 TokenStream
-pub(crate) fn compile_error(msg: &str) -> TokenStream {
-    let tokens = quote! {
-        compile_error!(#msg);
-    };
-    tokens.into()
+/// 传入相对于`CARGO_MANIFEST_DIR`路径，然后返回完整的路径。
+pub(crate) fn get_full_path_by_manifest(rel_path: impl AsRef<Path>) -> anyhow::Result<PathBuf> {
+    let manifest_dir = std::env::var("CARGO_MANIFEST_DIR")?;
+    Ok(PathBuf::from(&manifest_dir).join(rel_path))
 }

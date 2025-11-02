@@ -30,7 +30,7 @@ impl CoreHook for MizukakeHook {
 #[unsafe(naked)]
 #[unsafe(link_section = ".text")]
 unsafe extern "system" fn trampoline() {
-    std::arch::naked_asm!(
+    core::arch::naked_asm!(
         "
         pushad;
         pushfd;

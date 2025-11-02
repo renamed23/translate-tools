@@ -6,7 +6,9 @@ macro_rules! syn_bail {
             format!($($arg)*)
         ))
     };
+}
 
+macro_rules! syn_bail2 {
     // 使用 call_site span（宏调用位置）
     ($($arg:tt)*) => {
         return Err(syn::Error::new(

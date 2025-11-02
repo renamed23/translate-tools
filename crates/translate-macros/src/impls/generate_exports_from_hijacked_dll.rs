@@ -1,89 +1,31 @@
-use proc_macro::TokenStream;
-use proc_macro2::Span;
-use quote::{format_ident, quote};
-use syn::{LitStr, Result, parse::Parse, parse::ParseStream};
-
-use anyhow::{Context, Result as AnyResult};
+use anyhow::Context;
 use convert_case::{Case, Casing};
-use std::fs;
+use goblin::Object;
+use proc_macro2::{Literal, TokenStream};
+use quote::{format_ident, quote};
 use std::path::PathBuf;
+use syn::LitStr;
 
-/// 简单解析输入格式：一个字符串字面量，表示相对于 CARGO_MANIFEST_DIR 的目录
-struct PathsInput {
-    path: LitStr,
-}
+use crate::utils::get_full_path_by_manifest;
 
-impl Parse for PathsInput {
-    fn parse(input: ParseStream) -> Result<Self> {
-        let path: LitStr = input.parse()?;
-        Ok(PathsInput { path })
-    }
-}
+pub fn generated_exports_from_hijacked_dll(input: TokenStream) -> syn::Result<TokenStream> {
+    let parsed = syn::parse2::<LitStr>(input)?;
+    let mapping_path = get_full_path_by_manifest(parsed.value()).unwrap();
 
-/// 对导出名做一个简单的 Rust 静态符号名转换：
-/// - 非字母数字字符替换为下划线
-/// - 转换为大写下划线风格： e.g. "GetFileVersionInfoA" -> "ADDR_GET_FILE_VERSION_INFO_A"
-fn rust_static_name_from_export(export: &str) -> String {
-    let mut s = export.to_case(Case::Snake).to_uppercase();
-    s = s
-        .chars()
-        .map(|c| if c.is_ascii_alphanumeric() { c } else { '_' })
-        .collect();
-    format!("ADDR_{}", s)
-}
-
-/// 从 bytes 里解析导出符号（只返回有名字的导出）
-/// 使用 goblin::pe 解析 PE 导出表
-fn parse_pe_exports(bytes: &[u8]) -> AnyResult<Vec<String>> {
-    use goblin::Object;
-    match Object::parse(bytes)? {
-        Object::PE(pe) => {
-            let mut names = Vec::new();
-            for export in &pe.exports {
-                if let Some(name) = export.name {
-                    names.push(name.to_string());
-                }
-            }
-
-            Ok(names)
-        }
-        other => Err(anyhow::anyhow!(
-            "不是 PE 文件（解析结果：{:?}），无法从中提取导出",
-            other
-        )),
-    }
-}
-
-/// 主过程宏实现
-pub fn generated_exports_from_hijacked_dll(input: TokenStream) -> TokenStream {
-    // 解析输入
-    let parsed = syn::parse_macro_input!(input as PathsInput);
-
-    // 在宏展开时获取 CARGO_MANIFEST_DIR
-    let manifest_dir = std::env::var("CARGO_MANIFEST_DIR")
-        .expect("无法获取 CARGO_MANIFEST_DIR（请在 Cargo 环境中编译）");
-
-    // 拼接路径（相对于 manifest dir）
-    let mapping_path = PathBuf::from(&manifest_dir).join(parsed.path.value());
-
-    // 开始在编译期读取目录并处理
     let generated = match try_generate(&mapping_path) {
         Ok(tokens) => tokens,
         Err(e) => {
-            // 如果出错：在编译期 panic（以便用户在编译时看到错误并修正）
-            return syn::Error::new(Span::call_site(), format!("{:#}", e))
-                .to_compile_error()
-                .into();
+            syn_bail!(parsed, "{e}");
         }
     };
 
-    generated.into()
+    Ok(generated)
 }
 
-/// 实际工作函数（返回 quote! tokens）
-fn try_generate(path: &PathBuf) -> AnyResult<proc_macro2::TokenStream> {
+fn try_generate(path: &PathBuf) -> anyhow::Result<TokenStream> {
     // 检查目录存在
-    let metadata = fs::metadata(path).with_context(|| format!("路径不存在：{}", path.display()))?;
+    let metadata =
+        std::fs::metadata(path).with_context(|| format!("路径不存在：{}", path.display()))?;
     if !metadata.is_dir() {
         anyhow::bail!(
             "{} 不是目录，请传入包含 DLL 的目录路径（相对于 CARGO_MANIFEST_DIR）",
@@ -93,7 +35,8 @@ fn try_generate(path: &PathBuf) -> AnyResult<proc_macro2::TokenStream> {
 
     // 列出目录
     let mut dlls = Vec::new();
-    for entry in fs::read_dir(path).with_context(|| format!("无法读取目录 {}", path.display()))?
+    for entry in
+        std::fs::read_dir(path).with_context(|| format!("无法读取目录 {}", path.display()))?
     {
         let e = entry?;
         let ft = e.file_type()?;
@@ -117,8 +60,8 @@ fn try_generate(path: &PathBuf) -> AnyResult<proc_macro2::TokenStream> {
         .unwrap()
         .to_string();
 
-    let bytes =
-        fs::read(dll_path).with_context(|| format!("无法读取 DLL 文件：{}", dll_path.display()))?;
+    let bytes = std::fs::read(dll_path)
+        .with_context(|| format!("无法读取 DLL 文件：{}", dll_path.display()))?;
 
     let export_names = parse_pe_exports(&bytes)
         .with_context(|| format!("解析 DLL 导出表失败：{}", dll_path.display()))?;
@@ -158,13 +101,13 @@ fn try_generate(path: &PathBuf) -> AnyResult<proc_macro2::TokenStream> {
         let export_name = name.clone();
         let export_fn_ident = format_ident!("lib_{}", export_name); // 内部函数名（不导出）
         // 确保函数名是合法标识符：若原导出名包含不可作为 ident 的字符，此处生成的内部 ident 仅用于 Rust 层，导出名保留为 export_name
-        // 裸汇编：使用 std::arch::naked_asm! 宏
+        // 裸汇编：使用 core::arch::naked_asm! 宏
         let asm = quote! {
             #[unsafe(naked)]
             #[unsafe(link_section = ".text")]
             #[unsafe(export_name = #export_name)]
             pub unsafe extern "system" fn #export_fn_ident() {
-                ::std::arch::naked_asm!(
+                ::core::arch::naked_asm!(
                     "jmp [{0}]",
                     sym #ident,
                 );
@@ -181,19 +124,19 @@ fn try_generate(path: &PathBuf) -> AnyResult<proc_macro2::TokenStream> {
 
     // 生成 load_library 函数
     let c_literals_iter = c_string_literals.iter();
-    let c_lits_tokens: Vec<proc_macro2::TokenStream> = c_literals_iter
+    let c_lits_tokens: Vec<TokenStream> = c_literals_iter
         .map(|s| {
-            let lit = proc_macro2::Literal::byte_string(s.as_bytes());
+            let lit = Literal::byte_string(s.as_bytes());
             quote! { #lit.as_ptr() }
         })
         .collect();
 
     // 将地址静态 ident 列表用于 load assignment
-    let addr_assigns: Vec<proc_macro2::TokenStream> = addr_idents
+    let addr_assigns: Vec<TokenStream> = addr_idents
         .iter()
         .enumerate()
         .map(|(i, ident)| {
-            let idx = proc_macro2::Literal::usize_unsuffixed(i);
+            let idx = Literal::usize_unsuffixed(i);
             quote! {
                 #ident = addrs[#idx] as usize;
             }
@@ -231,7 +174,7 @@ fn try_generate(path: &PathBuf) -> AnyResult<proc_macro2::TokenStream> {
     };
 
     // 构造 unload_library 函数
-    let reset_addr_statements: Vec<proc_macro2::TokenStream> = addr_idents
+    let reset_addr_statements: Vec<TokenStream> = addr_idents
         .iter()
         .map(|ident| {
             quote! { #ident = 0; }
@@ -265,4 +208,37 @@ fn try_generate(path: &PathBuf) -> AnyResult<proc_macro2::TokenStream> {
     };
 
     Ok(output)
+}
+
+/// 对导出名做一个简单的 Rust 静态符号名转换：
+/// - 非字母数字字符替换为下划线
+/// - 转换为大写下划线风格： e.g. "GetFileVersionInfoA" -> "ADDR_GET_FILE_VERSION_INFO_A"
+fn rust_static_name_from_export(export: &str) -> String {
+    let mut s = export.to_case(Case::Snake).to_uppercase();
+    s = s
+        .chars()
+        .map(|c| if c.is_ascii_alphanumeric() { c } else { '_' })
+        .collect();
+    format!("ADDR_{}", s)
+}
+
+/// 从 bytes 里解析导出符号（只返回有名字的导出）
+/// 使用 goblin::pe 解析 PE 导出表
+fn parse_pe_exports(bytes: &[u8]) -> anyhow::Result<Vec<String>> {
+    match Object::parse(bytes)? {
+        Object::PE(pe) => {
+            let mut names = Vec::new();
+            for export in &pe.exports {
+                if let Some(name) = export.name {
+                    names.push(name.to_string());
+                }
+            }
+
+            Ok(names)
+        }
+        other => Err(anyhow::anyhow!(
+            "不是 PE 文件（解析结果：{:?}），无法从中提取导出",
+            other
+        )),
+    }
 }

@@ -128,7 +128,10 @@ pub fn detour(_attr: TokenStream, item: TokenStream) -> TokenStream {
 /// ```
 #[proc_macro_attribute]
 pub fn generate_detours(attr: TokenStream, item: TokenStream) -> TokenStream {
-    impls::generate_detours::generate_detours(attr, item)
+    match impls::generate_detours::generate_detours(attr.into(), item.into()) {
+        Ok(ts) => ts.into(),
+        Err(err) => err.into_compile_error().into(),
+    }
 }
 
 /// 为 FFI 导出的函数自动生成 panic 捕获包装的属性宏实现。
@@ -240,7 +243,10 @@ pub fn ffi_catch_unwind(attr: TokenStream, item: TokenStream) -> TokenStream {
 /// - 目录路径必须包含且仅包含一个文件，否则编译失败
 #[proc_macro]
 pub fn flate(input: TokenStream) -> TokenStream {
-    impls::flate::flate(input)
+    match impls::flate::flate(input.into()) {
+        Ok(ts) => ts.into(),
+        Err(err) => err.into_compile_error().into(),
+    }
 }
 
 /// 一个过程宏，用于自动搜索并生成条件编译的钩子实现类型别名。
@@ -277,7 +283,10 @@ pub fn flate(input: TokenStream) -> TokenStream {
 /// ```
 #[proc_macro]
 pub fn search_hook_impls(input: TokenStream) -> TokenStream {
-    impls::search_hook_impls::search_hook_impls(input)
+    match impls::search_hook_impls::search_hook_impls(input.into()) {
+        Ok(ts) => ts.into(),
+        Err(err) => err.into_compile_error().into(),
+    }
 }
 
 /// 从 JSON 配置文件生成 Rust 常量的过程宏
@@ -322,7 +331,10 @@ pub fn search_hook_impls(input: TokenStream) -> TokenStream {
 /// - 数组类型会生成为切片引用 `&[...]`
 #[proc_macro]
 pub fn generate_constants_from_json(input: TokenStream) -> TokenStream {
-    impls::generate_constants_from_json::generate_constants_from_json(input)
+    match impls::generate_constants_from_json::generate_constants_from_json(input.into()) {
+        Ok(ts) => ts.into(),
+        Err(err) => err.into_compile_error().into(),
+    }
 }
 
 /// 生成字符映射数据的过程宏
@@ -423,7 +435,10 @@ pub fn generate_constants_from_json(input: TokenStream) -> TokenStream {
 /// - 映射键必须通过 JIS0208 校验（可被 Shift_JIS 编码）
 #[proc_macro]
 pub fn generate_mapping_data(input: TokenStream) -> TokenStream {
-    impls::generate_mapping_data::generate_mapping_data(input)
+    match impls::generate_mapping_data::generate_mapping_data(input.into()) {
+        Ok(ts) => ts.into(),
+        Err(err) => err.into_compile_error().into(),
+    }
 }
 
 /// 生成补丁数据的过程宏
@@ -486,7 +501,10 @@ pub fn generate_mapping_data(input: TokenStream) -> TokenStream {
 /// ```
 #[proc_macro]
 pub fn generate_patch_data(input: TokenStream) -> TokenStream {
-    impls::generate_patch_data::generate_patch_data(input)
+    match impls::generate_patch_data::generate_patch_data(input.into()) {
+        Ok(ts) => ts.into(),
+        Err(err) => err.into_compile_error().into(),
+    }
 }
 
 /// 一个过程宏，用于根据指定目录下的 Rust 文件批量生成代码。
@@ -557,5 +575,10 @@ pub fn expand_by_files(input: TokenStream) -> TokenStream {
 /// 此宏专为 Windows DLL 劫持场景设计，生成的代码包含 unsafe 操作和平台特定汇编。
 #[proc_macro]
 pub fn generated_exports_from_hijacked_dll(input: TokenStream) -> TokenStream {
-    impls::generate_exports_from_hijacked_dll::generated_exports_from_hijacked_dll(input)
+    match impls::generate_exports_from_hijacked_dll::generated_exports_from_hijacked_dll(
+        input.into(),
+    ) {
+        Ok(ts) => ts.into(),
+        Err(err) => err.into_compile_error().into(),
+    }
 }

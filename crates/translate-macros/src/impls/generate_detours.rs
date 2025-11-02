@@ -1,11 +1,6 @@
-use proc_macro::TokenStream;
-use proc_macro2::Span;
+use proc_macro2::{Span, TokenStream};
 use quote::{format_ident, quote};
-use syn::spanned::Spanned as _;
-use syn::{
-    Attribute, Expr, FnArg, Ident, ItemTrait, Pat, PatIdent, ReturnType, TraitItem, Type,
-    parse_macro_input,
-};
+use syn::{Attribute, Expr, FnArg, Ident, ItemTrait, Pat, PatIdent, ReturnType, TraitItem, Type};
 use syn::{LitStr, TraitItemFn};
 
 struct DetourAttr {
@@ -25,28 +20,23 @@ fn parse_detour_attr(attr: &Attribute) -> syn::Result<Option<DetourAttr>> {
     let mut symbol: Option<String> = None;
     let mut export: Option<String> = None;
     let mut fallback: Option<Expr> = None;
-    let mut  calling_convention: Option<String> = None;
+    let mut calling_convention: Option<String> = None;
 
     attr.parse_nested_meta(|meta| {
         if let Some(ident) = meta.path.get_ident() {
             let key = ident.to_string();
             let buf = meta.value()?;
-            
+
             match buf.parse::<LitStr>() {
                 Ok(litstr) => {
                     match key.as_str() {
                         "dll" => dll = Some(litstr.value()),
                         "symbol" => symbol = Some(litstr.value()),
                         "export" => export = Some(litstr.value()),
-                        "fallback" => {
-                            match syn::parse_str::<Expr>(&litstr.value()) {
-                                Ok(expr) => fallback = Some(expr),
-                                Err(e) => {
-                                    return Err(syn::Error::new(litstr.span(), 
-                                        format!("解析 fallback 表达式失败: {}", e)));
-                                }
-                            }
-                        }
+                        "fallback" => match syn::parse_str::<Expr>(&litstr.value()) {
+                            Ok(expr) => fallback = Some(expr),
+                            Err(e) => syn_bail!(litstr, "解析 fallback 表达式失败: {e}"),
+                        },
                         "calling_convention" => {
                             calling_convention = Some(litstr.value());
                         }
@@ -54,12 +44,7 @@ fn parse_detour_attr(attr: &Attribute) -> syn::Result<Option<DetourAttr>> {
                     }
                     return Ok(());
                 }
-                Err(_) => {
-                    return Err(syn::Error::new(
-                        buf.span(),
-                        "detour 属性的值必须使用字符串字面量：例如 dll = \"gdi32.dll\" 或 fallback = \"FALSE\"",
-                    ));
-                }
+                Err(_) => syn_bail!(attr, "detour 属性的值必须使用字符串字面量"),
             }
         }
         Ok(())
@@ -71,21 +56,21 @@ fn parse_detour_attr(attr: &Attribute) -> syn::Result<Option<DetourAttr>> {
             symbol,
             export,
             fallback,
-            calling_convention
+            calling_convention,
         })),
-        _ => Err(syn::Error::new(
-            attr.path().span(),
-            "detour 属性必须包含 dll = \"...\" 和 symbol = \"...\" 两个字符串字面量",
-        )),
+        _ => syn_bail!(
+            attr.path(),
+            "detour 属性必须包含 dll 和 symbol 两个字符串字面量"
+        ),
     }
 }
 
-pub fn generate_detours(_attr: TokenStream, item: TokenStream) -> TokenStream {
+pub fn generate_detours(_attr: TokenStream, item: TokenStream) -> syn::Result<TokenStream> {
     // 解析 trait
-    let input = parse_macro_input!(item as ItemTrait);
+    let input = syn::parse2::<ItemTrait>(item)?;
 
     // 最终输出 tokenstream（保留原 trait）
-    let mut generated = proc_macro2::TokenStream::new();
+    let mut generated = TokenStream::new();
     generated.extend(quote! { #input });
 
     // 遍历 trait 的 item
@@ -100,14 +85,18 @@ pub fn generate_detours(_attr: TokenStream, item: TokenStream) -> TokenStream {
                         break;
                     }
                     Ok(None) => { /* 这个 attr 不是 detour，继续 */ }
-                    Err(e) => {
-                        // 如果有语法/解析错误，立即把错误作为编译错误返回
-                        return TokenStream::from(e.to_compile_error());
-                    }
+                    Err(e) => syn_bail!(attr, "{e}"),
                 }
             }
 
-            if let Some(DetourAttr{dll, symbol, export, fallback, calling_convention}) = detour_meta {
+            if let Some(DetourAttr {
+                dll,
+                symbol,
+                export,
+                fallback,
+                calling_convention,
+            }) = detour_meta
+            {
                 // 方法名
                 let method_ident = sig.ident.clone();
 
@@ -126,7 +115,7 @@ pub fn generate_detours(_attr: TokenStream, item: TokenStream) -> TokenStream {
                 // 收集参数（跳过 receiver &self）
                 let mut arg_idents: Vec<Ident> = Vec::new();
                 let mut arg_types: Vec<Type> = Vec::new();
-                let mut param_pairs_tokens: Vec<proc_macro2::TokenStream> = Vec::new();
+                let mut param_pairs_tokens: Vec<TokenStream> = Vec::new();
 
                 for (idx, input_arg) in sig.inputs.iter().enumerate() {
                     match input_arg {
@@ -175,8 +164,6 @@ pub fn generate_detours(_attr: TokenStream, item: TokenStream) -> TokenStream {
                 let call_args_iter = arg_idents.iter();
                 let param_pairs_iter = param_pairs_tokens.iter();
 
-                 
-
                 // 生成 wrapper + static
                 generated.extend(quote! {
                     // 自动生成：导出 wrapper
@@ -205,5 +192,5 @@ pub fn generate_detours(_attr: TokenStream, item: TokenStream) -> TokenStream {
         }
     }
 
-    TokenStream::from(generated)
+    Ok(generated)
 }

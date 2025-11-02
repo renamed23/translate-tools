@@ -1,46 +1,35 @@
-use proc_macro::TokenStream;
+use proc_macro2::{Ident, Literal, Span, TokenStream};
 use quote::quote;
 use sha2::{Digest, Sha256};
-use std::{collections::HashSet, fs, path::PathBuf};
+use std::{collections::HashSet, path::PathBuf};
 use syn::parse::{Parse, ParseStream};
 use syn::{LitStr, Token};
 
-use crate::utils::compile_error;
+use crate::utils::get_full_path_by_manifest;
 
-/// 输入解析：两个字符串字面量，分别是 raw_dir 与 translated_dir（相对于 CARGO_MANIFEST_DIR）
 struct PathsInput {
     raw: LitStr,
-    _arrow: Token![=>],
     translated: LitStr,
 }
 
 impl Parse for PathsInput {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let raw: LitStr = input.parse()?;
-        let arrow: Token![=>] = input.parse()?;
+        let _arrow: Token![=>] = input.parse()?;
         let translated: LitStr = input.parse()?;
-        Ok(PathsInput {
-            raw,
-            _arrow: arrow,
-            translated,
-        })
+        Ok(PathsInput { raw, translated })
     }
 }
 
-pub fn generate_patch_data(input: TokenStream) -> TokenStream {
-    let parsed = syn::parse_macro_input!(input as PathsInput);
-    let raw_rel = parsed.raw.value();
-    let translated_rel = parsed.translated.value();
+pub fn generate_patch_data(input: TokenStream) -> syn::Result<TokenStream> {
+    let parsed = syn::parse2::<PathsInput>(input)?;
 
-    let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").expect("无法获取 CARGO_MANIFEST_DIR");
-
-    // 构造绝对路径
-    let raw_dir = PathBuf::from(&manifest_dir).join(&raw_rel);
-    let translated_dir = PathBuf::from(&manifest_dir).join(&translated_rel);
+    let raw_dir = get_full_path_by_manifest(parsed.raw.value()).unwrap();
+    let translated_dir = get_full_path_by_manifest(parsed.translated.value()).unwrap();
 
     let mut raw_files: Vec<PathBuf> = Vec::new();
     if raw_dir.exists() && raw_dir.is_dir() {
-        match fs::read_dir(&raw_dir) {
+        match std::fs::read_dir(&raw_dir) {
             Ok(rd) => {
                 for e in rd.filter_map(|r| r.ok()) {
                     if e.file_type().map(|t| t.is_file()).unwrap_or(false) {
@@ -48,13 +37,7 @@ pub fn generate_patch_data(input: TokenStream) -> TokenStream {
                     }
                 }
             }
-            Err(e) => {
-                return compile_error(&format!(
-                    "generate_patch_data: 无法读取目录 {}: {}",
-                    raw_dir.display(),
-                    e
-                ));
-            }
+            Err(e) => syn_bail!(parsed.raw, "无法读取目录 {}: {}", raw_dir.display(), e),
         }
     }
 
@@ -78,7 +61,7 @@ pub fn generate_patch_data(input: TokenStream) -> TokenStream {
             continue;
         }
 
-        let raw_data = match fs::read(raw_path) {
+        let raw_data = match std::fs::read(raw_path) {
             Ok(b) => b,
             Err(e) => {
                 errors.push(format!("无法读取原始文件 {}: {}", raw_path.display(), e));
@@ -86,7 +69,7 @@ pub fn generate_patch_data(input: TokenStream) -> TokenStream {
             }
         };
 
-        let translated_data = match fs::read(&translated_path) {
+        let translated_data = match std::fs::read(&translated_path) {
             Ok(b) => b,
             Err(e) => {
                 errors.push(format!(
@@ -145,14 +128,11 @@ pub fn generate_patch_data(input: TokenStream) -> TokenStream {
             combined.push_str(e);
             combined.push('\n');
         }
-        return compile_error(&format!(
-            "generate_patch_data: 生成失败，见错误列表:\n{}",
-            combined
-        ));
+        syn_bail2!("生成失败，见错误列表:\n{}", combined);
     }
 
     // ---- 开始生成代码 TokenStream ----
-    let mut statics_tokens: Vec<proc_macro2::TokenStream> = Vec::new();
+    let mut statics_tokens: Vec<TokenStream> = Vec::new();
     // 以 PATCH_0001 等命名
     for (idx, item) in files.iter().enumerate() {
         let patch_name = format!("PATCH_{:04}", idx + 1);
@@ -164,8 +144,8 @@ pub fn generate_patch_data(input: TokenStream) -> TokenStream {
             .to_string();
         // 生成 translate_macros::flate! 调用文本（作为 token stream）
         // 这里展开为语句： translate_macros::flate!( static PATCH_0001: [u8] from "/abs/path" );
-        let ident = proc_macro2::Ident::new(&patch_name, proc_macro2::Span::call_site());
-        let path_lit = proc_macro2::Literal::string(&rel);
+        let ident = Ident::new(&patch_name, Span::call_site());
+        let path_lit = Literal::string(&rel);
         let tks = quote! {
             ::translate_macros::flate!(
                 static #ident: [u8] from #path_lit
@@ -187,9 +167,9 @@ pub fn generate_patch_data(input: TokenStream) -> TokenStream {
     for (idx, item) in files.iter().enumerate() {
         let patch_name = format!("PATCH_{:04}", idx + 1);
         let bytes_esc = bytes_to_escaped_literal(&item.hash);
-        let rhs_ident = proc_macro2::Ident::new(&patch_name, proc_macro2::Span::call_site());
+        let rhs_ident = Ident::new(&patch_name, Span::call_site());
         let lhs_str = format!("b\"{}\"", bytes_esc);
-        let lhs_ts: proc_macro2::TokenStream = lhs_str.parse().expect("lhs字面量解析失败");
+        let lhs_ts: TokenStream = lhs_str.parse().expect("lhs字面量解析失败");
         let entry = quote! {
             #lhs_ts => &#rhs_ident,
         };
@@ -206,10 +186,10 @@ pub fn generate_patch_data(input: TokenStream) -> TokenStream {
     let mut lens: Vec<usize> = files.iter().map(|f| f.len).collect();
     lens.sort_unstable();
     lens.dedup();
-    let lens_entries: Vec<proc_macro2::TokenStream> = lens
+    let lens_entries: Vec<TokenStream> = lens
         .iter()
         .map(|l| {
-            let lit = proc_macro2::Literal::usize_unsuffixed(*l);
+            let lit = Literal::usize_unsuffixed(*l);
             quote! { #lit, }
         })
         .collect();
@@ -219,14 +199,14 @@ pub fn generate_patch_data(input: TokenStream) -> TokenStream {
         };
     };
 
-    // FILENAMES map (behind cfg feature)
+    // FILENAMES map
     let mut filenames_entries = Vec::new();
     for item in files.iter() {
         let bytes_esc = bytes_to_escaped_literal(&item.hash);
         let lhs_str = format!("b\"{}\"", bytes_esc);
-        let lhs_ts: proc_macro2::TokenStream = lhs_str.parse().unwrap();
+        let lhs_ts: TokenStream = lhs_str.parse().unwrap();
         let fname = &item.raw_filename;
-        let fname_lit = proc_macro2::Literal::string(fname);
+        let fname_lit = Literal::string(fname);
         let entry = quote! {
             #lhs_ts => #fname_lit,
         };
@@ -239,9 +219,7 @@ pub fn generate_patch_data(input: TokenStream) -> TokenStream {
         };
     };
 
-    // Combine everything
     let generated = quote! {
-        // 自动生成的补丁数据
         #(#statics_tokens)*
 
         #patches_map
@@ -251,5 +229,5 @@ pub fn generate_patch_data(input: TokenStream) -> TokenStream {
         #filenames_map
     };
 
-    TokenStream::from(generated)
+    Ok(generated)
 }

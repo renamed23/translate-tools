@@ -1,10 +1,11 @@
-use convert_case::Casing;
+use convert_case::{Case, Casing};
 use proc_macro2::{Group, Ident, Literal, Span, TokenStream, TokenTree};
 use quote::{ToTokens, TokenStreamExt};
 use std::fs;
-use std::path::PathBuf;
 use syn::parse::{Parse, ParseStream};
 use syn::{Block, LitStr, Token};
+
+use crate::utils::get_full_path_by_manifest;
 
 struct Args {
     path: LitStr,
@@ -22,15 +23,7 @@ impl Parse for Args {
 
 pub fn expand_by_files(input: TokenStream) -> syn::Result<TokenStream> {
     let args = syn::parse2::<Args>(input)?;
-    let rel = args.path.value();
-
-    let manifest_dir = match std::env::var("CARGO_MANIFEST_DIR") {
-        Ok(s) => s,
-        Err(e) => syn_bail!(args.path, "无法获取 CARGO_MANIFEST_DIR: {}", e),
-    };
-
-    let mut full_path = PathBuf::from(manifest_dir);
-    full_path.push(rel);
+    let full_path = get_full_path_by_manifest(args.path.value()).unwrap();
 
     let mut template_ts = TokenStream::new();
     for stmt in args.template.stmts.iter() {
@@ -69,7 +62,7 @@ pub fn expand_by_files(input: TokenStream) -> syn::Result<TokenStream> {
         let file_ident = Ident::new(&file_snake, Span::call_site());
         let file_lit = Literal::string(&file_snake);
 
-        let pascal = file_snake.to_case(convert_case::Case::Pascal);
+        let pascal = file_snake.to_case(Case::Pascal);
         let pascal_ident = Ident::new(&pascal, Span::call_site());
 
         let replaced = replace_tokens(

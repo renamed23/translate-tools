@@ -1,10 +1,12 @@
-use convert_case::Casing;
-use proc_macro::TokenStream;
-use proc_macro2::Span;
+use convert_case::{Case, Casing};
+use proc_macro2::{Span, TokenStream};
 use quote::quote;
-use std::fs;
-use std::path::PathBuf;
-use syn::{Ident, Item, LitStr, Result, Token, Visibility, parse::Parse, parse_macro_input};
+use syn::{
+    Ident, Item, LitStr, Token, Visibility,
+    parse::{Parse, ParseStream},
+};
+
+use crate::utils::get_full_path_by_manifest;
 
 /// Macro 输入解析器：`[pub] type <AliasIdent> , "relative/path"`
 struct SearchHookInput {
@@ -14,7 +16,7 @@ struct SearchHookInput {
 }
 
 impl Parse for SearchHookInput {
-    fn parse(input: syn::parse::ParseStream) -> Result<Self> {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
         // 路径字符串
         let path: LitStr = input.parse()?;
 
@@ -35,18 +37,15 @@ impl Parse for SearchHookInput {
 
         // 确保没有多余内容
         if !input.is_empty() {
-            return Err(input.error("Unexpected tokens after path literal"));
+            return Err(input.error("在路径字符串后发现非预期的token"));
         }
 
         Ok(SearchHookInput { vis, alias, path })
     }
 }
 
-pub fn search_hook_impls(input: TokenStream) -> TokenStream {
-    // 解析输入
-    let input = parse_macro_input!(input as SearchHookInput);
-
-    let relative_path = input.path.value();
+pub fn search_hook_impls(input: TokenStream) -> syn::Result<TokenStream> {
+    let input = syn::parse2::<SearchHookInput>(input)?;
 
     // 用户传入的别名（例如 HookImplType）
     let alias_ident = input.alias;
@@ -58,17 +57,12 @@ pub fn search_hook_impls(input: TokenStream) -> TokenStream {
         quote! {}
     };
 
-    // 获取项目根目录
-    let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").expect("无法获取 CARGO_MANIFEST_DIR");
-
-    // 构建完整路径
-    let mut full_path = PathBuf::from(manifest_dir);
-    full_path.push(&relative_path);
+    let full_path = get_full_path_by_manifest(input.path.value()).unwrap();
 
     let mut type_aliases = Vec::new();
 
     // 读取目录
-    if let Ok(entries) = fs::read_dir(&full_path) {
+    if let Ok(entries) = std::fs::read_dir(&full_path) {
         for entry in entries.flatten() {
             let path = entry.path();
             if path.is_file()
@@ -84,12 +78,11 @@ pub fn search_hook_impls(input: TokenStream) -> TokenStream {
                 let mod_name = Ident::new(file_name, Span::call_site());
 
                 // 读取文件内容并解析
-                if let Ok(file_content) = fs::read_to_string(&path)
+                if let Ok(file_content) = std::fs::read_to_string(&path)
                     && let Ok(parsed_file) = syn::parse_file(&file_content)
                 {
                     // 期望的结构体名：PascalCase + "Hook"
-                    let expected_struct_name =
-                        feature_name.to_case(convert_case::Case::Pascal) + "Hook";
+                    let expected_struct_name = feature_name.to_case(Case::Pascal) + "Hook";
                     let expected_ident = Ident::new(&expected_struct_name, Span::call_site());
 
                     // 在文件中查找对应的结构体
@@ -122,5 +115,5 @@ pub fn search_hook_impls(input: TokenStream) -> TokenStream {
         #(#type_aliases)*
     };
 
-    output.into()
+    Ok(output)
 }
