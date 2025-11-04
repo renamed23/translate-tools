@@ -3,7 +3,7 @@ use windows_sys::Win32::{
     Graphics::Gdi::{AddFontMemResourceEx, RemoveFontMemResourceEx},
 };
 
-use crate::debug;
+use crate::{debug, print_system_error_message};
 
 translate_macros::flate!(
     static CUSTOM_FONT: [u8] from "assets\\font"
@@ -28,15 +28,19 @@ pub unsafe fn add_font() -> Option<u32> {
         }
 
         let font_data = get_font_data();
+
+        let mut c_fonts: u32 = 0;
+
         let handle = AddFontMemResourceEx(
-            font_data.as_ptr() as *mut _,
+            font_data.as_ptr() as *const _,
             font_data.len() as u32,
             core::ptr::null_mut(),
-            core::ptr::null_mut(),
+            &mut c_fonts as *mut u32,
         );
 
         if handle.is_null() {
             debug!("AddFontMemResourceEx failed");
+            print_system_error_message!();
             None
         } else {
             FONT_HANDLE = Some(handle);

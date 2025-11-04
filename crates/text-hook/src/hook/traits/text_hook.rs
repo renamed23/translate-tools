@@ -302,6 +302,18 @@ pub trait TextHook: Send + Sync + 'static {
         i_pitch_and_family: u32,
         psz_face_name: PCWSTR,
     ) -> HFONT {
+        #[cfg(feature = "debug_output")]
+        {
+            let u16_slice = unsafe {
+                crate::utils::mem::slice_until_null(psz_face_name, (LF_FACESIZE - 1) as usize)
+            };
+
+            debug!(
+                "Requested font name: {}",
+                String::from_utf16_lossy(u16_slice)
+            );
+        }
+
         let mut u16_slice: Cow<[u16]>;
         #[cfg(not(feature = "enum_font_families"))]
         {
@@ -313,11 +325,6 @@ pub trait TextHook: Send + Sync + 'static {
                 psz_face_name,
                 (LF_FACESIZE - 1) as usize,
             ));
-
-            debug!(
-                "Requested font name: {}",
-                String::from_utf16_lossy(&u16_slice)
-            );
 
             if constant::FONT_FILTER.contains(&&*u16_slice) {
                 u16_slice = Cow::from(crate::code_cvt::u16_with_null(constant::FONT_FACE));
@@ -393,6 +400,21 @@ pub trait TextHook: Send + Sync + 'static {
         let mut logfontw = unsafe { *lplf };
         logfontw.lfCharSet = constant::CHAR_SET;
 
+        #[cfg(feature = "debug_output")]
+        {
+            let u16_slice = unsafe {
+                crate::utils::mem::slice_until_null(
+                    logfontw.lfFaceName.as_ptr(),
+                    logfontw.lfFaceName.len() - 1,
+                )
+            };
+
+            debug!(
+                "Requested font name: {}",
+                String::from_utf16_lossy(u16_slice)
+            );
+        }
+
         // `constant::FONT_FACE` 长度确保不超过 LF_FACESIZE - 1，可以直接复制
         #[cfg(not(feature = "enum_font_families"))]
         {
@@ -407,11 +429,6 @@ pub trait TextHook: Send + Sync + 'static {
                     logfontw.lfFaceName.len() - 1, // 最后一个字节必须为null
                 )
             };
-
-            debug!(
-                "Requested font name: {}",
-                String::from_utf16_lossy(u16_slice)
-            );
 
             if constant::FONT_FILTER.contains(&u16_slice) {
                 let face_u16 = crate::code_cvt::u16_with_null(constant::FONT_FACE);
