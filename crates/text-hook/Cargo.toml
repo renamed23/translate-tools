@@ -109,6 +109,7 @@ bokudvd = [
     "custom_font",
     "generate_full_mapping_data",
     "emulate_locale",
+    "override_window_title",
 ]
 mizukake = [
     "patch",
