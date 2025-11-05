@@ -20,4 +20,6 @@ lto = "fat"
 strip = true
 opt-level = "s"
 codegen-units = 1
+
+# 默认为`unwind`，可以通过设置环境变量`RUSTFLAGS`为`-C panic=abort`指定为`abort`
 panic = "unwind"
