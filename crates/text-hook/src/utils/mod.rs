@@ -1,7 +1,6 @@
 pub(crate) mod mem;
 pub(crate) mod nt;
 pub(crate) mod panic;
-pub(crate) mod trait_impls;
 pub(crate) mod win32;
 
 use sha2::{Digest, Sha256};

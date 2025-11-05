@@ -16,8 +16,9 @@ use crate::constant;
 use crate::debug;
 use crate::mapping::map_chars;
 use crate::mapping::map_wide_chars;
+
 #[cfg(feature = "enum_font_families")]
-use crate::utils::trait_impls::enum_font_proc::{
+use crate::hook::trait_impls::enum_font_proc::{
     EnumFontInfo, enum_fonts_proc_a, enum_fonts_proc_w,
 };
 

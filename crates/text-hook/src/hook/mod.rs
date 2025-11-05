@@ -1,4 +1,5 @@
 pub(crate) mod impls;
+pub(crate) mod trait_impls;
 pub(crate) mod traits;
 
 use once_cell::sync::OnceCell;
