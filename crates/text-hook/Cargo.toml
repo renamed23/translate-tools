@@ -145,7 +145,7 @@ windows-sys = { version = "0.61", features = [
     "Win32_System_WindowsProgramming",
 ] }
 sha2 = "0.10"
-retour = { version = "0.4.0-alpha.4", features = ["static-detour"] }
+retour = "0.4.0-alpha.4"
 dynasmrt = "4.0.1"
 phf = { version = "0.13", features = ["macros"] }
 zstd = "0.13"
