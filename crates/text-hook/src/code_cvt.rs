@@ -201,6 +201,6 @@ pub fn u16_with_null(u16_slice: &[u16]) -> Vec<u16> {
     u16_slice
         .iter()
         .copied()
-        .chain(std::iter::once(0u16))
+        .chain(core::iter::once(0u16))
         .collect()
 }
