@@ -1,6 +1,8 @@
 pub(crate) mod impls;
-pub(crate) mod trait_impls;
 pub(crate) mod traits;
+
+#[allow(dead_code)]
+pub(crate) mod trait_impls;
 
 use once_cell::sync::OnceCell;
 

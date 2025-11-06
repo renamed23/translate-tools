@@ -14,8 +14,6 @@ impl CoreHook for UminomHook {
     // 解压器实现，仅为了获取解包数据，不要在真补丁中使用
     #[cfg(feature = "patch_extracting")]
     fn on_process_attach(&self, _hinst_dll: HMODULE) {
-        use translate_macros::byte_slice;
-
         let Some(handle) = crate::utils::win32::get_module_handle("") else {
             debug!("get_module_handle failed");
             return;
@@ -26,24 +24,36 @@ impl CoreHook for UminomHook {
         let module_addr = handle as *mut u8;
 
         unsafe {
-            crate::utils::mem::patch::write_asm(
+            crate::utils::mem::patch::write_jmp_instruction(
                 module_addr.add(0x5DDDB),
-                &byte_slice!("E9 20 91 03 00"), // jmp 0x00496F00
+                trampoline as _,
             )
             .unwrap();
-
-            let code_buf = crate::utils::mem::patch::create_trampoline_32(
-                extract_script as _,
-                // mov eax,[esp+0x40]; mov ebx,[esp+0x2C]; mov ecx,[esp+0x28];
-                // push eax; push ebx; pushcx;
-                &byte_slice!("8B 44 24 40 8B 5C 24 2C 8B 4C 24 28 50 53 51"),
-                // ret 0x10;
-                &byte_slice!("C2 10 00"),
-            );
-
-            crate::utils::mem::patch::write_asm(module_addr.add(0x96F00), &code_buf).unwrap();
         }
     }
+}
+
+#[cfg(feature = "patch_extracting")]
+#[unsafe(naked)]
+#[unsafe(link_section = ".text")]
+unsafe extern "system" fn trampoline() {
+    core::arch::naked_asm!(
+        "
+        pushad;
+        pushfd;
+        mov eax,[esp+0x40];
+        mov ebx,[esp+0x2C]; 
+        mov ecx,[esp+0x28];
+        push eax;
+        push ebx;
+        push ecx;
+        call {0};
+        popfd;
+        popad;
+        ret 0x10
+        ",
+        sym extract_script,
+    );
 }
 
 impl TextHook for UminomHook {}
