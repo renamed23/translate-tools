@@ -151,6 +151,7 @@ fn get_nls_filename_from_registry() -> anyhow::Result<String> {
     }))
 }
 
+#[allow(unused_variables)]
 pub fn set_japanese_locale() {
     // 目前还未完全支持对日语区域的模拟，所以这个对某些游戏是必须的
     unsafe { SetThreadLocale(0x0411) };
@@ -166,13 +167,6 @@ pub fn set_japanese_locale() {
     unsafe {
         if let Err(e) = set_process_nls_tables(&ansi_file, &ansi_file, "l_intl.nls") {
             debug!("init nls fails with {e}");
-            return;
         }
-
-        // 测试代码：日文字符串"こんにちは"的Shift-JIS编码
-        let s = String::from_utf16_lossy(&crate::code_cvt::ansi_to_wide_char(&[
-            0x82, 0xB1, 0x82, 0xF1, 0x82, 0xC9, 0x82, 0xBF, 0x82, 0xCD,
-        ]));
-        debug!("{s}"); // 应该输出"こんにちは"
     }
 }
