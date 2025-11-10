@@ -1,10 +1,12 @@
 #![crate_type = "cdylib"]
 
-pub(crate) mod code_cvt;
 pub(crate) mod debug_output;
 pub(crate) mod hook;
-pub(crate) mod mapping;
 
+#[allow(dead_code)]
+pub(crate) mod code_cvt;
+#[allow(dead_code)]
+pub(crate) mod mapping;
 #[allow(dead_code)]
 pub(crate) mod utils;
 

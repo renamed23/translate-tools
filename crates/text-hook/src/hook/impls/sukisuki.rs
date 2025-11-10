@@ -188,11 +188,9 @@ pub unsafe extern "C" fn render_text(x: i32, y: i32, text: *const i8) {
 
         let text = CStr::from_ptr(text);
 
-        let mut buffer = [0u16; 256];
-        let written_count = crate::mapping::map_chars(text.to_bytes(), &mut buffer);
-        let result = &buffer[..written_count];
+        let buffer = crate::mapping::map_chars(text.to_bytes());
 
-        let text = String::from_utf16(result).expect("Invalid utf16 String");
+        let text = String::from_utf16(&buffer).expect("Invalid utf16 String");
 
         let (mapped_x, mapped_y) =
             LAYOUTER.with(|layout| layout.borrow_mut().try_layout(x, y, &text));
@@ -204,8 +202,8 @@ pub unsafe extern "C" fn render_text(x: i32, y: i32, text: *const i8) {
                 hdc,
                 mapped_x,
                 mapped_y,
-                result.as_ptr(),
-                result.len() as i32,
+                buffer.as_ptr(),
+                buffer.len() as i32,
             );
         });
     }

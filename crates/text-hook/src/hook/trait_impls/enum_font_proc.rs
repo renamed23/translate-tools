@@ -3,7 +3,7 @@ use windows_sys::Win32::{
     Graphics::Gdi::{FONTENUMPROCA, FONTENUMPROCW, LOGFONTA, LOGFONTW, TEXTMETRICA, TEXTMETRICW},
 };
 
-use crate::{constant, debug};
+use crate::{constant::ENUM_FONT_PROC_CHAR_SET, debug};
 
 pub struct EnumFontInfo {
     original_proc_a: FONTENUMPROCA,
@@ -48,7 +48,7 @@ pub unsafe extern "system" fn enum_fonts_proc_a(
         };
 
         let mut modified_lf = *lplf;
-        modified_lf.lfCharSet = constant::ENUM_FONT_PROC_CHAR_SET;
+        modified_lf.lfCharSet = ENUM_FONT_PROC_CHAR_SET;
 
         debug!("Enuming font...");
 
@@ -75,7 +75,7 @@ pub unsafe extern "system" fn enum_fonts_proc_w(
         };
 
         let mut modified_lf = *lplf;
-        modified_lf.lfCharSet = constant::ENUM_FONT_PROC_CHAR_SET;
+        modified_lf.lfCharSet = ENUM_FONT_PROC_CHAR_SET;
 
         debug!("Enuming font...");
 

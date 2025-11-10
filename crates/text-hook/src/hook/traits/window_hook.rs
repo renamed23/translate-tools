@@ -4,7 +4,7 @@ use windows_sys::Win32::{
     UI::WindowsAndMessaging::{CREATESTRUCTA, CREATESTRUCTW, GetParent, WM_NCCREATE, WM_SETTEXT},
 };
 
-use crate::{constant, debug};
+use crate::{constant::WINDOW_TITLE, debug};
 
 #[detour_trait]
 pub trait WindowHook: Send + Sync + 'static {
@@ -38,9 +38,9 @@ pub trait WindowHook: Send + Sync + 'static {
 
                 let window_title = if (*params_a).hwndParent.is_null() {
                     if cfg!(feature = "override_window_title") {
-                        crate::code_cvt::u16_with_null(constant::WINDOW_TITLE)
+                        crate::code_cvt::u16_with_null(WINDOW_TITLE)
                     } else {
-                        crate::mapping::map_chars_to_vec_with_null(text_slice)
+                        crate::mapping::map_chars_with_null(text_slice)
                     }
                 } else {
                     crate::code_cvt::ansi_to_wide_char_with_null(text_slice)
@@ -69,9 +69,9 @@ pub trait WindowHook: Send + Sync + 'static {
 
                 let text = if GetParent(h_wnd).is_null() {
                     if cfg!(feature = "override_window_title") {
-                        crate::code_cvt::u16_with_null(constant::WINDOW_TITLE)
+                        crate::code_cvt::u16_with_null(WINDOW_TITLE)
                     } else {
-                        crate::mapping::map_chars_to_vec_with_null(text_slice)
+                        crate::mapping::map_chars_with_null(text_slice)
                     }
                 } else {
                     crate::code_cvt::ansi_to_wide_char_with_null(text_slice)
@@ -107,10 +107,7 @@ pub trait WindowHook: Send + Sync + 'static {
                     return HOOK_DEF_WINDOW_PROC_W.call(h_wnd, u_msg, w_param, l_param);
                 }
 
-                let mut modified_params: CREATESTRUCTW = core::ptr::read(params_w);
-
-                let window_title = crate::code_cvt::u16_with_null(constant::WINDOW_TITLE);
-                modified_params.lpszName = window_title.as_ptr();
+                let title_slice = crate::utils::mem::slice_until_null((*params_w).lpszName, 512);
 
                 #[cfg(feature = "debug_output")]
                 {
@@ -120,51 +117,59 @@ pub trait WindowHook: Send + Sync + 'static {
                         String::from_utf16_lossy(class_slice)
                     };
 
-                    let raw_title = {
-                        let title_slice =
-                            crate::utils::mem::slice_until_null((*params_w).lpszName, 512);
-                        String::from_utf16_lossy(title_slice)
-                    };
+                    let raw_title = String::from_utf16_lossy(title_slice);
 
                     debug!("Get raw class: {raw_class}, raw window title: {raw_title}");
                 }
 
-                HOOK_DEF_WINDOW_PROC_W.call(
-                    h_wnd,
-                    u_msg,
-                    w_param,
-                    &modified_params as *const _ as LPARAM,
-                )
-            },
-            WM_SETTEXT => {
-                unsafe {
-                    let text_ptr = l_param as *const u16;
-                    if text_ptr.is_null() || !GetParent(h_wnd).is_null() {
-                        return HOOK_DEF_WINDOW_PROC_W.call(h_wnd, u_msg, w_param, l_param);
-                    }
-                }
-
-                #[cfg(feature = "debug_output")]
-                {
-                    let raw_title = {
-                        let title_slice = unsafe {
-                            crate::utils::mem::slice_until_null(l_param as *const u16, 512)
-                        };
-                        String::from_utf16_lossy(title_slice)
+                if (*params_w).hwndParent.is_null() {
+                    let mut modified_params: CREATESTRUCTW = core::ptr::read(params_w);
+                    let window_title = if cfg!(feature = "override_window_title") {
+                        crate::code_cvt::u16_with_null(WINDOW_TITLE)
+                    } else {
+                        crate::mapping::map_wide_chars_with_null(title_slice)
                     };
-                    debug!("Get raw window title: {raw_title}");
-                }
-
-                let window_title = crate::code_cvt::u16_with_null(constant::WINDOW_TITLE);
-                unsafe {
-                    HOOK_DEF_WINDOW_PROC_W.call(
+                    modified_params.lpszName = window_title.as_ptr();
+                    return HOOK_DEF_WINDOW_PROC_W.call(
                         h_wnd,
                         u_msg,
                         w_param,
-                        window_title.as_ptr() as LPARAM,
-                    )
+                        &modified_params as *const _ as LPARAM,
+                    );
                 }
-            }
+
+                HOOK_DEF_WINDOW_PROC_W.call(h_wnd, u_msg, w_param, l_param)
+            },
+            WM_SETTEXT => unsafe {
+                let text_ptr = l_param as *const u16;
+                if text_ptr.is_null() || !GetParent(h_wnd).is_null() {
+                    return HOOK_DEF_WINDOW_PROC_W.call(h_wnd, u_msg, w_param, l_param);
+                }
+
+                let text_slice = crate::utils::mem::slice_until_null(l_param as *const u16, 512);
+
+                #[cfg(feature = "debug_output")]
+                {
+                    let raw_text = { String::from_utf16_lossy(text_slice) };
+                    debug!("Get raw window text: {raw_text}");
+                }
+
+                if GetParent(h_wnd).is_null() {
+                    let text = if cfg!(feature = "override_window_title") {
+                        crate::code_cvt::u16_with_null(WINDOW_TITLE)
+                    } else {
+                        crate::mapping::map_wide_chars_with_null(text_slice)
+                    };
+                    return HOOK_DEF_WINDOW_PROC_W.call(
+                        h_wnd,
+                        u_msg,
+                        w_param,
+                        text.as_ptr() as LPARAM,
+                    );
+                };
+
+                HOOK_DEF_WINDOW_PROC_W.call(h_wnd, u_msg, w_param, l_param)
+            },
             _ => unsafe { HOOK_DEF_WINDOW_PROC_W.call(h_wnd, u_msg, w_param, l_param) },
         }
     }

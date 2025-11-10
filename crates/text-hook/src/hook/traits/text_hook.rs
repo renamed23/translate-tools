@@ -1,5 +1,4 @@
 use smallvec::SmallVec;
-use std::borrow::Cow;
 use translate_macros::{detour, detour_trait};
 use windows_sys::{
     Win32::{
@@ -12,10 +11,8 @@ use windows_sys::{
     core::{BOOL, PCSTR, PCWSTR},
 };
 
-use crate::constant;
+use crate::constant::{CHAR_SET, FONT_FACE, FONT_FILTER, TEXT_STACK_BUF_LEN};
 use crate::debug;
-use crate::mapping::map_chars;
-use crate::mapping::map_wide_chars;
 
 #[cfg(feature = "enum_font_families")]
 use crate::hook::trait_impls::enum_font_proc::{
@@ -34,22 +31,16 @@ pub trait TextHook: Send + Sync + 'static {
             // `slice_from_raw_parts`会进行简单的指针检查，若非法返回空切片
             let input_slice = crate::utils::mem::slice_from_raw_parts(lp_string, c as usize);
 
-            // 长度小于等于 `constant::TEXT_STACK_BUF_LEN` 的数据使用栈缓冲区，
-            // 否则使用堆缓冲区
-            let mut buf: SmallVec<[u16; constant::TEXT_STACK_BUF_LEN]> =
-                SmallVec::with_capacity(input_slice.len());
-            buf.set_len(input_slice.len());
-
-            let written_count = map_chars(input_slice, &mut buf);
-            let slice = &buf[..written_count];
+            // 进行映射处理
+            let buf = crate::mapping::map_chars(input_slice);
 
             #[cfg(feature = "debug_text_mapping")]
-            match String::from_utf16(slice) {
+            match String::from_utf16(&buf) {
                 Ok(result) => debug!("draw text '{result}' at ({x}, {y})"),
                 Err(e) => debug!("Convert utf16 to utf8 fails with {e}"),
             }
 
-            HOOK_TEXT_OUT_W.call(hdc, x, y, slice.as_ptr(), slice.len() as i32)
+            HOOK_TEXT_OUT_W.call(hdc, x, y, buf.as_ptr(), buf.len() as i32)
         }
     }
 
@@ -62,20 +53,15 @@ pub trait TextHook: Send + Sync + 'static {
         unsafe {
             let input_slice = crate::utils::mem::slice_from_raw_parts(lp_string, c as usize);
 
-            let mut buf: SmallVec<[u16; constant::TEXT_STACK_BUF_LEN]> =
-                SmallVec::with_capacity(input_slice.len());
-            buf.set_len(input_slice.len());
-
-            let written_count = map_wide_chars(input_slice, buf.as_mut());
-            let slice = &buf[..written_count];
+            let buf = crate::mapping::map_wide_chars(input_slice);
 
             #[cfg(feature = "debug_text_mapping")]
-            match String::from_utf16(slice) {
+            match String::from_utf16(&buf) {
                 Ok(result) => debug!("draw text '{result}' at ({x}, {y})"),
                 Err(e) => debug!("Convert utf16 to utf8 fails with {e}"),
             }
 
-            HOOK_TEXT_OUT_W.call(hdc, x, y, slice.as_ptr(), slice.len() as i32)
+            HOOK_TEXT_OUT_W.call(hdc, x, y, buf.as_ptr(), buf.len() as i32)
         }
     }
 
@@ -94,20 +80,15 @@ pub trait TextHook: Send + Sync + 'static {
         unsafe {
             let input_slice = crate::utils::mem::slice_from_raw_parts(lp_string, c as usize);
 
-            let mut buf: SmallVec<[u16; constant::TEXT_STACK_BUF_LEN]> =
-                SmallVec::with_capacity(input_slice.len());
-            buf.set_len(input_slice.len());
-
-            let written_count = map_chars(input_slice, &mut buf);
-            let slice = &buf[..written_count];
+            let buf = crate::mapping::map_chars(input_slice);
 
             #[cfg(feature = "debug_text_mapping")]
-            match String::from_utf16(slice) {
+            match String::from_utf16(&buf) {
                 Ok(result) => debug!("result: {result}"),
                 Err(e) => debug!("Convert utf16 to utf8 fails with {e}"),
             }
 
-            HOOK_GET_TEXT_EXTENT_POINT_32_W.call(hdc, slice.as_ptr(), slice.len() as i32, lp_size)
+            HOOK_GET_TEXT_EXTENT_POINT_32_W.call(hdc, buf.as_ptr(), buf.len() as i32, lp_size)
         }
     }
 
@@ -126,20 +107,15 @@ pub trait TextHook: Send + Sync + 'static {
         unsafe {
             let input_slice = crate::utils::mem::slice_from_raw_parts(lp_string, c as usize);
 
-            let mut buf: SmallVec<[u16; constant::TEXT_STACK_BUF_LEN]> =
-                SmallVec::with_capacity(input_slice.len());
-            buf.set_len(input_slice.len());
-
-            let written_count = map_wide_chars(input_slice, &mut buf);
-            let slice = &buf[..written_count];
+            let buf = crate::mapping::map_wide_chars(input_slice);
 
             #[cfg(feature = "debug_text_mapping")]
-            match String::from_utf16(slice) {
+            match String::from_utf16(&buf) {
                 Ok(result) => debug!("result: {result}"),
                 Err(e) => debug!("Convert utf16 to utf8 fails with {e}"),
             }
 
-            HOOK_GET_TEXT_EXTENT_POINT_32_W.call(hdc, slice.as_ptr(), slice.len() as i32, lp_size)
+            HOOK_GET_TEXT_EXTENT_POINT_32_W.call(hdc, buf.as_ptr(), buf.len() as i32, lp_size)
         }
     }
 
@@ -163,18 +139,16 @@ pub trait TextHook: Send + Sync + 'static {
             &[b1, b2][..]
         };
 
-        let mut buffer = [0u16; 2];
-        let written_count = map_chars(input_slice, &mut buffer);
-        let result = &buffer[..written_count];
+        let buf = crate::mapping::map_chars(input_slice);
 
         #[cfg(feature = "debug_text_mapping")]
-        match String::from_utf16(result) {
+        match String::from_utf16(&buf) {
             Ok(result) => debug!("result: {result}"),
             Err(e) => debug!("Convert utf16 to utf8 fails with {e}"),
         }
 
         // 直接使用第一个UTF-16字符（假设都在BMP内，不需要代理对）
-        if let Some(&wchar) = result.first() {
+        if let Some(&wchar) = buf.first() {
             return unsafe {
                 HOOK_GET_GLYPH_OUTLINE_W.call(
                     hdc,
@@ -203,18 +177,16 @@ pub trait TextHook: Send + Sync + 'static {
         lpmat2: *const MAT2,
     ) -> u32 {
         // 假设都在BMP内，所以直接`u_char as u16`
-        let mut buffer = [0u16; 2];
-        let written_count = map_wide_chars(&[u_char as u16], &mut buffer);
-        let result = &buffer[..written_count];
+        let buf = crate::mapping::map_wide_chars(&[u_char as u16]);
 
         #[cfg(feature = "debug_text_mapping")]
-        match String::from_utf16(result) {
+        match String::from_utf16(&buf) {
             Ok(result) => debug!("result: {result}"),
             Err(e) => debug!("Convert utf16 to utf8 fails with {e}"),
         }
 
         // 直接使用第一个UTF-16字符（假设都在BMP内，不需要代理对）
-        if let Some(&wchar) = result.first() {
+        if let Some(&wchar) = buf.first() {
             return unsafe {
                 HOOK_GET_GLYPH_OUTLINE_W.call(
                     hdc,
@@ -315,20 +287,22 @@ pub trait TextHook: Send + Sync + 'static {
             );
         }
 
-        let mut u16_slice: Cow<[u16]>;
+        let mut buf: Option<SmallVec<[u16; TEXT_STACK_BUF_LEN]>>;
+
+        let mut u16_slice: &[u16];
         #[cfg(not(feature = "enum_font_families"))]
         {
-            u16_slice = Cow::from(crate::code_cvt::u16_with_null(constant::FONT_FACE));
+            buf = Some(crate::code_cvt::u16_with_null(FONT_FACE));
+            u16_slice = buf.as_ref().unwrap().as_slice();
         }
         #[cfg(feature = "enum_font_families")]
         unsafe {
-            u16_slice = Cow::from(crate::utils::mem::slice_until_null(
-                psz_face_name,
-                (LF_FACESIZE - 1) as usize,
-            ));
+            u16_slice =
+                crate::utils::mem::slice_until_null(psz_face_name, (LF_FACESIZE - 1) as usize);
 
-            if constant::FONT_FILTER.contains(&&*u16_slice) {
-                u16_slice = Cow::from(crate::code_cvt::u16_with_null(constant::FONT_FACE));
+            if FONT_FILTER.contains(&u16_slice) {
+                buf = Some(crate::code_cvt::u16_with_null(FONT_FACE));
+                u16_slice = buf.as_ref().unwrap().as_slice();
             }
         };
 
@@ -342,7 +316,7 @@ pub trait TextHook: Send + Sync + 'static {
                 b_italic,
                 b_underline,
                 b_strike_out,
-                constant::CHAR_SET as u32,
+                CHAR_SET as u32,
                 i_out_precision,
                 i_clip_precision,
                 i_quality,
@@ -399,7 +373,7 @@ pub trait TextHook: Send + Sync + 'static {
     )]
     unsafe fn create_font_indirect_w(&self, lplf: *const LOGFONTW) -> HFONT {
         let mut logfontw = unsafe { *lplf };
-        logfontw.lfCharSet = constant::CHAR_SET;
+        logfontw.lfCharSet = CHAR_SET;
 
         #[cfg(feature = "debug_output")]
         {
@@ -416,10 +390,10 @@ pub trait TextHook: Send + Sync + 'static {
             );
         }
 
-        // `constant::FONT_FACE` 长度确保不超过 LF_FACESIZE - 1，可以直接复制
+        // `FONT_FACE` 长度确保不超过 LF_FACESIZE - 1，可以直接复制
         #[cfg(not(feature = "enum_font_families"))]
         {
-            let face_u16 = crate::code_cvt::u16_with_null(constant::FONT_FACE);
+            let face_u16 = crate::code_cvt::u16_with_null(FONT_FACE);
             logfontw.lfFaceName[..face_u16.len()].copy_from_slice(face_u16.as_slice());
         }
         #[cfg(feature = "enum_font_families")]
@@ -431,8 +405,8 @@ pub trait TextHook: Send + Sync + 'static {
                 )
             };
 
-            if constant::FONT_FILTER.contains(&u16_slice) {
-                let face_u16 = crate::code_cvt::u16_with_null(constant::FONT_FACE);
+            if FONT_FILTER.contains(&u16_slice) {
+                let face_u16 = crate::code_cvt::u16_with_null(FONT_FACE);
                 logfontw.lfFaceName[..face_u16.len()].copy_from_slice(face_u16.as_slice());
             }
         };
@@ -459,7 +433,7 @@ pub trait TextHook: Send + Sync + 'static {
             let info = EnumFontInfo::from_ansi(l_param, lp_enum_font_fam_proc);
 
             if let Some(font) = lp_logfont.as_mut() {
-                font.lfCharSet = constant::CHAR_SET;
+                font.lfCharSet = CHAR_SET;
             }
 
             HOOK_ENUM_FONT_FAMILIES_EX_A.call(
@@ -490,7 +464,7 @@ pub trait TextHook: Send + Sync + 'static {
             let info = EnumFontInfo::from_wide(l_param, lp_enum_font_fam_proc);
 
             if let Some(font) = lp_logfont.as_mut() {
-                font.lfCharSet = constant::CHAR_SET;
+                font.lfCharSet = CHAR_SET;
             }
             HOOK_ENUM_FONT_FAMILIES_EX_W.call(
                 hdc,

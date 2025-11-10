@@ -39,6 +39,22 @@ impl ReplacementPool {
     pub fn from_string(json_str: &str) -> Result<Self> {
         let mut pool: Self = serde_json::from_str(json_str).context("解析替身池 JSON 失败")?;
 
+        // 验证池中的字符是否被编码支持
+        let mut invalid_chars = Vec::new();
+        for &ch in &pool.pool {
+            if !pool.encoding.contains_char(ch) {
+                invalid_chars.push(ch);
+            }
+        }
+
+        if !invalid_chars.is_empty() {
+            bail!(
+                "替身池中包含不被编码 {} 支持的字符: {:?}",
+                pool.encoding,
+                invalid_chars
+            );
+        }
+
         // 初始化运行时状态
         pool.free = VecDeque::from(pool.pool.clone());
         pool.orig_to_repl.clear();

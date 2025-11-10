@@ -59,4 +59,12 @@ impl EncodingType {
             ],
         }
     }
+
+    /// 用于 `MultiByteToWideChar` 的代码页
+    pub fn code_page(&self) -> u32 {
+        match self {
+            EncodingType::ShiftJIS | EncodingType::CP932 => 932,
+            EncodingType::GBK => 936,
+        }
+    }
 }

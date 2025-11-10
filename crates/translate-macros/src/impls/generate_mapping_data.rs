@@ -1,200 +1,131 @@
 use proc_macro2::{Span, TokenStream};
 use quote::quote;
+use serde_json::Value;
 use std::collections::HashMap;
 use syn::{
-    LitInt, LitStr, Token,
+    LitInt, LitStr,
     parse::{Parse, ParseStream},
 };
-use translate_utils::{jis0208::is_jis0208, text::Text};
+use translate_utils::encoding_type::EncodingType;
 
 use crate::utils::get_full_path_by_manifest;
 
-struct PathsInput {
+struct PathInput {
     mapping: LitStr,
-    translated: Option<LitStr>,
 }
 
-impl Parse for PathsInput {
+impl Parse for PathInput {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let mapping: LitStr = input.parse()?;
-        if input.is_empty() {
-            return Ok(PathsInput {
-                mapping,
-                translated: None,
-            });
-        }
-        let _comma: Token![,] = input.parse()?;
-        let translated: LitStr = input.parse()?;
-        Ok(PathsInput {
-            mapping,
-            translated: Some(translated),
-        })
+        Ok(PathInput { mapping })
     }
 }
 
 pub fn generate_mapping_data(input: TokenStream) -> syn::Result<TokenStream> {
-    let parsed = syn::parse2::<PathsInput>(input)?;
+    let parsed = syn::parse2::<PathInput>(input)?;
 
     let mapping_path = get_full_path_by_manifest(parsed.mapping.value()).unwrap();
-    let translated_path = parsed
-        .translated
-        .map(|t| get_full_path_by_manifest(t.value()).unwrap());
 
-    let mapping_str = match std::fs::read_to_string(&mapping_path) {
-        Ok(s) => s,
-        Err(e) => {
-            syn_bail!(parsed.mapping, "无法读取 {}: {}", mapping_path.display(), e);
-        }
+    let mapping_str = std::fs::read_to_string(&mapping_path)
+        .map_err(|e| syn_err2!("无法读取 {}: {}", mapping_path.display(), e))?;
+
+    let json_value: Value = serde_json::from_str(&mapping_str)
+        .map_err(|e| syn_err2!("解析 {} 失败: {}", mapping_path.display(), e))?;
+
+    // 获取编码类型
+    let src_encoding = match json_value["src_encoding"].as_str() {
+        Some(s) => Some(
+            s.parse::<EncodingType>()
+                .map_err(|e| syn_err2!("解析为 EncodingType 出错: {e}"))?,
+        ),
+        None => None,
     };
 
-    let map: HashMap<String, String> = match serde_json::from_str(&mapping_str) {
-        Ok(m) => m,
-        Err(e) => {
-            syn_bail!(
-                parsed.mapping,
-                "解析 {} 失败: {}",
-                mapping_path.display(),
-                e
+    // 获取映射数据
+    let mapping_obj = json_value["mapping"]
+        .as_object()
+        .ok_or_else(|| syn_err2!("mapping 字段必须是对象"))?;
+
+    // 确定代码页：优先使用 code_page 字段，否则根据编码推断
+    // 若都没有则使用默认值0
+    let code_page = if let Some(cp_value) = json_value.get("code_page") {
+        cp_value
+            .as_u64()
+            .ok_or_else(|| syn_err2!("code_page 必须是数字"))? as u32
+    } else if let Some(src_encoding) = src_encoding {
+        src_encoding.code_page()
+    } else {
+        0
+    };
+
+    // ----------------------------
+    // 构建 u16 映射表
+    // ----------------------------
+    let mut char_map: HashMap<u16, u16> = HashMap::new();
+
+    for (k, v) in mapping_obj {
+        let v_str = v
+            .as_str()
+            .ok_or_else(|| syn_err2!("映射值必须是字符串: {v:?}"))?;
+
+        if k.chars().count() != 1 {
+            syn_bail2!("映射键必须是单个字符，发现: {k:?}");
+        }
+        if v_str.chars().count() != 1 {
+            syn_bail2!("映射值必须是单个字符，发现: {v_str:?}");
+        }
+
+        let kc = k.chars().next().unwrap();
+        let vc = v_str.chars().next().unwrap();
+
+        if kc > '\u{FFFF}' {
+            syn_bail2!(
+                "字符 '{kc}' (U+{:04X}) 超过 BMP（>0xFFFF），目前不支持",
+                kc as u32
             );
         }
-    };
 
-    // ----------------------------
-    // 公共函数闭包
-    // ----------------------------
-    let encode_sjis_u16 = |ch: char| -> syn::Result<u16> {
-        let s = ch.to_string();
-        let (enc, _, had_errors) = encoding_rs::SHIFT_JIS.encode(&s);
-        if had_errors {
-            syn_bail2!("字符 '{}' 编码为 Shift_JIS 时出现错误", s);
+        if vc > '\u{FFFF}' {
+            syn_bail2!(
+                "字符 '{vc}' (U+{:04X}) 超过 BMP（>0xFFFF），目前不支持",
+                vc as u32
+            );
         }
-        if enc.len() != 2 {
-            syn_bail2!("字符 '{}' 编码为 Shift_JIS 后长度异常: {}", s, enc.len());
-        }
-        Ok(((enc[0] as u16) << 8) | (enc[1] as u16))
-    };
 
-    let char_to_u16 = |ch: char| -> syn::Result<u16> {
-        let u = ch as u32;
-        if u > 0xFFFF {
-            syn_bail2!("字符 '{}' 超过 BMP（>0xFFFF），目前不支持", ch);
-        }
-        Ok(u as u16)
-    };
+        let key_code = kc as u16;
+        let val_code = vc as u16;
 
-    // ----------------------------
-    // 1) 先用 mapping.json 构造 UTF16 表（只来自 mapping.json）
-    // ----------------------------
-    let mut utf16_map: HashMap<u16, u16> = HashMap::new();
-    for (k, v) in map.iter() {
-        if k.chars().count() != 1 {
-            syn_bail2!("映射键必须是单个字符，发现: {:?}", k);
+        if char_map.contains_key(&key_code) {
+            syn_bail2!("发现重复的键 0x{key_code:04X} 对应多个映射");
         }
-        if v.chars().count() != 1 {
-            syn_bail2!("映射值必须是单个字符，发现: {:?}", v);
-        }
-        let kc = k.chars().next().unwrap();
-        let vc = v.chars().next().unwrap();
-
-        let key_code_utf16 = char_to_u16(kc)?;
-        let val_code_utf16 = char_to_u16(vc)?;
-
-        if utf16_map.contains_key(&key_code_utf16) {
-            syn_bail2!("发现重复的 UTF-16 键 0x{key_code_utf16:04X} 对应多个映射（请检查映射）");
-        }
-        utf16_map.insert(key_code_utf16, val_code_utf16);
+        char_map.insert(key_code, val_code);
     }
 
-    // ----------------------------
-    // 2) 构造 SJIS 表：先把 translated_path 的自映射加入（如果有），然后用 mapping.json 覆盖/添加
-    // ----------------------------
-    let mut sjis_map: HashMap<u16, u16> = HashMap::new();
+    // 转换为排序的 Vec 以生成 phf tokens
+    let mut entries: Vec<(u16, u16)> = char_map.into_iter().collect();
+    entries.sort_by_key(|e| e.0);
 
-    if let Some(translated_path) = &translated_path {
-        let text = match Text::from_path(translated_path) {
-            Ok(s) => s,
-            Err(e) => {
-                syn_bail2!("无法读取 {}: {}", translated_path.display(), e);
-            }
-        };
-
-        let all_chars = text.get_filtered_chars(is_jis0208);
-        for ch in all_chars {
-            let key_code = encode_sjis_u16(ch)?;
-            let val_code = char_to_u16(ch)?;
-            // 插入自映射，后续会被 mapping.json 覆盖（如果存在相同编码）
-            sjis_map.insert(key_code, val_code);
-        }
-    }
-
-    // 用 mapping.json 覆盖/添加 SJIS 条目（如果 key 可编码为 Shift_JIS）
-    for (k, v) in map.iter() {
-        let kc = {
-            if k.chars().count() != 1 {
-                syn_bail2!("映射键必须是单个字符，发现: {k:?}");
-            }
-            k.chars().next().unwrap()
-        };
-        let vc = {
-            if v.chars().count() != 1 {
-                syn_bail2!("映射值必须是单个字符，发现: {v:?}");
-            }
-            v.chars().next().unwrap()
-        };
-
-        // 使用 is_jis0208 判断 key 是否为 JIS0208（可被 Shift_JIS 编码）
-        if !is_jis0208(kc) {
-            syn_bail2!("映射键 '{kc}' 不是 JIS0208（不可被 Shift_JIS 编码）");
-        }
-
-        let key_code = encode_sjis_u16(kc)?;
-        let val_code = char_to_u16(vc)?;
-        // mapping.json 优先覆盖自映射或之前的条目
-        sjis_map.insert(key_code, val_code);
-    }
-
-    // 把 sjis_map 和 utf16_map 转为排序的 Vec 以生成 phf tokens
-    let mut sjis_entries: Vec<(u16, u16)> = sjis_map.into_iter().collect();
-    sjis_entries.sort_by_key(|e| e.0);
-
-    let mut utf16_entries: Vec<(u16, u16)> = utf16_map.into_iter().collect();
-    utf16_entries.sort_by_key(|e| e.0);
-
-    // 生成 SJIS phf map tokens
-    let mut sjis_kv_tokens = Vec::new();
-    for (kcode, vcode) in &sjis_entries {
+    // 生成 phf map tokens
+    let mut kv_tokens = Vec::new();
+    for (kcode, vcode) in &entries {
         let k_lit = LitInt::new(&format!("0x{:04X}u16", kcode), Span::call_site());
         let v_lit = LitInt::new(&format!("0x{:04X}u16", vcode), Span::call_site());
-        sjis_kv_tokens.push(quote! {
+        kv_tokens.push(quote! {
             #k_lit => #v_lit,
         });
     }
 
-    // 生成 UTF-16 phf map tokens
-    let mut utf16_kv_tokens = Vec::new();
-    for (kcode, vcode) in &utf16_entries {
-        let k_lit = LitInt::new(&format!("0x{:04X}u16", kcode), Span::call_site());
-        let v_lit = LitInt::new(&format!("0x{:04X}u16", vcode), Span::call_site());
-        utf16_kv_tokens.push(quote! {
-            #k_lit => #v_lit,
-        });
-    }
-
-    let sjis_expanded = quote! {
+    let phf_expanded = quote! {
         ::phf::phf_map! {
-            #(#sjis_kv_tokens)*
+            #(#kv_tokens)*
         }
     };
 
-    let utf16_expanded = quote! {
-        ::phf::phf_map! {
-            #(#utf16_kv_tokens)*
-        }
-    };
+    let code_page_lit = LitInt::new(&code_page.to_string(), Span::call_site());
 
     let final_ts = quote! {
-        pub(super) static SJIS_PHF_MAP: ::phf::Map<u16, u16> = #sjis_expanded;
-        pub(super) static UTF16_PHF_MAP: ::phf::Map<u16, u16> = #utf16_expanded;
+        pub(super) static ANSI_CODE_PAGE: u32 = #code_page_lit;
+        pub(super) static PHF_MAP: ::phf::Map<u16, u16> = #phf_expanded;
     };
 
     Ok(final_ts)

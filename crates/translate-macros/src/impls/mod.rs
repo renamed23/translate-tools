@@ -1,3 +1,4 @@
+#[allow(unused_macros)]
 macro_rules! syn_bail {
     // 使用 token 的 span（自动提取）
     ($token:expr, $($arg:tt)*) => {
@@ -8,6 +9,7 @@ macro_rules! syn_bail {
     };
 }
 
+#[allow(unused_macros)]
 macro_rules! syn_bail2 {
     // 使用 call_site span（宏调用位置）
     ($($arg:tt)*) => {
@@ -15,6 +17,28 @@ macro_rules! syn_bail2 {
             proc_macro2::Span::call_site(),
             format!($($arg)*)
         ))
+    };
+}
+
+#[allow(unused_macros)]
+macro_rules! syn_err {
+    // 使用 token 的 span（自动提取）
+    ($token:expr, $($arg:tt)*) => {
+       syn::Error::new_spanned(
+            $token,
+            format!($($arg)*)
+        )
+    };
+}
+
+#[allow(unused_macros)]
+macro_rules! syn_err2 {
+    // 使用 call_site span（宏调用位置）
+    ($($arg:tt)*) => {
+     syn::Error::new(
+            proc_macro2::Span::call_site(),
+            format!($($arg)*)
+        )
     };
 }
 

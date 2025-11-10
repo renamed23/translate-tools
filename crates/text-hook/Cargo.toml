@@ -28,11 +28,6 @@ patch_extracting = ["patch"]
 enum_font_families = []
 # 嵌入`assets/font`的自定义字体，会使用`AddFontMemResourceEx`让GDI识别
 custom_font = []
-# 通过读取`assets/translated.json`生成完整的映射数据，
-# 不仅是替身字符，还包括了非映射字符(仅支持jis0208的双字节字符，不支持单字节片假名和CP932的扩展字符)
-# ascii码不需要进行映射，所以开启该特性后，几乎不需要使用`MultiByteToWideChar`，
-# 通过映射表即可映射几乎所有字符
-generate_full_mapping_data = []
 # 导出默认的DllMain，内部使用`default_dll_main`，
 # 使用`HookImplType::default()`作为钩子实例
 export_default_dll_main = []
@@ -50,7 +45,7 @@ dll_hijacking = ["delayed_attach"]
 # 禁止映射文本
 no_text_mapping = []
 
-# 启用文本相关的钩子
+# 启用文本相关的钩子(包括文本映射和改变字体)
 text_hook = []
 # 启用文件相关的钩子
 file_hook = []
@@ -67,37 +62,23 @@ export_hooks = []
 # 调试文件输出的HOOK实现，可用于调试，并导出默认的DllMain
 debug_file_impl = ["debug_output", "export_default_dll_main", "file_hook"]
 # 默认的HOOK实现(即使用`Hook` trait的默认代码)，并导出默认的DllMain
-default_impl = ["export_default_dll_main", "text_hook"]
+default_impl = ["export_default_dll_main"]
 
 # 针对特定游戏的impl-------------------------------------------
 bleed = ["export_default_dll_main", "text_hook"]
-sukisuki = ["default_impl", "generate_full_mapping_data"]
-ao_vo = ["patch", "default_impl"]
-noise = ["patch", "default_impl"]
-lusts = ["default_impl"]
-lucky_crosse = ["default_impl", "export_patch_process_fn"]
-cosmos = ["default_impl", "export_patch_process_fn"]
+sukisuki = ["default_impl", "text_hook"]
+ao_vo = ["patch", "default_impl", "text_hook"]
+noise = ["patch", "default_impl", "text_hook"]
+lusts = ["default_impl", "text_hook"]
+lucky_crosse = ["default_impl", "export_patch_process_fn", "text_hook"]
+cosmos = ["default_impl", "export_patch_process_fn", "text_hook"]
 # 非C社的c4
-c4 = [
-    "patch",
-    "default_impl",
-    "enum_font_families",
-    "generate_full_mapping_data",
-]
-bittersweet_fools = [
-    "enum_font_families",
-    "generate_full_mapping_data",
-    "default_impl",
-]
-white_breath = ["default_impl", "patch", "generate_full_mapping_data"]
-mikan = ["default_impl", "read_file_patch_impl", "generate_full_mapping_data"]
+c4 = ["patch", "default_impl", "enum_font_families", "text_hook"]
+bittersweet_fools = ["enum_font_families", "default_impl", "text_hook"]
+white_breath = ["default_impl", "patch", "text_hook"]
+mikan = ["default_impl", "read_file_patch_impl", "text_hook"]
 # 提取脚本需要`patch_extracting`
-uminom = [
-    "export_default_dll_main",
-    "text_hook",
-    "generate_full_mapping_data",
-    "window_hook",
-]
+uminom = ["export_default_dll_main", "text_hook", "window_hook"]
 bruns = [
     "export_default_dll_main",
     "text_hook",
@@ -107,15 +88,14 @@ bruns = [
 bokudvd = [
     "default_impl",
     "custom_font",
-    "generate_full_mapping_data",
     "emulate_locale",
     "override_window_title",
+    "text_hook",
 ]
 mizukake = [
     "patch",
     "export_default_dll_main",
     "text_hook",
-    "generate_full_mapping_data",
     "dll_hijacking",
     "no_text_mapping",
 ]

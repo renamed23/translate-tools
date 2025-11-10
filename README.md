@@ -15,7 +15,7 @@ cargo build --release --bin replacement_tool
 
 ```ps
 cd crates/text-hook
-cargo build --release --features default_impl,generate_full_mapping_data
+cargo build --release --features default_impl
 ```
 
 编译的DLL在`target/i686-pc-windows-msvc/release`
@@ -79,35 +79,24 @@ cargo build --release --features default_impl,generate_full_mapping_data
 
 ```json
 {
-  "乙": "掸",
-  "メ": "边",
-  "ひ": "请",
-  "冖": "琐",
-  "圄": "灵",
-  "わ": "卖",
-  "匈": "扩",
-  "堊": "诀",
+  "code_page": 932,
+  "src_encoding": "CP932",
+  "mapping": {
+    "鍄": "丽",
+    "饋": "讶",
+    "輸": "铛",
+    "骼": "吵",
+    "鎤": "秽",
+    "鵡": "块",
+  }
 }
 ```
 
-字符映射规则，左边是替身字符，右边则是会被映射的字符，需要注意替身字符必须是jis0208兼容字符
+`code_page`是可选的，将用于`TextOutA`之类的函数解码文本，如果未指定，那么会使用`src_encoding`，如果也没有`src_encoding`，那么会使用默认值`0`
 
-### translated.json
+`src_encoding`一般由`replacement_tool.exe`生成，可选
 
-```json
-[
-  {
-    "name": "未ぁ",
-    "message": "ぃ，辛苦了。い今天回来得好ぅう。"
-  },
-  {
-    "name": "司",
-    "message": "ぇ，比え快到了，也差不多お决定正式かが了。"
-  },
-]
-```
-
-当开启`generate_full_mapping_data`时，生成脚本会读取该文件，生成完整的映射数据(即不需要使用`MultiBytesToWideChar`，直接就映射转码了，速度很快)
+`mapping`，字符映射规则，左边是替身字符，右边则是会被映射的字符
 
 ### raw & translated
 
