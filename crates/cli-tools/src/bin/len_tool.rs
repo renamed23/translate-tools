@@ -2,9 +2,7 @@ use anyhow::{Context, Result};
 use clap::{Parser, ValueEnum};
 use serde_json::Value;
 use std::{fs, path::PathBuf};
-
-use encoding_rs::SHIFT_JIS;
-use translate_utils::utils::{chars_len, pseudo_byte_len};
+use translate_utils::encoding_type::EncodingType;
 
 /// 工具：比较原文 JSON 与译文 JSON 中 message 的"长度"，并在译文中添加/移除 error 字段。
 #[derive(Parser, Debug)]
@@ -22,18 +20,26 @@ struct Cli {
     #[arg(short, long)]
     trans: PathBuf,
 
-    /// 比较方法：pseudo -> pseudo_byte_len(译文) + CP932 字节(原文), chars -> chars_len
+    /// 比较方法：pseudo -> pseudo_byte_len(译文) + encoding 字节(原文), chars -> chars_len，
+    /// 如果存在 message_orig_len 则优先使用它作为原文长度，无视比较方法
     #[arg(short, long, value_enum, default_value_t = Method::Pseudo)]
     method: Method,
 
     /// 行为模式：check（仅检查），fix（自动修复），aggressive-fix（激进修复）
     #[arg(short, long, value_enum, default_value_t = Behavior::Check)]
     behave: Behavior,
+
+    /// 目标编码
+    #[arg(
+            long,
+            default_value_t = EncodingType::CP932
+        )]
+    encoding: EncodingType,
 }
 
 #[derive(ValueEnum, Clone, Debug)]
 enum Method {
-    /// pseudo: 原文字节使用 CP932 (Windows-31J / MS932) 的字节长度，译文使用 pseudo_byte_len
+    /// pseudo: 原文字节使用 encoding 的字节长度，译文使用 pseudo_byte_len
     Pseudo,
     /// chars: 字符计数（char count）
     Chars,
@@ -53,8 +59,8 @@ impl Method {
     /// 对 *译文* 使用的计数函数（保留原先语义）
     fn count(&self, str: impl AsRef<str>) -> usize {
         match self {
-            Method::Pseudo => pseudo_byte_len(str.as_ref()),
-            Method::Chars => chars_len(str.as_ref()),
+            Method::Pseudo => cli_tools::pseudo_byte_len(str.as_ref()),
+            Method::Chars => cli_tools::chars_len(str.as_ref()),
         }
     }
 }
@@ -308,12 +314,6 @@ fn try_aggressive_fix(trans_msg: &str, orig_len: usize, method: &Method) -> (Str
     (modified, false)
 }
 
-/// 使用 CP932 (Windows-31J / MS932) 对原文进行字节编码后返回长度。
-fn orig_len_cp932_bytes(s: &str) -> usize {
-    let (bytes, _, _) = SHIFT_JIS.encode(s);
-    bytes.len()
-}
-
 fn main() -> Result<()> {
     let cli = Cli::parse();
 
@@ -362,10 +362,21 @@ fn main() -> Result<()> {
             .unwrap()
             .to_string();
 
-        // 计算原文长度：Pseudo 模式下按 CP932 字节长度，Chars 模式下按字符数
-        let orig_len = match cli.method {
-            Method::Pseudo => orig_len_cp932_bytes(&orig_msg),
-            Method::Chars => chars_len(&orig_msg),
+        // 计算原文长度：优先使用 message_orig_len 字段，否则按方法计算
+        let orig_len = if let Some(orig_len_value) = orig_item.get("message_orig_len")
+            && let Some(orig_len_num) = orig_len_value.as_u64()
+        {
+            orig_len_num as usize
+        } else {
+            // 没有 message_orig_len 字段，按原方法计算
+            // Pseudo 模式下按 编码器 字节长度，Chars 模式下按字符数
+            match cli.method {
+                Method::Pseudo => {
+                    let (bytes, _, _) = cli.encoding.encoder().encode(&orig_msg);
+                    bytes.len()
+                }
+                Method::Chars => cli_tools::chars_len(&orig_msg),
+            }
         };
 
         // 译文长度：按方法定义（Pseudo 使用 pseudo_byte_len）
