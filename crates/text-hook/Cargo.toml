@@ -103,7 +103,6 @@ mizukake = [
     "dll_hijacking",
     "no_text_mapping",
 ]
-# 耍杂技的实现，实际上不需要text_hook
 spirite_destruction = [
     "export_default_dll_main",
     "text_hook",
