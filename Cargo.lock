@@ -1018,6 +1018,8 @@ dependencies = [
  "phf",
  "retour",
  "scopeguard",
+ "serde",
+ "serde_json",
  "sha2",
  "smallvec",
  "translate-macros",

@@ -42,6 +42,9 @@ pub fn default_dll_main(
         PROCESS_ATTACH => {
             crate::utils::panic::set_debug_panic_hook();
 
+            #[cfg(all(feature = "text_patch", feature = "text_extracting"))]
+            crate::text_patch::read_extracted_items_from_json();
+
             #[cfg(feature = "emulate_locale")]
             crate::emulate_locale::set_japanese_locale();
 
@@ -62,6 +65,9 @@ pub fn default_dll_main(
             crate::hook::hook_instance().on_process_attach(hinst_dll);
         }
         PROCESS_DETACH => {
+            #[cfg(all(feature = "text_patch", feature = "text_extracting"))]
+            crate::text_patch::write_extracted_items_to_json();
+
             #[cfg(feature = "custom_font")]
             unsafe {
                 crate::custom_font::remove_font();

@@ -16,6 +16,10 @@ debug_output = []
 # 调试输出映射文本
 debug_text_mapping = ["debug_output"]
 
+# 截获并替换文本数据
+text_patch = []
+# 提取文本而不是替换文本
+text_extracting = ["text_patch"]
 # 截获并替换patch数据
 patch = []
 # 截获ReadFile来实现patch
@@ -99,12 +103,20 @@ mizukake = [
     "dll_hijacking",
     "no_text_mapping",
 ]
+spirite_destruction = [
+    "export_default_dll_main",
+    "text_hook",
+    "text_patch",
+    "no_text_mapping",
+]
 
 [dependencies]
 translate-macros.workspace = true
 translate-utils.workspace = true
 anyhow.workspace = true
 once_cell.workspace = true
+serde.workspace = true
+serde_json.workspace = true
 
 windows-sys = { version = "0.61", features = [
     "Win32_Foundation",

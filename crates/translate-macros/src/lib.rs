@@ -606,3 +606,56 @@ pub fn generated_exports_from_hijacked_dll(input: TokenStream) -> TokenStream {
         Err(err) => err.into_compile_error().into(),
     }
 }
+
+/// 生成文本补丁数据的编译时过程宏
+///
+/// 这个宏在编译时读取原始文本JSON和翻译文本JSON，生成高效的PHF(Perfect Hash Function)
+/// 映射表，用于运行时快速查找和替换游戏文本。
+///
+/// # 语法
+/// ```ignore
+/// generated_text_patch_data! {
+///     "path/to/original.json" => "path/to/translated.json"
+/// }
+/// ```
+///
+/// # 输入文件格式
+/// 输入文件应为JSON数组，每个元素包含可选的"name"和"message"字段：
+/// ```json
+/// [
+///     {"name": "原始名字", "message": "原始消息"},
+///     {"name": "另一个名字", "message": "另一条消息"}
+/// ]
+/// ```
+///
+/// # 生成内容
+/// 宏展开后会生成以下内容：
+/// - `NAME_PHF` - 静态PHF映射表，用于名字翻译 (原名 -> 译名)
+/// - `MSG_PHF` - 静态PHF映射表，用于消息翻译 (原句 -> 译句)
+/// - `lookup_name(original_name: &str) -> Option<&'static str>` - 名字查找函数
+/// - `lookup_message(original_message: &str) -> Option<&'static str>` - 消息查找函数
+///
+/// # 处理规则
+/// - 自动处理路径解析（相对于 `CARGO_MANIFEST_DIR`）
+/// - 验证原始JSON和翻译JSON的数组长度必须相等
+/// - 分别对名字和消息进行去重处理
+/// - 跳过空字符串的条目
+/// - 使用PHF实现O(1)时间复杂度的查找
+///
+/// # 示例
+/// ```ignore
+/// generated_text_patch_data! {
+///     "texts/original.json" => "texts/chinese.json"
+/// }
+///
+/// // 运行时使用
+/// let translated_name = lookup_name("Weapon").unwrap_or("Weapon");
+/// let translated_msg = lookup_message("Hello world!").unwrap_or("Hello world!");
+/// ```
+#[proc_macro]
+pub fn generated_text_patch_data(input: TokenStream) -> TokenStream {
+    match impls::generate_text_patch_data::generate_text_patch_data(input.into()) {
+        Ok(ts) => ts.into(),
+        Err(err) => err.into_compile_error().into(),
+    }
+}

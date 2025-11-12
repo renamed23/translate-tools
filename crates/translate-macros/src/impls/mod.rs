@@ -51,4 +51,5 @@ pub(crate) mod generate_constants_from_json;
 pub(crate) mod generate_exports_from_hijacked_dll;
 pub(crate) mod generate_mapping_data;
 pub(crate) mod generate_patch_data;
+pub(crate) mod generate_text_patch_data;
 pub(crate) mod search_hook_impls;

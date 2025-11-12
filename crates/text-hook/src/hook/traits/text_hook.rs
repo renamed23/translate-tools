@@ -11,12 +11,13 @@ use windows_sys::{
     core::{BOOL, PCSTR, PCWSTR},
 };
 
-use crate::constant::{CHAR_SET, FONT_FACE, FONT_FILTER, TEXT_STACK_BUF_LEN};
+use crate::constant::{CHAR_SET, FONT_FACE, TEXT_STACK_BUF_LEN};
 use crate::debug;
 
 #[cfg(feature = "enum_font_families")]
-use crate::hook::trait_impls::enum_font_proc::{
-    EnumFontInfo, enum_fonts_proc_a, enum_fonts_proc_w,
+use crate::{
+    constant::FONT_FILTER,
+    hook::trait_impls::enum_font_proc::{EnumFontInfo, enum_fonts_proc_a, enum_fonts_proc_w},
 };
 
 #[detour_trait]
