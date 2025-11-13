@@ -25,7 +25,7 @@ pub unsafe extern "system" fn DllMain(
 translate_macros::search_hook_impls!("src/hook/impls" => pub type HookImplType);
 
 /// 默认的 DllMain 实现
-#[allow(dead_code)]
+#[allow(dead_code, unused_variables)]
 pub fn default_dll_main(
     hinst_dll: HMODULE,
     fdw_reason: u32,
@@ -55,9 +55,16 @@ pub fn default_dll_main(
                 crate::custom_font::add_font();
             }
 
-            crate::hook::hook_instance().enable_hooks();
+            #[cfg(feature = "apply_1337_patch_on_attach")]
+            if let Err(e) = crate::x64dbg_1337_patch::apply() {
+                crate::debug!("1337 patch fails: {e}");
+            }
 
-            crate::hook::enable_featured_hooks();
+            #[cfg(not(feature = "delayed_attach"))]
+            {
+                crate::hook::hook_instance().enable_hooks();
+                crate::hook::enable_featured_hooks();
+            }
 
             #[cfg(feature = "delayed_attach")]
             crate::delayed_attach::enable_entry_point_hook();
@@ -74,7 +81,6 @@ pub fn default_dll_main(
             }
 
             crate::hook::hook_instance().disable_hooks();
-
             crate::hook::disable_featured_hooks();
 
             #[cfg(feature = "delayed_attach")]

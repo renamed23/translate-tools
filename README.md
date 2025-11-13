@@ -111,3 +111,25 @@ raw文件夹包含需要被替换的文件，translated文件夹包含对应的�
 DLL会`inline hook`入口点，然后加载被劫持的DLL，并获取导出函数的地址，它通过内联汇编`jmp`指令直接跳转到被劫持的DLL对应的导出函数地址，实现转发功能。
 
 > 不只是系统DLL，实际上只要是无命名修饰的符号（比如C++命名修饰的导出符号并不支持）的DLL都可以劫持，也就是说游戏DLL一般也是可以的，不过需要将原始游戏DLL重命名，然后通过`HIJACKED_DLL_PATH`指定位置即可。比如说，游戏导入表有一个`tools.dll`，我们将`tools.dll`拖到`assets/hijacked`，将`HIJACKED_DLL_PATH`的值改为`./tools2.dll`，编译生成，然后将`text_hook.dll`改名为`tools.dll`并复制到游戏目录，将游戏目录原始的`tools.dll`改名为`tools2.dll`，然后就完成劫持游戏DLL了。
+
+> 补充，也不支持有无名导出符号的DLL（即纯序号导出）
+
+### x64dbg_1337_patch
+
+该目录应该包含由x64dbg生成的补丁文件，在开启`apply_1337_patch_on_attach`特性后，会在DLL attach的时候进行修补，或者可以只开启`x64dbg_1337_patch`并由自己选择修补时机。
+
+### raw.json & translated.json
+
+```json
+[
+  {
+    "name": "右京",
+    "message": "急に衝撃があったと思ったらいきなり机が話しかけてきたんでな。俺も少々驚いたよ。",
+  },
+  {
+    "message": "見る",
+  },
+]
+```
+
+`raw.json`和`translated.json`为相同结构的json文件，在开启`text_patch`功能后，会将文本嵌入到DLL中，使用原文条目调用`lookup_name`和`lookup_message`可以获得相对应的译文条目。

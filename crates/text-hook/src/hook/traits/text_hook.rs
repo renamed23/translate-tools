@@ -1,4 +1,3 @@
-use smallvec::SmallVec;
 use translate_macros::{detour, detour_trait};
 use windows_sys::{
     Win32::{
@@ -11,8 +10,11 @@ use windows_sys::{
     core::{BOOL, PCSTR, PCWSTR},
 };
 
-use crate::constant::{CHAR_SET, FONT_FACE, TEXT_STACK_BUF_LEN};
 use crate::debug;
+use crate::{
+    code_cvt::TextVec,
+    constant::{CHAR_SET, FONT_FACE},
+};
 
 #[cfg(feature = "enum_font_families")]
 use crate::{
@@ -288,7 +290,7 @@ pub trait TextHook: Send + Sync + 'static {
             );
         }
 
-        let mut buf: Option<SmallVec<[u16; TEXT_STACK_BUF_LEN]>>;
+        let mut buf: Option<TextVec<u16>>;
 
         let mut u16_slice: &[u16];
         #[cfg(not(feature = "enum_font_families"))]

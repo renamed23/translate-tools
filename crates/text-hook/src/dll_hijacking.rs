@@ -1,6 +1,6 @@
 mod dll {
-    // 从指定目录读取PE文件，根据导出符号生成导出函数
-    translate_macros::generated_exports_from_hijacked_dll!("assets/hijacked");
+    // 从指定目录读取PE文件，根据导出符号生成导出函数以及def文件
+    translate_macros::generated_exports_from_hijacked_dll!("assets/hijacked" => "assets/exports.def");
 }
 
 /// 加载被劫持的DLL，并获取导出函数的地址，用于转发。

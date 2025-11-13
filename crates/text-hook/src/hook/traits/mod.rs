@@ -11,10 +11,10 @@ translate_macros::expand_by_files!("src/hook/traits" => {
 });
 
 pub trait CoreHook: Send + Sync + 'static {
-    /// 启用钩子，会在`PROCESS_ATTACH`时调用
+    /// 启用钩子，如果未开启`delayed_attach`，会在`PROCESS_ATTACH`时调用；
+    /// 否则会在入口点被调用。
     ///
     /// 在这个方法中应该安装所有需要的API钩子。
-    /// 注意：此时程序初始化可能不完整，某些操作可能导致死锁。
     fn enable_hooks(&self) {}
 
     /// 禁用钩子，会在`PROCESS_DETACH`时调用

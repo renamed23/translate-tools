@@ -50,6 +50,8 @@ fn delayed_attach() {
         crate::dll_hijacking::load_library()
     };
 
+    crate::hook::hook_instance().enable_hooks();
+    crate::hook::enable_featured_hooks();
     crate::hook::hook_instance().on_delayed_attach();
 }
 

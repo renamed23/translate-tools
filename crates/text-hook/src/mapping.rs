@@ -1,6 +1,4 @@
-use smallvec::SmallVec;
-
-use crate::constant::{CHAR_FILTER, TEXT_STACK_BUF_LEN};
+use crate::{code_cvt::TextVec, constant::CHAR_FILTER};
 
 mod mapping_data {
     translate_macros::generate_mapping_data!("assets/mapping.json");
@@ -8,7 +6,7 @@ mod mapping_data {
 
 /// 将含有替身字符的多字节序列转换为u16序列，然后应用映射，将替身字符转换为正常字符
 #[inline(always)]
-pub fn map_chars(input_slice: &[u8]) -> SmallVec<[u16; TEXT_STACK_BUF_LEN]> {
+pub fn map_chars(input_slice: &[u8]) -> TextVec<u16> {
     map_wide_chars(&crate::code_cvt::multi_byte_to_wide_char(
         input_slice,
         mapping_data::ANSI_CODE_PAGE,
@@ -17,8 +15,8 @@ pub fn map_chars(input_slice: &[u8]) -> SmallVec<[u16; TEXT_STACK_BUF_LEN]> {
 
 /// 对含有替身字符的u16序列应用映射，将替身字符转换为正常字符
 #[inline(always)]
-pub fn map_wide_chars(input_slice: &[u16]) -> SmallVec<[u16; TEXT_STACK_BUF_LEN]> {
-    let mut buf: SmallVec<[u16; TEXT_STACK_BUF_LEN]> = SmallVec::with_capacity(input_slice.len());
+pub fn map_wide_chars(input_slice: &[u16]) -> TextVec<u16> {
+    let mut buf: TextVec<u16> = TextVec::with_capacity(input_slice.len());
 
     for &ch in input_slice {
         let mapped_ch = mapping_data::PHF_MAP.get(&ch).copied().unwrap_or(ch);
@@ -33,7 +31,7 @@ pub fn map_wide_chars(input_slice: &[u16]) -> SmallVec<[u16; TEXT_STACK_BUF_LEN]
 
 /// 将含有替身字符的多字节序列转换为u16序列，然后应用映射，将替身字符转换为正常字符，并以null结尾
 #[inline(always)]
-pub fn map_chars_with_null(input_slice: &[u8]) -> SmallVec<[u16; TEXT_STACK_BUF_LEN]> {
+pub fn map_chars_with_null(input_slice: &[u8]) -> TextVec<u16> {
     let mut buf = map_chars(input_slice);
     buf.push(0);
     buf
@@ -41,7 +39,7 @@ pub fn map_chars_with_null(input_slice: &[u8]) -> SmallVec<[u16; TEXT_STACK_BUF_
 
 /// 对含有替身字符的u16序列应用映射，将替身字符转换为正常字符，并以null结尾
 #[inline(always)]
-pub fn map_wide_chars_with_null(input_slice: &[u16]) -> SmallVec<[u16; TEXT_STACK_BUF_LEN]> {
+pub fn map_wide_chars_with_null(input_slice: &[u16]) -> TextVec<u16> {
     let mut buf = map_wide_chars(input_slice);
     buf.push(0);
     buf

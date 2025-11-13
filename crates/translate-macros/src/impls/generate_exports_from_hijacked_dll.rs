@@ -31,8 +31,9 @@ impl Parse for PathsInput {
 pub fn generated_exports_from_hijacked_dll(input: TokenStream) -> syn::Result<TokenStream> {
     let parsed = syn::parse2::<PathsInput>(input)?;
     let hijacked_dll_dir = get_full_path_by_manifest(parsed.hijacked_dll_dir.value()).unwrap();
+    let def_output_path = get_full_path_by_manifest(parsed.def_output_path.value()).unwrap();
 
-    let generated = match try_generate(&hijacked_dll_dir) {
+    let generated = match try_generate(&hijacked_dll_dir, &def_output_path) {
         Ok(tokens) => tokens,
         Err(e) => {
             syn_bail!(parsed.hijacked_dll_dir, "{e}");
@@ -42,21 +43,21 @@ pub fn generated_exports_from_hijacked_dll(input: TokenStream) -> syn::Result<To
     Ok(generated)
 }
 
-fn try_generate(path: &PathBuf) -> anyhow::Result<TokenStream> {
+fn try_generate(dll_dir: &PathBuf, def_output_path: &PathBuf) -> anyhow::Result<TokenStream> {
     // 检查目录存在
     let metadata =
-        std::fs::metadata(path).with_context(|| format!("路径不存在：{}", path.display()))?;
+        std::fs::metadata(dll_dir).with_context(|| format!("路径不存在：{}", dll_dir.display()))?;
     if !metadata.is_dir() {
         anyhow::bail!(
             "{} 不是目录，请传入包含 DLL 的目录路径（相对于 CARGO_MANIFEST_DIR）",
-            path.display()
+            dll_dir.display()
         );
     }
 
-    // 列出目录
+    // 列出目录（只取文件）
     let mut dlls = Vec::new();
     for entry in
-        std::fs::read_dir(path).with_context(|| format!("无法读取目录 {}", path.display()))?
+        std::fs::read_dir(dll_dir).with_context(|| format!("无法读取目录 {}", dll_dir.display()))?
     {
         let e = entry?;
         let ft = e.file_type()?;
@@ -68,7 +69,7 @@ fn try_generate(path: &PathBuf) -> anyhow::Result<TokenStream> {
     if dlls.len() != 1 {
         anyhow::bail!(
             "目录 {} 应该只包含一个 DLL 文件，实际找到 {} 个",
-            path.display(),
+            dll_dir.display(),
             dlls.len()
         );
     }
@@ -83,10 +84,11 @@ fn try_generate(path: &PathBuf) -> anyhow::Result<TokenStream> {
     let bytes = std::fs::read(dll_path)
         .with_context(|| format!("无法读取 DLL 文件：{}", dll_path.display()))?;
 
-    let export_names = parse_pe_exports(&bytes)
+    // 获取 (name, ordinal)
+    let export_pairs = parse_pe_exports(&bytes)
         .with_context(|| format!("解析 DLL 导出表失败：{}", dll_path.display()))?;
 
-    if export_names.is_empty() {
+    if export_pairs.is_empty() {
         anyhow::bail!(
             "在 {} 中未找到命名导出（no named exports）",
             dll_path.display()
@@ -99,7 +101,18 @@ fn try_generate(path: &PathBuf) -> anyhow::Result<TokenStream> {
     let mut c_string_literals = Vec::new();
     let mut addr_idents = Vec::new();
 
-    for name in &export_names {
+    // 为 .def 输出准备内容（LIBRARY + EXPORTS）
+    // LIBRARY 使用不带扩展名的文件名作为模块名
+    let library_name = dll_path
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or(&dll_basename)
+        .to_string();
+
+    // 收集 .def 的每一行（EXPORTS 下的行），格式：Name @ordinal
+    let mut def_export_lines: Vec<String> = Vec::new();
+
+    for (name, ordinal) in export_pairs.iter() {
         // 生成静态名
         let static_name = rust_static_name_from_export(name);
         let ident = format_ident!("{}", static_name);
@@ -117,11 +130,8 @@ fn try_generate(path: &PathBuf) -> anyhow::Result<TokenStream> {
         statics.push(st);
 
         // 生成 wrapper 函数，named export 保持原名（使用 export_name 属性）
-        // 使用裸汇编 jmp [ADDR_VAR] 的模式
         let export_name = name.clone();
         let export_fn_ident = format_ident!("lib_{}", export_name); // 内部函数名（不导出）
-        // 确保函数名是合法标识符：若原导出名包含不可作为 ident 的字符，此处生成的内部 ident 仅用于 Rust 层，导出名保留为 export_name
-        // 裸汇编：使用 core::arch::naked_asm! 宏
         let asm = quote! {
             #[unsafe(naked)]
             #[unsafe(link_section = ".text")]
@@ -134,6 +144,10 @@ fn try_generate(path: &PathBuf) -> anyhow::Result<TokenStream> {
             }
         };
         asm_fns.push(asm);
+
+        // 准备 def 行；保持与原 DLL 的 ordinal 一致
+        // def 格式：<Name> @<ordinal>
+        def_export_lines.push(format!("    {name} @{ordinal}"));
     }
 
     // HMOD static
@@ -174,7 +188,7 @@ fn try_generate(path: &PathBuf) -> anyhow::Result<TokenStream> {
             unsafe {
                 // 加载真实 DLL
                 let hmod = crate::utils::win32::load_hijacked_library(#dll_basename)
-                    .expect("Could not find target DLL");
+                        .expect("Could not find target DLL");
 
                 // 使用 crate 提供的辅助函数批量获取地址
                 let addrs = crate::utils::win32::get_module_symbol_addrs_from_handle(
@@ -213,6 +227,26 @@ fn try_generate(path: &PathBuf) -> anyhow::Result<TokenStream> {
         }
     };
 
+    // 组装 .def 内容
+    let mut def_contents = String::new();
+    def_contents.push_str(&format!("LIBRARY {library_name}\n\n"));
+    def_contents.push_str("EXPORTS\n");
+    for line in &def_export_lines {
+        def_contents.push_str(line);
+        def_contents.push('\n');
+    }
+
+    // 尝试写入文件（如果失败，返回错误）
+    std::fs::create_dir_all(
+        def_output_path
+            .parent()
+            .unwrap_or_else(|| std::path::Path::new("")),
+    )
+    .with_context(|| format!("无法创建 def 输出目录：{}", def_output_path.display()))?;
+
+    std::fs::write(def_output_path, def_contents)
+        .with_context(|| format!("无法写入 def 文件：{}", def_output_path.display()))?;
+
     // 组合全部生成项：HMOD、所有 statics、所有 asm wrapper、load/unload 函数
     let output = quote! {
 
@@ -243,22 +277,43 @@ fn rust_static_name_from_export(export: &str) -> String {
 }
 
 /// 从 bytes 里解析导出符号（只返回有名字的导出）
-/// 使用 goblin::pe 解析 PE 导出表
-fn parse_pe_exports(bytes: &[u8]) -> anyhow::Result<Vec<String>> {
-    match Object::parse(bytes)? {
-        Object::PE(pe) => {
-            let mut names = Vec::new();
-            for export in &pe.exports {
-                if let Some(name) = export.name {
-                    names.push(name.to_string());
-                }
-            }
-
-            Ok(names)
+/// 返回 Vec<(name, ordinal)>，ordinal 为导出序号（基于 PE 的 ordinal base 计算的绝对序号）
+/// TODO: 现在仍然不支持无名导出(即纯序号导出，需要的时候再实现吧)
+fn parse_pe_exports(bytes: &[u8]) -> anyhow::Result<Vec<(String, u32)>> {
+    let pe = match Object::parse(bytes)? {
+        Object::PE(pe) => pe,
+        other => {
+            anyhow::bail!("不是 PE 文件（解析结果：{other:?}），无法从中提取导出");
         }
-        other => Err(anyhow::anyhow!(
-            "不是 PE 文件（解析结果：{:?}），无法从中提取导出",
-            other
-        )),
-    }
+    };
+
+    let export_data = pe
+        .export_data
+        .as_ref()
+        .ok_or_else(|| anyhow::anyhow!("PE 文件没有导出表"))?;
+
+    let ordinal_base = export_data.export_directory_table.ordinal_base;
+    let ordinals = &export_data.export_ordinal_table;
+
+    // 确保表长度一致（防止损坏的 PE）
+    anyhow::ensure!(
+        ordinals.len() == pe.exports.len(),
+        "导出表损坏: ordinals 长度 {} != exports 长度 {}",
+        ordinals.len(),
+        pe.exports.len()
+    );
+
+    let names: Vec<_> = pe
+        .exports
+        .iter()
+        .enumerate()
+        .filter_map(|(i, export)| {
+            let name = export.name?;
+            let rel = ordinals.get(i).copied()?;
+            let absolute = ordinal_base.saturating_add(rel as u32);
+            Some((name.to_string(), absolute))
+        })
+        .collect();
+
+    Ok(names)
 }

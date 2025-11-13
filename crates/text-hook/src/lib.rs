@@ -10,6 +10,9 @@ pub(crate) mod mapping;
 #[allow(dead_code)]
 pub(crate) mod utils;
 
+#[cfg(feature = "x64dbg_1337_patch")]
+pub(crate) mod x64dbg_1337_patch;
+
 #[cfg(feature = "text_patch")]
 pub(crate) mod text_patch;
 

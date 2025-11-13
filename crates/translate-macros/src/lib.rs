@@ -659,3 +659,92 @@ pub fn generated_text_patch_data(input: TokenStream) -> TokenStream {
         Err(err) => err.into_compile_error().into(),
     }
 }
+
+/// 从1337补丁文件生成内存补丁函数的过程宏
+///
+/// 这个宏在编译时读取指定目录下的所有 `.1337` 补丁文件，生成一个函数，该函数在运行时将补丁数据写入对应模块的内存地址。
+/// 主要用于游戏修改、热修复等需要动态修改二进制代码的场景。
+///
+/// # 语法
+/// ```ignore
+/// generate_patch_fn_from_1337! {
+///     "path/to/patches" => <pub> fn function_name
+/// }
+/// ```
+/// - 第一个参数：1337补丁文件所在目录（相对于 `CARGO_MANIFEST_DIR`）
+/// - 可选的 `pub` 关键字：控制生成函数的可见性
+/// - 第二个参数：生成的函数名
+///
+/// # 1337文件格式
+/// 宏会读取目录下所有扩展名为 `.1337` 的文件，每个文件格式如下：
+/// ```text
+/// // 这是注释行
+/// >game.exe              # 模块声明（以.exe结尾的为主模块）
+/// 0x140001000: 0x74 -> 0xEB  # 补丁格式：地址: 原始字节 -> 新字节
+/// 0x140001001: 0x3C -> 0x90
+///
+/// >engine.dll            # 另一个模块的声明
+/// 0x180204A90: 0xE8 -> 0xC3
+/// ```
+///
+/// ## 格式规则
+/// - 模块声明：以 `>` 开头，后跟模块名（如 `game.exe` 或 `library.dll`）
+/// - 补丁条目：`地址: 原始字节 -> 新字节`（地址为十六进制，字节值也必须为十六进制）
+/// - 注释：以 `//` 或 `#` 开头的行会被忽略
+/// - 空行：自动忽略
+///
+/// # 生成内容
+/// 宏展开后会生成一个返回 `anyhow::Result<()>` 的函数，该函数：
+/// - 自动获取各模块的基址（主模块使用空字符串获取）
+/// - 按模块分组并应用所有补丁
+/// - 自动合并连续地址的补丁以优化内存写入操作
+///
+/// # 处理规则
+/// - 自动处理路径解析（相对于 `CARGO_MANIFEST_DIR`）
+/// - **最多只能有一个主模块**（以 `.exe` 结尾的模块），否则编译失败
+/// - 补丁必须位于模块声明之后，否则编译失败
+/// - 自动按地址排序并合并连续的内存补丁
+/// - 使用 `crate::utils::win32::get_module_handle` 获取模块句柄
+/// - 使用 `crate::utils::mem::patch::write_asm` 写入补丁数据
+///
+/// # 示例
+/// ## 1337文件内容 (`patches/game.1337`)
+/// ```text
+/// >MyGame.exe
+/// 0x140001000: 0x74 -> 0xEB  # 将je指令改为jmp
+/// 0x140001001: 0x3C -> 0x90  # 后续字节改为nop
+/// 0x140001002: 0x07 -> 0x90
+/// ```
+///
+/// ## 使用宏
+/// ```ignore
+/// generate_patch_fn_from_1337! {
+///     "patches" => pub fn apply_game_patches
+/// }
+///
+/// // 在main函数中调用
+/// fn main() -> anyhow::Result<()> {
+///     apply_game_patches()?;
+///     Ok(())
+/// }
+/// ```
+///
+/// ## 生成的代码大致如下
+/// ```ignore
+/// pub fn apply_game_patches() -> anyhow::Result<()> {
+///     // Patch模块: MyGame.exe
+///     let module_base = crate::utils::win32::get_module_handle("")
+///         .ok_or_else(|| anyhow::anyhow!("Cannot get module handle ''"))? as usize;
+///     let target_addr = module_base.wrapping_add(0x140001000 as usize);
+///     let data: &[u8] = &[0xEB, 0x90, 0x90];
+///     crate::utils::mem::patch::write_asm(target_addr as *mut u8, data)?;
+///     Ok(())
+/// }
+/// ```
+#[proc_macro]
+pub fn generate_patch_fn_from_1337(input: TokenStream) -> TokenStream {
+    match impls::generate_patch_fn_from_1337::generate_patch_fn_from_1337(input.into()) {
+        Ok(ts) => ts.into(),
+        Err(err) => err.into_compile_error().into(),
+    }
+}

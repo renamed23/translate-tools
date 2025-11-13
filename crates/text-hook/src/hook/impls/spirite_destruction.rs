@@ -1,8 +1,7 @@
-use smallvec::SmallVec;
 use windows_sys::Win32::Graphics::Gdi::{HDC, TextOutW};
 use windows_sys::core::{BOOL, PCSTR};
 
-use crate::constant::TEXT_STACK_BUF_LEN;
+use crate::code_cvt::TextVec;
 use crate::debug;
 use crate::hook::traits::text_hook::HOOK_TEXT_OUT_A;
 use crate::hook::traits::{CoreHook, TextHook};
@@ -40,7 +39,7 @@ impl TextHook for SpiriteDestructionHook {
     }
 }
 
-fn process_text(s: &str) -> SmallVec<[u16; TEXT_STACK_BUF_LEN]> {
+fn process_text(s: &str) -> TextVec<u16> {
     let (name, msg) = split_name_and_message(s);
 
     #[cfg(feature = "text_extracting")]
