@@ -4,18 +4,38 @@ use goblin::Object;
 use proc_macro2::{Literal, TokenStream};
 use quote::{format_ident, quote};
 use std::path::PathBuf;
-use syn::LitStr;
+use syn::{
+    LitStr, Token,
+    parse::{Parse, ParseStream},
+};
 
 use crate::utils::get_full_path_by_manifest;
 
-pub fn generated_exports_from_hijacked_dll(input: TokenStream) -> syn::Result<TokenStream> {
-    let parsed = syn::parse2::<LitStr>(input)?;
-    let mapping_path = get_full_path_by_manifest(parsed.value()).unwrap();
+struct PathsInput {
+    hijacked_dll_dir: LitStr,
+    def_output_path: LitStr,
+}
 
-    let generated = match try_generate(&mapping_path) {
+impl Parse for PathsInput {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        let hijacked_dll_dir: LitStr = input.parse()?;
+        let _arrow: Token![=>] = input.parse()?;
+        let def_output_path: LitStr = input.parse()?;
+        Ok(PathsInput {
+            hijacked_dll_dir,
+            def_output_path,
+        })
+    }
+}
+
+pub fn generated_exports_from_hijacked_dll(input: TokenStream) -> syn::Result<TokenStream> {
+    let parsed = syn::parse2::<PathsInput>(input)?;
+    let hijacked_dll_dir = get_full_path_by_manifest(parsed.hijacked_dll_dir.value()).unwrap();
+
+    let generated = match try_generate(&hijacked_dll_dir) {
         Ok(tokens) => tokens,
         Err(e) => {
-            syn_bail!(parsed, "{e}");
+            syn_bail!(parsed.hijacked_dll_dir, "{e}");
         }
     };
 
