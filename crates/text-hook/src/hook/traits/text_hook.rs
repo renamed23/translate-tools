@@ -232,7 +232,10 @@ pub trait TextHook: Send + Sync + 'static {
             let bytes = unsafe {
                 crate::utils::mem::slice_until_null(psz_face_name, (LF_FACESIZE - 1) as usize)
             };
-            crate::code_cvt::ansi_to_wide_char_with_null(bytes)
+            crate::code_cvt::multi_byte_to_wide_char_with_null(
+                bytes,
+                crate::code_cvt::get_cp_by_char_set(),
+            )
         };
 
         unsafe {
@@ -354,13 +357,16 @@ pub trait TextHook: Send + Sync + 'static {
         logfontw.lfPitchAndFamily = logfona.lfPitchAndFamily;
 
         let face_u16 = {
-            let u8_slice = unsafe {
+            let bytes = unsafe {
                 crate::utils::mem::slice_until_null(
                     logfona.lfFaceName.as_ptr() as *const u8,
                     logfona.lfFaceName.len() - 1, // 最后一个字节必须为null
                 )
             };
-            crate::code_cvt::ansi_to_wide_char_with_null(u8_slice)
+            crate::code_cvt::multi_byte_to_wide_char_with_null(
+                bytes,
+                crate::code_cvt::get_cp_by_char_set(),
+            )
         };
 
         logfontw.lfFaceName[..face_u16.len()].copy_from_slice(face_u16.as_slice());

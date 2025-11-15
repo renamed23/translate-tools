@@ -4,13 +4,13 @@ mod mapping_data {
     translate_macros::generate_mapping_data!("assets/mapping.json");
 }
 
+/// 重导出的`ANSI_CODE_PAGE`，请使用`constant::ANSI_CODE_PAGE`而不是这个
+pub const ANSI_CODE_PAGE: u32 = mapping_data::ANSI_CODE_PAGE;
+
 /// 将含有替身字符的多字节序列转换为u16序列，然后应用映射，将替身字符转换为正常字符
 #[inline(always)]
 pub fn map_chars(input_slice: &[u8]) -> TextVec<u16> {
-    map_wide_chars(&crate::code_cvt::multi_byte_to_wide_char(
-        input_slice,
-        mapping_data::ANSI_CODE_PAGE,
-    ))
+    map_wide_chars(&crate::code_cvt::ansi_to_wide_char(input_slice))
 }
 
 /// 对含有替身字符的u16序列应用映射，将替身字符转换为正常字符

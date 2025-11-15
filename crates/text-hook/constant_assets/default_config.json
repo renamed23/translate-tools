@@ -41,9 +41,5 @@
     "HIJACKED_DLL_PATH": {
         "type": "&str",
         "value": ""
-    },
-    "ANSI_CODE_PAGE": {
-        "type": "u32",
-        "value": 0
     }
 }

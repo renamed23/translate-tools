@@ -1,8 +1,13 @@
 use core::ptr;
 use smallvec::SmallVec;
 use windows_sys::Win32::Globalization::{CP_UTF8, MultiByteToWideChar, WideCharToMultiByte};
+use windows_sys::Win32::Graphics::Gdi::{
+    ANSI_CHARSET, ARABIC_CHARSET, BALTIC_CHARSET, CHINESEBIG5_CHARSET, EASTEUROPE_CHARSET,
+    GB2312_CHARSET, GREEK_CHARSET, HANGUL_CHARSET, HEBREW_CHARSET, RUSSIAN_CHARSET,
+    SHIFTJIS_CHARSET, THAI_CHARSET, TURKISH_CHARSET, VIETNAMESE_CHARSET,
+};
 
-use crate::constant::{ANSI_CODE_PAGE, TEXT_STACK_BUF_LEN};
+use crate::constant::{ANSI_CODE_PAGE, CHAR_SET, TEXT_STACK_BUF_LEN};
 use crate::print_system_error_message;
 
 /// 用于处理文本缓冲区的Vec
@@ -207,4 +212,34 @@ pub fn u16_with_null(u16_slice: &[u16]) -> TextVec<u16> {
         .copied()
         .chain(core::iter::once(0u16))
         .collect()
+}
+
+/// 根据CharSet获取对应的代码页
+#[inline(always)]
+pub const fn get_cp_by_char_set() -> u32 {
+    match CHAR_SET {
+        // 东亚语言（中日韩）
+        GB2312_CHARSET => 936,      // 简体中文
+        SHIFTJIS_CHARSET => 932,    // 日语
+        HANGUL_CHARSET => 949,      // 韩语
+        CHINESEBIG5_CHARSET => 950, // 繁体中文
+
+        // 西欧及东欧
+        ANSI_CHARSET => 1252,       // 西欧
+        EASTEUROPE_CHARSET => 1250, // 东欧
+        RUSSIAN_CHARSET => 1251,    // 西里尔文
+        GREEK_CHARSET => 1253,      // 希腊语
+        TURKISH_CHARSET => 1254,    // 土耳其语
+        BALTIC_CHARSET => 1257,     // 波罗的海
+
+        // 中东
+        HEBREW_CHARSET => 1255, // 希伯来语
+        ARABIC_CHARSET => 1256, // 阿拉伯语
+
+        // 亚洲其他
+        THAI_CHARSET => 874,        // 泰语
+        VIETNAMESE_CHARSET => 1258, // 越南语
+
+        _ => 0,
+    }
 }

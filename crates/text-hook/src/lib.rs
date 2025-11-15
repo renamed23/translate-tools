@@ -33,6 +33,8 @@ pub(crate) mod emulate_locale;
 
 #[allow(dead_code)]
 pub(crate) mod constant {
+    pub const ANSI_CODE_PAGE: u32 = crate::mapping::ANSI_CODE_PAGE;
+
     translate_macros::generate_constants_from_json!(
         "constant_assets/default_config.json",
         "assets/config.json"

@@ -1,8 +1,12 @@
 use translate_macros::{detour, detour_trait};
 use windows_sys::Win32::{
     Foundation::{HWND, LPARAM, LRESULT, WPARAM},
-    UI::WindowsAndMessaging::{CREATESTRUCTA, CREATESTRUCTW, GetParent, WM_NCCREATE, WM_SETTEXT},
+    UI::WindowsAndMessaging::{
+        CREATESTRUCTA, CREATESTRUCTW, GetParent, HMENU, MF_BITMAP, MF_OWNERDRAW, MessageBoxW,
+        ModifyMenuW, WM_NCCREATE, WM_SETTEXT,
+    },
 };
+use windows_sys::core::BOOL;
 
 use crate::{constant::WINDOW_TITLE, debug};
 
@@ -173,6 +177,91 @@ pub trait WindowHook: Send + Sync + 'static {
             _ => unsafe { HOOK_DEF_WINDOW_PROC_W.call(h_wnd, u_msg, w_param, l_param) },
         }
     }
+
+    #[detour(dll = "user32.dll", symbol = "ModifyMenuA", fallback = "0")]
+    unsafe fn modify_menu_a(
+        &self,
+        h_menu: HMENU,
+        u_position: u32,
+        u_flags: u32,
+        u_id_new_item: usize,
+        lp_new_item: *const u8,
+    ) -> BOOL {
+        unsafe {
+            if (u_flags & (MF_BITMAP | MF_OWNERDRAW)) == 0 && !lp_new_item.is_null() {
+                let text_slice = crate::utils::mem::slice_until_null(lp_new_item, 512);
+                let wide_text = crate::code_cvt::ansi_to_wide_char_with_null(text_slice);
+
+                #[cfg(feature = "debug_output")]
+                {
+                    let raw_text = {
+                        String::from_utf16_lossy(&crate::code_cvt::ansi_to_wide_char(text_slice))
+                    };
+                    debug!("Get menu text: {raw_text}");
+                }
+
+                ModifyMenuW(
+                    h_menu,
+                    u_position,
+                    u_flags,
+                    u_id_new_item,
+                    wide_text.as_ptr(),
+                )
+            } else {
+                HOOK_MODIFY_MENU_A.call(h_menu, u_position, u_flags, u_id_new_item, lp_new_item)
+            }
+        }
+    }
+
+    #[detour(dll = "user32.dll", symbol = "MessageBoxA", fallback = "0")]
+    unsafe fn message_box_a(
+        &self,
+        h_wnd: HWND,
+        lp_text: *const u8,
+        lp_caption: *const u8,
+        u_type: u32,
+    ) -> i32 {
+        unsafe {
+            if lp_text.is_null() && lp_caption.is_null() {
+                return HOOK_MESSAGE_BOX_A.call(h_wnd, lp_text, lp_caption, u_type);
+            }
+
+            let wide_text_opt = if lp_text.is_null() {
+                None
+            } else {
+                let text_slice = crate::utils::mem::slice_until_null(lp_text, 2048);
+                Some(crate::code_cvt::ansi_to_wide_char_with_null(text_slice))
+            };
+
+            let wide_caption_opt = if lp_caption.is_null() {
+                None
+            } else {
+                let cap_slice = crate::utils::mem::slice_until_null(lp_caption, 512);
+                Some(crate::code_cvt::ansi_to_wide_char_with_null(cap_slice))
+            };
+
+            let wide_text_ptr = wide_text_opt
+                .as_ref()
+                .map_or(core::ptr::null(), |v| v.as_ptr());
+            let wide_caption_ptr = wide_caption_opt
+                .as_ref()
+                .map_or(core::ptr::null(), |v| v.as_ptr());
+
+            #[cfg(feature = "debug_output")]
+            {
+                if let Some(ref w) = wide_text_opt {
+                    let s = String::from_utf16_lossy(&w[..w.len().saturating_sub(1)]);
+                    debug!("Get message box text: {s}");
+                }
+                if let Some(ref c) = wide_caption_opt {
+                    let s = String::from_utf16_lossy(&c[..c.len().saturating_sub(1)]);
+                    debug!("Get message box caption: {s}");
+                }
+            }
+
+            MessageBoxW(h_wnd, wide_text_ptr, wide_caption_ptr, u_type)
+        }
+    }
 }
 
 /// 开启窗口过程相关的特性钩子
@@ -181,6 +270,8 @@ pub fn enable_featured_hooks() {
     unsafe {
         HOOK_DEF_WINDOW_PROC_A.enable().unwrap();
         HOOK_DEF_WINDOW_PROC_W.enable().unwrap();
+        HOOK_MODIFY_MENU_A.enable().unwrap();
+        HOOK_MESSAGE_BOX_A.enable().unwrap();
     }
 
     debug!("Window Hooked!");
@@ -192,6 +283,8 @@ pub fn disable_featured_hooks() {
     unsafe {
         HOOK_DEF_WINDOW_PROC_A.disable().unwrap();
         HOOK_DEF_WINDOW_PROC_W.disable().unwrap();
+        HOOK_MODIFY_MENU_A.disable().unwrap();
+        HOOK_MESSAGE_BOX_A.disable().unwrap();
     }
 
     debug!("Window Unhooked!");

@@ -48,13 +48,12 @@ cargo build --release --features default_impl
   "WINDOW_TITLE": "游戏窗口",
   "ARG1": "v1",
   "HIJACKED_DLL_PATH": "",
-  "ANSI_CODE_PAGE": 932,
 }
 ```
 
 若未开启`enum_font_families`特性，那么则使用`FONT_FACE`固定字体，若开启了`enum_font_families`，那么传入字体是`FONT_FILTER`，则使用`FONT_FACE`，否则使用传入的字体
 
-`CHAR_SET`对应于GDI函数的`CharSet`
+`CHAR_SET`对应于GDI函数的`CharSet`，创建字体函数也会用`CHAR_SET`对应的代码页对字体名进行解码
 
 `ENUM_FONT_PROC_CHAR_SET`用于`EnumFonts`系列函数的回调函数，一般默认为128即可。
 
@@ -67,8 +66,6 @@ cargo build --release --features default_impl
 `HIJACKED_DLL_PATH`用于指定被劫持的DLL的路径，若为`""`，那么默认会在系统目录中寻找。需要开启`dll_hijacking`特性，并将需要劫持的DLL放在`assets/hijacked`目录里(仅限一个)，最终编译的DLL需要手动改名，然后放在游戏EXE所在目录即可完成劫持，此时就不再需要改游戏的导入表了。
 
 > 仍然推荐使用修改导入表的方式注入DLL，因为可以精准影响到你想要影响的EXE，比如`chs`版本
-
-`ANSI_CODE_PAGE`的可选值等同于`MultiByteToWideChar`的`CodePage`，如`0`，`932`，`936`等等
 
 
 ### font
@@ -92,7 +89,7 @@ cargo build --release --features default_impl
 }
 ```
 
-`code_page`是可选的，将用于`TextOutA`之类的函数解码文本，如果未指定，那么会使用`src_encoding`，如果也没有`src_encoding`，那么会使用默认值`0`
+`code_page`是可选的，将用于函数解码文本，如果未指定，那么会使用`src_encoding`，如果也没有`src_encoding`，那么会使用默认值`0`
 
 `src_encoding`一般由`replacement_tool.exe`生成，可选
 
