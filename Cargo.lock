@@ -1013,6 +1013,7 @@ version = "1.0.0"
 dependencies = [
  "anyhow",
  "dynasmrt",
+ "encoding_rs",
  "ntapi",
  "once_cell",
  "phf",

@@ -113,6 +113,13 @@ spirite_destruction = [
     "text_patch",
     "no_text_mapping",
 ]
+rainmemory = [
+    "patch",
+    "export_default_dll_main",
+    "text_hook",
+    "dll_hijacking",
+    "no_text_mapping",
+]
 
 [dependencies]
 translate-macros.workspace = true
@@ -121,6 +128,7 @@ anyhow.workspace = true
 once_cell.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+encoding_rs.workspace = true
 
 windows-sys = { version = "0.61", features = [
     "Win32_Foundation",

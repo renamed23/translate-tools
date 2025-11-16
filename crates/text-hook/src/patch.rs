@@ -6,7 +6,7 @@ mod patch_data {
 
 /// 根据目标数据，获取补丁数据
 pub fn get_patch(src: &[u8]) -> Option<&'static [u8]> {
-    if !patch_data::LEN_FILTER.contains(&src.len()) {
+    if !is_patch_len(src.len()) {
         return None;
     }
 
@@ -19,10 +19,15 @@ pub fn get_patch(src: &[u8]) -> Option<&'static [u8]> {
     Some(data)
 }
 
+/// 是否是需要进行处理的补丁的长度？
+pub fn is_patch_len(len: usize) -> bool {
+    patch_data::LEN_FILTER.contains(&len)
+}
+
 /// 根据目标数据，获取补丁数据对应的原始文件名（仅在 debug_output 特性启用时可用）
 #[cfg(feature = "debug_output")]
 pub fn get_filename(src: &[u8]) -> Option<&str> {
-    if !patch_data::LEN_FILTER.contains(&src.len()) {
+    if !is_patch_len(src.len()) {
         return None;
     }
 
