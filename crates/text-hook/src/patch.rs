@@ -40,8 +40,6 @@ pub fn get_filename(src: &[u8]) -> Option<&str> {
 /// 返回`true`表示修补成功
 #[cfg(not(feature = "patch_extracting"))]
 pub unsafe fn try_patching(ptr: *mut u8, len: usize) -> bool {
-    debug!("Buffer len: {len}",);
-
     if !crate::utils::mem::quick_memory_check_win32(ptr, len) {
         return false;
     }
@@ -76,8 +74,6 @@ pub unsafe fn try_patching(ptr: *mut u8, len: usize) -> bool {
 #[allow(dead_code, unused_variables)]
 #[cfg(feature = "patch_extracting")]
 pub unsafe fn try_extracting(ptr: *mut u8, len: usize) -> bool {
-    debug!("Buffer len: {len}");
-
     if !crate::utils::mem::quick_memory_check_win32(ptr, len) {
         return false;
     }
