@@ -314,6 +314,14 @@ fn try_aggressive_fix(trans_msg: &str, orig_len: usize, method: &Method) -> (Str
     (modified, false)
 }
 
+/// 检查条目是否设置了 length_unbounded 为 true
+/// 只接受布尔值 true，其他值（包括字符串 "true"）都视为 false
+fn is_length_unbounded(item: &Value) -> bool {
+    item.get("length_unbounded")
+        .and_then(Value::as_bool)
+        .unwrap_or(false)
+}
+
 fn main() -> Result<()> {
     let cli = Cli::parse();
 
@@ -348,8 +356,22 @@ fn main() -> Result<()> {
     let mut error_count = 0;
     let mut fixed_count = 0;
     let mut aggressive_fixed_count = 0;
+    let mut skipped_count = 0;
 
     for (i, (orig_item, trans_item)) in orig_array.iter().zip(trans_array.iter_mut()).enumerate() {
+        // 检查是否跳过该条目（length_unbounded 为 true）
+        if is_length_unbounded(orig_item) {
+            // 移除可能存在的 error 字段
+            let map = trans_item.as_object_mut().unwrap();
+            if map.remove("error").is_some() {
+                eprintln!("第 {i} 项: 跳过检查（length_unbounded=true），移除已有的 error 字段");
+            } else {
+                eprintln!("第 {i} 项: 跳过检查（length_unbounded=true）");
+            }
+            skipped_count += 1;
+            continue;
+        }
+
         // 提取 message 字段
         let orig_msg = orig_item
             .get("message")
@@ -474,39 +496,53 @@ fn main() -> Result<()> {
         Behavior::Check => {
             if error_count > 0 {
                 println!(
-                    "已写回 {}（已标注 {} 项超长）。",
+                    "已写回 {}（已标注 {} 项超长，跳过 {} 项）。",
                     output_path.display(),
-                    error_count
+                    error_count,
+                    skipped_count
                 );
             } else {
-                println!("检查成功：未发现超长译文，文件已写回（清除可能存在的 error 字段）。");
+                println!(
+                    "检查成功：未发现超长译文，文件已写回（清除可能存在的 error 字段，跳过 {} 项）。",
+                    skipped_count
+                );
             }
         }
         Behavior::Fix => {
             if fixed_count > 0 {
                 println!(
-                    "已自动修复 {} 项超长译文，输出到: {}",
+                    "已自动修复 {} 项超长译文，输出到: {}（跳过 {} 项）",
                     fixed_count,
-                    output_path.display()
+                    output_path.display(),
+                    skipped_count
                 );
             }
             if error_count > 0 {
                 println!("仍有 {error_count} 项无法自动修复，需要人工处理。");
             } else {
-                println!("所有超长译文已自动修复，输出到: {}", output_path.display());
+                println!(
+                    "所有超长译文已自动修复，输出到: {}（跳过 {} 项）",
+                    output_path.display(),
+                    skipped_count
+                );
             }
         }
         Behavior::AggressiveFix => {
             if aggressive_fixed_count > 0 {
                 println!(
-                    "已激进修复 {} 项超长译文（其中 {} 项完全修复，{} 项修复后仍超长），输出到: {}",
+                    "已激进修复 {} 项超长译文（其中 {} 项完全修复，{} 项修复后仍超长），输出到: {}（跳过 {} 项）",
                     aggressive_fixed_count,
                     fixed_count,
                     error_count,
-                    output_path.display()
+                    output_path.display(),
+                    skipped_count
                 );
             } else {
-                println!("无需激进修复，文件已输出到: {}", output_path.display());
+                println!(
+                    "无需激进修复，文件已输出到: {}（跳过 {} 项）",
+                    output_path.display(),
+                    skipped_count
+                );
             }
         }
     }
