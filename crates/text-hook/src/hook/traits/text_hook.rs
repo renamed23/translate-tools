@@ -31,15 +31,15 @@ pub trait TextHook: Send + Sync + 'static {
     )]
     unsafe fn text_out_a(&self, hdc: HDC, x: i32, y: i32, lp_string: PCSTR, c: i32) -> BOOL {
         unsafe {
-            // `slice_from_raw_parts`会进行简单的指针检查，若非法返回空切片
-            let input_slice = crate::utils::mem::slice_from_raw_parts(lp_string, c as usize);
+            let byte_len = crate::code_cvt::ansi_byte_len(lp_string, c as usize);
+            let input_slice = crate::utils::mem::slice_from_raw_parts(lp_string, byte_len);
 
             // 进行映射处理
             let buf = crate::mapping::map_chars(input_slice);
 
             #[cfg(feature = "debug_text_mapping")]
             match String::from_utf16(&buf) {
-                Ok(result) => debug!("draw text '{result}' at ({x}, {y})"),
+                Ok(result) => debug!("draw text '{result}' at ({x}, {y}), input: {input_slice:?}"),
                 Err(e) => debug!("Convert utf16 to utf8 fails with {e}"),
             }
 
@@ -54,6 +54,7 @@ pub trait TextHook: Send + Sync + 'static {
     )]
     unsafe fn text_out_w(&self, hdc: HDC, x: i32, y: i32, lp_string: PCWSTR, c: i32) -> BOOL {
         unsafe {
+            // 假定文本均在BMP
             let input_slice = crate::utils::mem::slice_from_raw_parts(lp_string, c as usize);
 
             let buf = crate::mapping::map_wide_chars(input_slice);
@@ -81,13 +82,14 @@ pub trait TextHook: Send + Sync + 'static {
         lp_size: *mut SIZE,
     ) -> BOOL {
         unsafe {
-            let input_slice = crate::utils::mem::slice_from_raw_parts(lp_string, c as usize);
+            let byte_len = crate::code_cvt::ansi_byte_len(lp_string, c as usize);
+            let input_slice = crate::utils::mem::slice_from_raw_parts(lp_string, byte_len);
 
             let buf = crate::mapping::map_chars(input_slice);
 
             #[cfg(feature = "debug_text_mapping")]
             match String::from_utf16(&buf) {
-                Ok(result) => debug!("result: {result}"),
+                Ok(result) => debug!("result: {result}, input: {input_slice:?}"),
                 Err(e) => debug!("Convert utf16 to utf8 fails with {e}"),
             }
 
@@ -146,7 +148,7 @@ pub trait TextHook: Send + Sync + 'static {
 
         #[cfg(feature = "debug_text_mapping")]
         match String::from_utf16(&buf) {
-            Ok(result) => debug!("result: {result}"),
+            Ok(result) => debug!("result: {result}, input: {input_slice:?}"),
             Err(e) => debug!("Convert utf16 to utf8 fails with {e}"),
         }
 

@@ -6,6 +6,7 @@ use windows_sys::Win32::Graphics::Gdi::{
     GB2312_CHARSET, GREEK_CHARSET, HANGUL_CHARSET, HEBREW_CHARSET, RUSSIAN_CHARSET,
     SHIFTJIS_CHARSET, THAI_CHARSET, TURKISH_CHARSET, VIETNAMESE_CHARSET,
 };
+use windows_sys::Win32::UI::WindowsAndMessaging::CharNextExA;
 
 use crate::constant::{ANSI_CODE_PAGE, CHAR_SET, TEXT_STACK_BUF_LEN};
 use crate::print_system_error_message;
@@ -242,4 +243,30 @@ pub const fn get_cp_by_char_set() -> u32 {
 
         _ => 0,
     }
+}
+
+/// 根据字符数和代码页计算传入字符串的字节长度
+#[inline(always)]
+pub fn byte_len(ptr: *const u8, chars: usize, code_page: u16) -> usize {
+    let mut cur = ptr;
+    let mut byte_len = 0usize;
+
+    unsafe {
+        for _ in 0..chars {
+            let next = CharNextExA(code_page, cur, 0) as *const u8;
+            if next.is_null() {
+                break;
+            }
+            byte_len += next.offset_from(cur) as usize;
+            cur = next;
+        }
+    }
+
+    byte_len
+}
+
+/// 根据字符数计算传入ANSI字符串的字节长度
+#[inline(always)]
+pub fn ansi_byte_len(ptr: *const u8, chars: usize) -> usize {
+    byte_len(ptr, chars, ANSI_CODE_PAGE as u16)
 }
