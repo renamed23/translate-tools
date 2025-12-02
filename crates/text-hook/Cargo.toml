@@ -16,6 +16,9 @@ debug_output = []
 # 调试输出映射文本
 debug_text_mapping = ["debug_output"]
 
+# 假设TextOutA中的`c`参数是字节而不是字符数
+# 对于一些传入了错误的参数的老游戏可能会有效...
+text_out_arg_c_is_bytes = []
 # 读取x64dbg的1337文件并生成运行时patch代码
 x64dbg_1337_patch = []
 # 是否在Process attach时自动应用1337补丁
@@ -125,6 +128,13 @@ rainmemory = [
     "text_hook",
     "dll_hijacking",
     "no_text_mapping",
+]
+complets = [
+    "export_default_dll_main",
+    "text_hook",
+    "window_hook",
+    "enum_font_families",
+    "text_out_arg_c_is_bytes",
 ]
 
 [dependencies]

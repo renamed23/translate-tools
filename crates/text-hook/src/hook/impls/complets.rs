@@ -1,0 +1,120 @@
+use translate_macros::detour_fn;
+use windows_sys::Win32::Foundation::{HMODULE, WIN32_ERROR};
+use windows_sys::Win32::System::Registry::{
+    HKEY, HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE, REG_OPEN_CREATE_OPTIONS, REG_SAM_FLAGS,
+};
+use windows_sys::core::PCSTR;
+
+use crate::constant::ARG1;
+use crate::debug;
+use crate::hook::traits::{CoreHook, TextHook, WindowHook};
+
+#[derive(Default)]
+pub struct CompletsHook;
+
+impl CoreHook for CompletsHook {
+    fn on_process_attach(&self, _hinst_dll: HMODULE) {
+        unsafe {
+            HOOK_REG_OPEN_KEY_EX_A.enable().unwrap();
+            HOOK_REG_CREATE_KEY_EX_A.enable().unwrap();
+        };
+    }
+
+    fn on_process_detach(&self, _hinst_dll: HMODULE) {
+        unsafe {
+            HOOK_REG_OPEN_KEY_EX_A.disable().unwrap();
+            HOOK_REG_CREATE_KEY_EX_A.disable().unwrap();
+        };
+    }
+}
+
+impl TextHook for CompletsHook {}
+impl WindowHook for CompletsHook {}
+
+#[detour_fn(dll = "advapi32.dll", symbol = "RegOpenKeyExA", fallback = "1")]
+unsafe extern "system" fn reg_open_key_ex_a(
+    hkey: HKEY,
+    lpsubkey: PCSTR,
+    uloptions: u32,
+    samdesired: REG_SAM_FLAGS,
+    phkresult: *mut HKEY,
+) -> WIN32_ERROR {
+    unsafe {
+        if hkey == HKEY_LOCAL_MACHINE && !lpsubkey.is_null() {
+            let subkey =
+                String::from_utf8_lossy(crate::utils::mem::slice_until_null(lpsubkey, 1024));
+            let expected = format!("Software\\Complets\\{ARG1}\\savedata");
+
+            debug!("get subkey : {subkey}");
+
+            if subkey.eq_ignore_ascii_case(&expected) {
+                let redirect = format!(
+                    "Software\\Classes\\VirtualStore\\MACHINE\\SOFTWARE\\Complets\\{ARG1}\\savedata\0",
+                );
+
+                return HOOK_REG_OPEN_KEY_EX_A.call(
+                    HKEY_CURRENT_USER,
+                    redirect.as_ptr(),
+                    uloptions,
+                    samdesired,
+                    phkresult,
+                );
+            }
+        }
+
+        HOOK_REG_OPEN_KEY_EX_A.call(hkey, lpsubkey, uloptions, samdesired, phkresult)
+    }
+}
+
+#[detour_fn(dll = "advapi32.dll", symbol = "RegCreateKeyExA", fallback = "1")]
+unsafe extern "system" fn reg_create_key_ex_a(
+    hkey: HKEY,
+    lpsubkey: PCSTR,
+    reserved: u32,
+    lpclass: PCSTR,
+    dwoptions: REG_OPEN_CREATE_OPTIONS,
+    samdesired: REG_SAM_FLAGS,
+    lpsecurityattributes: *const ::core::ffi::c_void,
+    phkresult: *mut HKEY,
+    lpdwdisposition: *mut u32,
+) -> WIN32_ERROR {
+    unsafe {
+        if hkey == HKEY_LOCAL_MACHINE && !lpsubkey.is_null() {
+            let subkey =
+                String::from_utf8_lossy(crate::utils::mem::slice_until_null(lpsubkey, 1024));
+            let expected = format!("Software\\Complets\\{ARG1}\\savedata");
+
+            debug!("get subkey : {subkey}");
+
+            if subkey.eq_ignore_ascii_case(&expected) {
+                let redirect = format!(
+                    "Software\\Classes\\VirtualStore\\MACHINE\\SOFTWARE\\Complets\\{ARG1}\\savedata\0",
+                );
+
+                return HOOK_REG_CREATE_KEY_EX_A.call(
+                    HKEY_CURRENT_USER,
+                    redirect.as_ptr(),
+                    reserved,
+                    lpclass,
+                    dwoptions,
+                    samdesired,
+                    lpsecurityattributes,
+                    phkresult,
+                    lpdwdisposition,
+                );
+            }
+        }
+
+        HOOK_REG_CREATE_KEY_EX_A.call(
+            hkey,
+            lpsubkey,
+            reserved,
+            lpclass,
+            dwoptions,
+            samdesired,
+            lpsecurityattributes,
+            phkresult,
+            lpdwdisposition,
+        )
+    }
+}

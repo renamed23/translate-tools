@@ -31,7 +31,11 @@ pub trait TextHook: Send + Sync + 'static {
     )]
     unsafe fn text_out_a(&self, hdc: HDC, x: i32, y: i32, lp_string: PCSTR, c: i32) -> BOOL {
         unsafe {
+            #[cfg(not(feature = "text_out_arg_c_is_bytes"))]
             let byte_len = crate::code_cvt::ansi_byte_len(lp_string, c as usize);
+            #[cfg(feature = "text_out_arg_c_is_bytes")]
+            let byte_len = c as usize;
+
             let input_slice = crate::utils::mem::slice_from_raw_parts(lp_string, byte_len);
 
             // 进行映射处理
@@ -82,7 +86,11 @@ pub trait TextHook: Send + Sync + 'static {
         lp_size: *mut SIZE,
     ) -> BOOL {
         unsafe {
+            #[cfg(not(feature = "text_out_arg_c_is_bytes"))]
             let byte_len = crate::code_cvt::ansi_byte_len(lp_string, c as usize);
+            #[cfg(feature = "text_out_arg_c_is_bytes")]
+            let byte_len = c as usize;
+
             let input_slice = crate::utils::mem::slice_from_raw_parts(lp_string, byte_len);
 
             let buf = crate::mapping::map_chars(input_slice);
