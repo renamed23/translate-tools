@@ -6,8 +6,8 @@ use windows_sys::Win32::System::Registry::{
 use windows_sys::core::PCSTR;
 
 use crate::constant::ARG1;
-use crate::debug;
 use crate::hook::traits::{CoreHook, TextHook, WindowHook};
+use crate::{debug, print_system_error_message};
 
 #[derive(Default)]
 pub struct CompletsHook;
@@ -48,17 +48,19 @@ unsafe extern "system" fn reg_open_key_ex_a(
             debug!("get subkey : {subkey}");
 
             if subkey.eq_ignore_ascii_case(&expected) {
-                let redirect = format!(
-                    "Software\\Classes\\VirtualStore\\MACHINE\\SOFTWARE\\WOW6432Node\\Complets\\{ARG1}\\savedata\0",
-                );
-
-                return HOOK_REG_OPEN_KEY_EX_A.call(
+                let result = HOOK_REG_OPEN_KEY_EX_A.call(
                     HKEY_CURRENT_USER,
-                    redirect.as_ptr(),
+                    lpsubkey,
                     uloptions,
                     samdesired,
                     phkresult,
                 );
+
+                if result != 0 {
+                    print_system_error_message!();
+                }
+
+                return result;
             }
         }
 
@@ -87,13 +89,9 @@ unsafe extern "system" fn reg_create_key_ex_a(
             debug!("get subkey : {subkey}");
 
             if subkey.eq_ignore_ascii_case(&expected) {
-                let redirect = format!(
-                    "Software\\Classes\\VirtualStore\\MACHINE\\SOFTWARE\\WOW6432Node\\Complets\\{ARG1}\\savedata\0",
-                );
-
-                return HOOK_REG_CREATE_KEY_EX_A.call(
+                let result = HOOK_REG_CREATE_KEY_EX_A.call(
                     HKEY_CURRENT_USER,
-                    redirect.as_ptr(),
+                    lpsubkey,
                     reserved,
                     lpclass,
                     dwoptions,
@@ -102,6 +100,12 @@ unsafe extern "system" fn reg_create_key_ex_a(
                     phkresult,
                     lpdwdisposition,
                 );
+
+                if result != 0 {
+                    print_system_error_message!();
+                }
+
+                return result;
             }
         }
 
