@@ -49,7 +49,7 @@ unsafe extern "system" fn reg_open_key_ex_a(
 
             if subkey.eq_ignore_ascii_case(&expected) {
                 let redirect = format!(
-                    "Software\\Classes\\VirtualStore\\MACHINE\\SOFTWARE\\Complets\\{ARG1}\\savedata\0",
+                    "Software\\Classes\\VirtualStore\\MACHINE\\SOFTWARE\\WOW6432Node\\Complets\\{ARG1}\\savedata\0",
                 );
 
                 return HOOK_REG_OPEN_KEY_EX_A.call(
@@ -88,7 +88,7 @@ unsafe extern "system" fn reg_create_key_ex_a(
 
             if subkey.eq_ignore_ascii_case(&expected) {
                 let redirect = format!(
-                    "Software\\Classes\\VirtualStore\\MACHINE\\SOFTWARE\\Complets\\{ARG1}\\savedata\0",
+                    "Software\\Classes\\VirtualStore\\MACHINE\\SOFTWARE\\WOW6432Node\\Complets\\{ARG1}\\savedata\0",
                 );
 
                 return HOOK_REG_CREATE_KEY_EX_A.call(
