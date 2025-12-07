@@ -31,6 +31,8 @@ impl CoreHook for CompletsHook {
 impl TextHook for CompletsHook {}
 impl WindowHook for CompletsHook {}
 
+const EXPECTED: &str = const_str::concat!("Software\\", ARG1, "\\savedata");
+
 #[detour_fn(dll = "advapi32.dll", symbol = "RegOpenKeyExA", fallback = "1")]
 unsafe extern "system" fn reg_open_key_ex_a(
     hkey: HKEY,
@@ -43,11 +45,10 @@ unsafe extern "system" fn reg_open_key_ex_a(
         if hkey == HKEY_LOCAL_MACHINE && !lpsubkey.is_null() {
             let subkey =
                 String::from_utf8_lossy(crate::utils::mem::slice_until_null(lpsubkey, 1024));
-            let expected = format!("Software\\Complets\\{ARG1}\\savedata");
 
             debug!("get subkey : {subkey}");
 
-            if subkey.eq_ignore_ascii_case(&expected) {
+            if subkey.eq_ignore_ascii_case(EXPECTED) {
                 let result = HOOK_REG_OPEN_KEY_EX_A.call(
                     HKEY_CURRENT_USER,
                     lpsubkey,
@@ -84,11 +85,10 @@ unsafe extern "system" fn reg_create_key_ex_a(
         if hkey == HKEY_LOCAL_MACHINE && !lpsubkey.is_null() {
             let subkey =
                 String::from_utf8_lossy(crate::utils::mem::slice_until_null(lpsubkey, 1024));
-            let expected = format!("Software\\Complets\\{ARG1}\\savedata");
 
             debug!("get subkey : {subkey}");
 
-            if subkey.eq_ignore_ascii_case(&expected) {
+            if subkey.eq_ignore_ascii_case(EXPECTED) {
                 let result = HOOK_REG_CREATE_KEY_EX_A.call(
                     HKEY_CURRENT_USER,
                     lpsubkey,

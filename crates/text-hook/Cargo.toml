@@ -173,6 +173,7 @@ zstd = "0.13"
 smallvec = "1"
 ntapi = "0.4"
 scopeguard = "1"
+const-str = "0.7.0"
 
 [build-dependencies]
 anyhow.workspace = true
