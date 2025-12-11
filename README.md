@@ -53,7 +53,7 @@ cargo build --release --features default_impl
 
 若未开启`enum_font_families`特性，那么则使用`FONT_FACE`固定字体，若开启了`enum_font_families`，那么传入字体是`FONT_FILTER`，则使用`FONT_FACE`，否则使用传入的字体
 
-`CHAR_SET`对应于GDI函数的`CharSet`，创建字体函数也会用`CHAR_SET`对应的代码页对字体名进行解码
+`CHAR_SET`对应于GDI函数的`CharSet`
 
 `ENUM_FONT_PROC_CHAR_SET`用于`EnumFonts`系列函数的回调函数，一般默认为128即可。
 
