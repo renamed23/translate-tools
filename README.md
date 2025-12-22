@@ -48,6 +48,8 @@ cargo build --release --features default_impl
   "WINDOW_TITLE": "游戏窗口",
   "ARG1": "v1",
   "HIJACKED_DLL_PATH": "",
+  "REDIRECTION_SRC_PATH": "DATA2.TCD",
+  "REDIRECTION_TARGET_PATH": "DATA_chs.TCD",
 }
 ```
 
@@ -66,6 +68,7 @@ cargo build --release --features default_impl
 `HIJACKED_DLL_PATH`用于指定被劫持的DLL的路径，若为`""`，那么默认会在系统目录中寻找。需要开启`dll_hijacking`特性，并将需要劫持的DLL放在`assets/hijacked`目录里(仅限一个)，最终编译的DLL需要手动改名，然后放在游戏EXE所在目录即可完成劫持，此时就不再需要改游戏的导入表了。
 
 > 仍然推荐使用修改导入表的方式注入DLL，因为可以精准影响到你想要影响的EXE，比如`chs`版本
+
 
 
 ### font

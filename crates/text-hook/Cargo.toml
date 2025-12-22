@@ -16,6 +16,9 @@ debug_output = []
 # 调试输出映射文本
 debug_text_mapping = ["debug_output"]
 
+# Hook `CreateFileA`，将匹配 `REDIRECTION_SRC_PATH` 的文件重定向到 `REDIRECTION_TARGET_PATH`
+# 目前的实现十分简陋，需要确保 `REDIRECTION_SRC_PATH`，`REDIRECTION_TARGET_PATH`均为ascii
+create_file_redirect = ["file_hook"]
 # 假设TextOutA中的`c`参数是字节而不是字符数
 # 对于一些传入了错误的参数的老游戏可能会有效...
 text_out_arg_c_is_bytes = []

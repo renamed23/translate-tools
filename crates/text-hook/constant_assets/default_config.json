@@ -41,5 +41,13 @@
     "HIJACKED_DLL_PATH": {
         "type": "&str",
         "value": ""
+    },
+    "REDIRECTION_SRC_PATH": {
+        "type": "&str",
+        "value": ""
+    },
+    "REDIRECTION_TARGET_PATH": {
+        "type": "&str",
+        "value": ""
     }
 }

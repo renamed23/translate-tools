@@ -1,7 +1,7 @@
 use translate_macros::{detour, detour_trait};
 use windows_sys::{
     Win32::{
-        Foundation::{LPARAM, SIZE},
+        Foundation::{LPARAM, RECT, SIZE},
         Graphics::Gdi::{
             FONTENUMPROCA, FONTENUMPROCW, GLYPHMETRICS, HDC, HFONT, LF_FACESIZE, LOGFONTA,
             LOGFONTW, MAT2,
@@ -70,6 +70,91 @@ pub trait TextHook: Send + Sync + 'static {
             }
 
             HOOK_TEXT_OUT_W.call(hdc, x, y, buf.as_ptr(), buf.len() as i32)
+        }
+    }
+
+    #[detour(
+        dll = "gdi32.dll",
+        symbol = "ExtTextOutA",
+        fallback = "windows_sys::Win32::Foundation::FALSE"
+    )]
+    unsafe fn ext_text_out_a(
+        &self,
+        hdc: HDC,
+        x: i32,
+        y: i32,
+        options: u32,
+        lprect: *const RECT,
+        lp_string: PCSTR,
+        c: u32,
+        _lp_dx: *const i32,
+    ) -> BOOL {
+        unsafe {
+            #[cfg(not(feature = "text_out_arg_c_is_bytes"))]
+            let byte_len = crate::code_cvt::ansi_byte_len(lp_string, c as usize);
+            #[cfg(feature = "text_out_arg_c_is_bytes")]
+            let byte_len = c as usize;
+
+            let input_slice = crate::utils::mem::slice_from_raw_parts(lp_string, byte_len);
+
+            let buf = crate::mapping::map_chars(input_slice);
+
+            #[cfg(feature = "debug_text_mapping")]
+            match String::from_utf16(&buf) {
+                Ok(result) => debug!("ExtTextOutA '{result}' at ({x}, {y}), opt={options:#x}"),
+                Err(e) => debug!("Convert utf16 to utf8 fails with {e}"),
+            }
+
+            HOOK_EXT_TEXT_OUT_W.call(
+                hdc,
+                x,
+                y,
+                options,
+                lprect,
+                buf.as_ptr(),
+                buf.len() as u32,
+                core::ptr::null(),
+            )
+        }
+    }
+
+    #[detour(
+        dll = "gdi32.dll",
+        symbol = "ExtTextOutW",
+        fallback = "windows_sys::Win32::Foundation::FALSE"
+    )]
+    unsafe fn ext_text_out_w(
+        &self,
+        hdc: HDC,
+        x: i32,
+        y: i32,
+        options: u32,
+        lprect: *const RECT,
+        lp_string: PCWSTR,
+        c: u32,
+        _lp_dx: *const i32,
+    ) -> BOOL {
+        unsafe {
+            let input_slice = crate::utils::mem::slice_from_raw_parts(lp_string, c as usize);
+
+            let buf = crate::mapping::map_wide_chars(input_slice);
+
+            #[cfg(feature = "debug_text_mapping")]
+            match String::from_utf16(&buf) {
+                Ok(result) => debug!("ExtTextOutW '{result}' at ({x}, {y}), opt={options:#x}"),
+                Err(e) => debug!("Convert utf16 to utf8 fails with {e}"),
+            }
+
+            HOOK_EXT_TEXT_OUT_W.call(
+                hdc,
+                x,
+                y,
+                options,
+                lprect,
+                buf.as_ptr(),
+                buf.len() as u32,
+                core::ptr::null(),
+            )
         }
     }
 
@@ -608,6 +693,8 @@ pub fn enable_featured_hooks() {
             HOOK_GET_GLYPH_OUTLINE_W.enable().unwrap();
             HOOK_TEXT_OUT_W.enable().unwrap();
             HOOK_GET_TEXT_EXTENT_POINT_32_W.enable().unwrap();
+            HOOK_EXT_TEXT_OUT_A.enable().unwrap();
+            HOOK_EXT_TEXT_OUT_W.enable().unwrap();
         }
     }
 
@@ -639,6 +726,8 @@ pub fn disable_featured_hooks() {
             HOOK_GET_GLYPH_OUTLINE_W.disable().unwrap();
             HOOK_TEXT_OUT_W.disable().unwrap();
             HOOK_GET_TEXT_EXTENT_POINT_32_W.disable().unwrap();
+            HOOK_EXT_TEXT_OUT_A.disable().unwrap();
+            HOOK_EXT_TEXT_OUT_W.disable().unwrap();
         }
     }
 
