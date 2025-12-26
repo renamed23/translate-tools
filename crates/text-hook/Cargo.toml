@@ -81,13 +81,6 @@ default_impl = ["export_default_dll_main"]
 # 针对特定游戏的impl-------------------------------------------
 bleed = ["export_default_dll_main", "text_hook"]
 sukisuki = ["default_impl", "text_hook"]
-ao_vo = [
-    "export_default_dll_main",
-    "text_hook",
-    "window_hook",
-    "file_hook",
-    "apply_1337_patch_on_attach",
-]
 noise = ["patch", "default_impl", "text_hook"]
 lusts = ["default_impl", "text_hook"]
 lucky_crosse = ["default_impl", "export_patch_process_fn", "text_hook"]
