@@ -7,6 +7,11 @@ use windows_sys::{
             LibraryLoader::{GetModuleHandleW, GetProcAddress, LoadLibraryW},
             SystemInformation::GetSystemDirectoryW,
         },
+        UI::WindowsAndMessaging::{
+        CB_ADDSTRING, CB_INSERTSTRING, CB_FINDSTRING, CB_FINDSTRINGEXACT, CB_SELECTSTRING,
+        CB_GETLBTEXT, LB_ADDSTRING, LB_INSERTSTRING, LB_FINDSTRING, LB_FINDSTRINGEXACT,
+        LB_SELECTSTRING, LB_GETTEXT,
+    },
     },
     core::PCSTR,
 };
@@ -171,4 +176,20 @@ where
     });
 
     callback()
+}
+
+
+/// 判断消息是否需要文本转换/映射
+#[inline(always)]
+pub const fn needs_text_conversion(msg: u32) -> bool {
+    matches!(msg,
+        // ComboBox
+        CB_ADDSTRING | CB_INSERTSTRING | CB_FINDSTRING | CB_FINDSTRINGEXACT 
+        | CB_SELECTSTRING | CB_GETLBTEXT |
+        
+        // ListBox  
+        LB_ADDSTRING | LB_INSERTSTRING | LB_FINDSTRING | LB_FINDSTRINGEXACT 
+        | LB_SELECTSTRING | LB_GETTEXT
+
+    )
 }
