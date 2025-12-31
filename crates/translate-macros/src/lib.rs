@@ -609,18 +609,29 @@ pub fn generated_exports_from_hijacked_dll(input: TokenStream) -> TokenStream {
 
 /// 生成文本补丁数据的编译时过程宏
 ///
-/// 这个宏在编译时读取原始文本JSON和翻译文本JSON，生成高效的PHF(Perfect Hash Function)
-/// 映射表，用于运行时快速查找和替换游戏文本。
+/// 这个宏在编译时读取原始文本文件夹和翻译文本文件夹中的JSON文件，
+/// 生成高效的PHF(Perfect Hash Function)映射表，用于运行时快速查找和替换游戏文本。
 ///
 /// # 语法
 /// ```ignore
 /// generated_text_patch_data! {
-///     "path/to/original.json" => "path/to/translated.json"
+///     "path/to/original_folder" => "path/to/translated_folder"
 /// }
 /// ```
 ///
+/// # 输入文件夹结构
+/// - 原始文件夹和翻译文件夹中应包含同名的JSON文件
+/// - 宏会自动匹配两个文件夹中文件名相同的JSON文件
+/// - 例如：
+///   ```
+///   texts/original/dialogue1.json
+///   texts/original/dialogue2.json
+///   texts/translated/dialogue1.json  (对应原始 dialogue1.json 的翻译)
+///   texts/translated/dialogue2.json  (对应原始 dialogue2.json 的翻译)
+///   ```
+///
 /// # 输入文件格式
-/// 输入文件应为JSON数组，每个元素包含可选的"name"和"message"字段：
+/// 每个JSON文件应为数组格式，每个元素包含可选的"name"和"message"字段：
 /// ```json
 /// [
 ///     {"name": "原始名字", "message": "原始消息"},
@@ -637,15 +648,16 @@ pub fn generated_exports_from_hijacked_dll(input: TokenStream) -> TokenStream {
 ///
 /// # 处理规则
 /// - 自动处理路径解析（相对于 `CARGO_MANIFEST_DIR`）
-/// - 验证原始JSON和翻译JSON的数组长度必须相等
-/// - 分别对名字和消息进行去重处理
+/// - 验证原始JSON和翻译JSON的数组长度必须相等（针对每个对应的文件对）
+/// - 分别对名字和消息进行全局去重处理（跨所有文件）
 /// - 跳过空字符串的条目
 /// - 使用PHF实现O(1)时间复杂度的查找
+/// - 如果翻译文件夹中缺少对应的JSON文件，会报错
 ///
 /// # 示例
 /// ```ignore
 /// generated_text_patch_data! {
-///     "texts/original.json" => "texts/chinese.json"
+///     "texts/original" => "texts/chinese"
 /// }
 ///
 /// // 运行时使用

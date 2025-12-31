@@ -38,17 +38,31 @@ pub fn write_extracted_items_to_json() {
 
 #[cfg(not(feature = "text_extracting"))]
 mod text_patch_data {
-    translate_macros::generated_text_patch_data!("assets/raw.json" => "assets/translated.json");
+    translate_macros::generated_text_patch_data!("assets/raw_text" => "assets/translated_text");
 }
 
 /// 获取与原名对应的译名
 #[cfg(not(feature = "text_extracting"))]
+#[allow(dead_code)]
 pub fn lookup_name(original_name: &str) -> Option<&'static str> {
     text_patch_data::lookup_name(original_name)
 }
 
 /// 获取与原文对应的译文
 #[cfg(not(feature = "text_extracting"))]
+#[allow(dead_code)]
 pub fn lookup_message(original_message: &str) -> Option<&'static str> {
     text_patch_data::lookup_message(original_message)
+}
+
+/// 处理消息文本，`text_extracting` 特性开启时添加提取条目，否则返回译文（如果有）
+pub fn process_message(message: &str) -> Option<&'static str> {
+    #[cfg(feature = "text_extracting")]
+    {
+        crate::text_patch::add_item(Item::new(message));
+        return None;
+    }
+
+    #[cfg(not(feature = "text_extracting"))]
+    crate::text_patch::lookup_message(message)
 }

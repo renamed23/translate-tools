@@ -3,7 +3,7 @@ use windows_sys::Win32::{
     Foundation::{HWND, LPARAM, LRESULT, WPARAM},
     UI::WindowsAndMessaging::{
         CREATESTRUCTA, CREATESTRUCTW, GetParent, HMENU, MF_BITMAP, MF_OWNERDRAW, MessageBoxW,
-        ModifyMenuW, PostMessageW, SendMessageW, SetDlgItemTextW, WM_NCCREATE, WM_SETTEXT,
+        ModifyMenuW, SetDlgItemTextW, WM_NCCREATE, WM_SETTEXT,
     },
 };
 use windows_sys::core::BOOL;
@@ -318,49 +318,36 @@ pub trait WindowHook: Send + Sync + 'static {
         w_param: WPARAM,
         l_param: LPARAM,
     ) -> LRESULT {
+        #[cfg(not(feature = "text_patch"))]
+        unimplemented!();
+
+        #[cfg(feature = "text_patch")]
         unsafe {
+            use windows_sys::Win32::UI::WindowsAndMessaging::SendMessageW;
+
             if crate::utils::win32::needs_text_conversion(msg) && l_param != 0 {
-                let text_slice = crate::utils::mem::slice_until_null(l_param as *const u8, 512);
-                let wide_text = crate::code_cvt::ansi_to_wide_char_with_null(text_slice);
+                let text_slice = crate::utils::mem::slice_until_null(l_param as *const u8, 1024);
+                let wide_text = crate::code_cvt::ansi_to_wide_char(text_slice);
 
-                #[cfg(feature = "debug_output")]
-                {
-                    let raw_text =
-                        String::from_utf16_lossy(&crate::code_cvt::ansi_to_wide_char(text_slice));
-                    debug!("SendMessageA (msg={:#x}) text: {}", msg, raw_text);
+                if !wide_text.contains(&0xFFFDu16) {
+                    let msg_text = String::from_utf8_unchecked(
+                        crate::code_cvt::wide_char_to_utf8(&wide_text).to_vec(),
+                    );
+
+                    #[cfg(feature = "debug_output")]
+                    debug!("SendMessageA (msg={:#x}) text: {}", msg, msg_text);
+
+                    let opt_trans_msg = crate::text_patch::process_message(&msg_text);
+
+                    #[cfg(not(feature = "text_extracting"))]
+                    if let Some(trans_msg) = opt_trans_msg {
+                        let trans_msg_u16 =
+                            crate::code_cvt::utf8_to_wide_char_with_null(trans_msg.as_bytes());
+                        return SendMessageW(h_wnd, msg, w_param, trans_msg_u16.as_ptr() as LPARAM);
+                    }
                 }
-
-                SendMessageW(h_wnd, msg, w_param, wide_text.as_ptr() as LPARAM)
-            } else {
-                HOOK_SEND_MESSAGE_A.call(h_wnd, msg, w_param, l_param)
             }
-        }
-    }
-
-    #[detour(dll = "user32.dll", symbol = "PostMessageA", fallback = "0")]
-    unsafe fn post_message_a(
-        &self,
-        h_wnd: HWND,
-        msg: u32,
-        w_param: WPARAM,
-        l_param: LPARAM,
-    ) -> BOOL {
-        unsafe {
-            if crate::utils::win32::needs_text_conversion(msg) && l_param != 0 {
-                let text_slice = crate::utils::mem::slice_until_null(l_param as *const u8, 512);
-                let wide_text = crate::code_cvt::ansi_to_wide_char_with_null(text_slice);
-
-                #[cfg(feature = "debug_output")]
-                {
-                    let raw_text =
-                        String::from_utf16_lossy(&crate::code_cvt::ansi_to_wide_char(text_slice));
-                    debug!("PostMessageA (msg={:#x}) text: {}", msg, raw_text);
-                }
-
-                PostMessageW(h_wnd, msg, w_param, wide_text.as_ptr() as LPARAM)
-            } else {
-                HOOK_POST_MESSAGE_A.call(h_wnd, msg, w_param, l_param)
-            }
+            HOOK_SEND_MESSAGE_A.call(h_wnd, msg, w_param, l_param)
         }
     }
 }
@@ -373,10 +360,13 @@ pub fn enable_featured_hooks() {
         HOOK_DEF_WINDOW_PROC_W.enable().unwrap();
         HOOK_MODIFY_MENU_A.enable().unwrap();
         HOOK_MESSAGE_BOX_A.enable().unwrap();
-        HOOK_SEND_MESSAGE_A.enable().unwrap();
-        HOOK_POST_MESSAGE_A.enable().unwrap();
         HOOK_SET_DLG_ITEM_TEXT_A.enable().unwrap();
         HOOK_SET_WINDOW_TEXT_A.enable().unwrap();
+
+        #[cfg(feature = "text_patch")]
+        {
+            HOOK_SEND_MESSAGE_A.enable().unwrap();
+        }
     }
 
     debug!("Window Hooked!");
@@ -390,10 +380,13 @@ pub fn disable_featured_hooks() {
         HOOK_DEF_WINDOW_PROC_W.disable().unwrap();
         HOOK_MODIFY_MENU_A.disable().unwrap();
         HOOK_MESSAGE_BOX_A.disable().unwrap();
-        HOOK_SEND_MESSAGE_A.disable().unwrap();
-        HOOK_POST_MESSAGE_A.disable().unwrap();
         HOOK_SET_DLG_ITEM_TEXT_A.disable().unwrap();
         HOOK_SET_WINDOW_TEXT_A.disable().unwrap();
+
+        #[cfg(feature = "text_patch")]
+        {
+            HOOK_SEND_MESSAGE_A.disable().unwrap();
+        }
     }
 
     debug!("Window Unhooked!");
