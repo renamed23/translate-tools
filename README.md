@@ -104,21 +104,8 @@ raw文件夹包含需要被替换的文件，translated文件夹包含对应的�
 
 若需使用需要开启`patch`或者`default_patch_impl`特性
 
-### hijacked
+### raw_text & translated_text
 
-该目录应该仅有一个文件，并且是你需要劫持的DLL文件，比如`version.dll`，然后过程宏会自动读入该DLL生成对应的导出函数的代码。编译之后，将`text_hook.dll`改名为被劫持的DLL文件名即可，在这个例子中，就是`version.dll`
-
-DLL会`inline hook`入口点，然后加载被劫持的DLL，并获取导出函数的地址，它通过内联汇编`jmp`指令直接跳转到被劫持的DLL对应的导出函数地址，实现转发功能。
-
-> 不只是系统DLL，实际上只要是无命名修饰的符号（比如C++命名修饰的导出符号并不支持）的DLL都可以劫持，也就是说游戏DLL一般也是可以的，不过需要将原始游戏DLL重命名，然后通过`HIJACKED_DLL_PATH`指定位置即可。比如说，游戏导入表有一个`tools.dll`，我们将`tools.dll`拖到`assets/hijacked`，将`HIJACKED_DLL_PATH`的值改为`./tools2.dll`，编译生成，然后将`text_hook.dll`改名为`tools.dll`并复制到游戏目录，将游戏目录原始的`tools.dll`改名为`tools2.dll`，然后就完成劫持游戏DLL了。
-
-> 补充，也不支持有无名导出符号的DLL（即纯序号导出）
-
-### x64dbg_1337_patch
-
-该目录应该包含由x64dbg生成的补丁文件，在开启`apply_1337_patch_on_attach`特性后，会在DLL attach的时候进行修补，或者可以只开启`x64dbg_1337_patch`并由自己选择修补时机。
-
-### raw.json & translated.json
 
 ```json
 [
@@ -132,4 +119,21 @@ DLL会`inline hook`入口点，然后加载被劫持的DLL，并获取导出函�
 ]
 ```
 
-`raw.json`和`translated.json`为相同结构的json文件，在开启`text_patch`功能后，会将文本嵌入到DLL中，使用原文条目调用`lookup_name`和`lookup_message`可以获得相对应的译文条目。
+raw文件夹包含如上结构的json文件，translated文件夹包含对应的翻译后的json文件，会将文本嵌入到DLL中，使用原文条目调用`lookup_name`和`lookup_message`可以获得相对应的译文条目。
+
+需要开启`text_patch`功能，如果需要翻译exe的对话框以及其他exe的文本，则同时需要开启`window_hook`功能，可以使用`text_extracting`功能来从exe中提取出对话框的文本，提取的文本会输出到dll所在目录的`raw.json`中
+
+
+### hijacked
+
+该目录应该仅有一个文件，并且是你需要劫持的DLL文件，比如`version.dll`，然后过程宏会自动读入该DLL生成对应的导出函数的代码。编译之后，将`text_hook.dll`改名为被劫持的DLL文件名即可，在这个例子中，就是`version.dll`
+
+DLL会`inline hook`入口点，然后加载被劫持的DLL，并获取导出函数的地址，它通过内联汇编`jmp`指令直接跳转到被劫持的DLL对应的导出函数地址，实现转发功能。
+
+> 不只是系统DLL，实际上只要是无命名修饰的符号（比如C++命名修饰的导出符号并不支持）的DLL都可以劫持，也就是说游戏DLL一般也是可以的，不过需要将原始游戏DLL重命名，然后通过`HIJACKED_DLL_PATH`指定位置即可。比如说，游戏导入表有一个`tools.dll`，我们将`tools.dll`拖到`assets/hijacked`，将`HIJACKED_DLL_PATH`的值改为`./tools2.dll`，编译生成，然后将`text_hook.dll`改名为`tools.dll`并复制到游戏目录，将游戏目录原始的`tools.dll`改名为`tools2.dll`，然后就完成劫持游戏DLL了。
+
+> 补充，也不支持有无名导出符号的DLL（即纯序号导出）
+
+### x64dbg_1337_patch
+
+该目录应该包含由x64dbg生成的补丁文件，在开启`apply_1337_patch_on_attach`特性后，会在DLL attach的时候进行修补，或者可以只开启`x64dbg_1337_patch`并由自己选择修补时机。

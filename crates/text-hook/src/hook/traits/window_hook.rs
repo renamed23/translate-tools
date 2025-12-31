@@ -2,8 +2,8 @@ use translate_macros::{detour, detour_trait};
 use windows_sys::Win32::{
     Foundation::{HWND, LPARAM, LRESULT, WPARAM},
     UI::WindowsAndMessaging::{
-        CREATESTRUCTA, CREATESTRUCTW, GetParent, HMENU, MF_BITMAP, MF_OWNERDRAW, MessageBoxW,
-        ModifyMenuW, SetDlgItemTextW, WM_NCCREATE, WM_SETTEXT,
+        CREATESTRUCTA, CREATESTRUCTW, GetParent, HMENU, MF_BITMAP, MF_OWNERDRAW, WM_NCCREATE,
+        WM_SETTEXT,
     },
 };
 use windows_sys::core::BOOL;
@@ -28,6 +28,11 @@ pub trait WindowHook: Send + Sync + 'static {
                 }
 
                 let mut params_w: CREATESTRUCTW = core::mem::zeroed();
+
+                debug_assert_eq!(
+                    core::mem::size_of::<CREATESTRUCTA>(),
+                    core::mem::size_of::<CREATESTRUCTW>()
+                );
 
                 core::ptr::copy_nonoverlapping(
                     params_a as *const u8,
@@ -187,10 +192,13 @@ pub trait WindowHook: Send + Sync + 'static {
         u_id_new_item: usize,
         lp_new_item: *const u8,
     ) -> BOOL {
+        #[cfg(not(feature = "text_patch"))]
+        unimplemented!();
+
+        #[cfg(feature = "text_patch")]
         unsafe {
             if (u_flags & (MF_BITMAP | MF_OWNERDRAW)) == 0 && !lp_new_item.is_null() {
                 let text_slice = crate::utils::mem::slice_until_null(lp_new_item, 512);
-                let wide_text = crate::code_cvt::ansi_to_wide_char_with_null(text_slice);
 
                 #[cfg(feature = "debug_output")]
                 {
@@ -200,16 +208,23 @@ pub trait WindowHook: Send + Sync + 'static {
                     debug!("Get menu text: {raw_text}");
                 }
 
-                ModifyMenuW(
-                    h_menu,
-                    u_position,
-                    u_flags,
-                    u_id_new_item,
-                    wide_text.as_ptr(),
-                )
-            } else {
-                HOOK_MODIFY_MENU_A.call(h_menu, u_position, u_flags, u_id_new_item, lp_new_item)
+                let opt_trans_msg =
+                    crate::text_patch::lookup_or_add_message_ansi_to_u16_with_null(text_slice);
+
+                #[cfg(not(feature = "text_extracting"))]
+                if let Some(trans_msg) = opt_trans_msg {
+                    use windows_sys::Win32::UI::WindowsAndMessaging::ModifyMenuW;
+                    return ModifyMenuW(
+                        h_menu,
+                        u_position,
+                        u_flags,
+                        u_id_new_item,
+                        trans_msg.as_ptr(),
+                    );
+                }
             }
+
+            HOOK_MODIFY_MENU_A.call(h_menu, u_position, u_flags, u_id_new_item, lp_new_item)
         }
     }
 
@@ -221,45 +236,61 @@ pub trait WindowHook: Send + Sync + 'static {
         lp_caption: *const u8,
         u_type: u32,
     ) -> i32 {
+        #[cfg(not(feature = "text_patch"))]
+        unimplemented!();
+
+        #[cfg(feature = "text_patch")]
         unsafe {
             if lp_text.is_null() && lp_caption.is_null() {
                 return HOOK_MESSAGE_BOX_A.call(h_wnd, lp_text, lp_caption, u_type);
             }
 
-            let wide_text_opt = if lp_text.is_null() {
-                None
-            } else {
-                let text_slice = crate::utils::mem::slice_until_null(lp_text, 2048);
-                Some(crate::code_cvt::ansi_to_wide_char_with_null(text_slice))
-            };
-
-            let wide_caption_opt = if lp_caption.is_null() {
-                None
-            } else {
-                let cap_slice = crate::utils::mem::slice_until_null(lp_caption, 512);
-                Some(crate::code_cvt::ansi_to_wide_char_with_null(cap_slice))
-            };
-
-            let wide_text_ptr = wide_text_opt
-                .as_ref()
-                .map_or(core::ptr::null(), |v| v.as_ptr());
-            let wide_caption_ptr = wide_caption_opt
-                .as_ref()
-                .map_or(core::ptr::null(), |v| v.as_ptr());
+            let text_slice = crate::utils::mem::slice_until_null(lp_text, 2048);
+            let cap_slice = crate::utils::mem::slice_until_null(lp_caption, 1024);
 
             #[cfg(feature = "debug_output")]
             {
-                if let Some(ref w) = wide_text_opt {
-                    let s = String::from_utf16_lossy(&w[..w.len().saturating_sub(1)]);
+                if !text_slice.is_empty() {
+                    let s =
+                        String::from_utf16_lossy(&crate::code_cvt::ansi_to_wide_char(text_slice));
                     debug!("Get message box text: {s}");
                 }
-                if let Some(ref c) = wide_caption_opt {
-                    let s = String::from_utf16_lossy(&c[..c.len().saturating_sub(1)]);
+                if !cap_slice.is_empty() {
+                    let s =
+                        String::from_utf16_lossy(&crate::code_cvt::ansi_to_wide_char(cap_slice));
                     debug!("Get message box caption: {s}");
                 }
             }
 
-            MessageBoxW(h_wnd, wide_text_ptr, wide_caption_ptr, u_type)
+            let opt_wide_text =
+                crate::text_patch::lookup_or_add_message_ansi_to_u16_with_null(text_slice);
+            let opt_wide_caption =
+                crate::text_patch::lookup_or_add_message_ansi_to_u16_with_null(cap_slice);
+
+            #[cfg(not(feature = "text_extracting"))]
+            if opt_wide_text.is_some() || opt_wide_caption.is_some() {
+                let wide_text = opt_wide_text
+                    .unwrap_or_else(|| crate::code_cvt::ansi_to_wide_char_with_null(text_slice));
+                let wide_caption = opt_wide_caption
+                    .unwrap_or_else(|| crate::code_cvt::ansi_to_wide_char_with_null(cap_slice));
+
+                let wide_text_ptr = if wide_text.len() == 1 {
+                    core::ptr::null()
+                } else {
+                    wide_text.as_ptr()
+                };
+
+                let wide_caption_ptr = if wide_caption.len() == 1 {
+                    core::ptr::null()
+                } else {
+                    wide_caption.as_ptr()
+                };
+
+                use windows_sys::Win32::UI::WindowsAndMessaging::MessageBoxW;
+                return MessageBoxW(h_wnd, wide_text_ptr, wide_caption_ptr, u_type);
+            }
+
+            HOOK_MESSAGE_BOX_A.call(h_wnd, lp_text, lp_caption, u_type)
         }
     }
 
@@ -270,43 +301,67 @@ pub trait WindowHook: Send + Sync + 'static {
         n_id_dlg_item: i32,
         lp_string: *const u8,
     ) -> BOOL {
+        #[cfg(not(feature = "text_patch"))]
+        unimplemented!();
+
+        #[cfg(feature = "text_patch")]
         unsafe {
             if lp_string.is_null() {
                 return HOOK_SET_DLG_ITEM_TEXT_A.call(h_dlg, n_id_dlg_item, lp_string);
             }
 
-            let text_slice = crate::utils::mem::slice_until_null(lp_string, 512);
-            let wide_text = crate::code_cvt::ansi_to_wide_char_with_null(text_slice);
+            let text_slice = crate::utils::mem::slice_until_null(lp_string, 1024);
 
             #[cfg(feature = "debug_output")]
             {
-                let raw_text = String::from_utf16_lossy(&wide_text);
+                let raw_text =
+                    String::from_utf16_lossy(&crate::code_cvt::ansi_to_wide_char(text_slice));
                 debug!("Get SetDlgItemTextA text: {raw_text}");
             }
 
-            SetDlgItemTextW(h_dlg, n_id_dlg_item, wide_text.as_ptr())
+            let opt_trans_msg =
+                crate::text_patch::lookup_or_add_message_ansi_to_u16_with_null(text_slice);
+
+            #[cfg(not(feature = "text_extracting"))]
+            if let Some(trans_msg) = opt_trans_msg {
+                use windows_sys::Win32::UI::WindowsAndMessaging::SetDlgItemTextW;
+                return SetDlgItemTextW(h_dlg, n_id_dlg_item, trans_msg.as_ptr());
+            }
+
+            HOOK_SET_DLG_ITEM_TEXT_A.call(h_dlg, n_id_dlg_item, lp_string)
         }
     }
 
     #[detour(dll = "user32.dll", symbol = "SetWindowTextA", fallback = "0")]
     unsafe fn set_window_text_a(&self, h_wnd: HWND, lp_string: *const u8) -> BOOL {
+        #[cfg(not(feature = "text_patch"))]
+        unimplemented!();
+
+        #[cfg(feature = "text_patch")]
         unsafe {
             if lp_string.is_null() {
                 return HOOK_SET_WINDOW_TEXT_A.call(h_wnd, lp_string);
             }
 
-            // 将 ANSI 文本转换为宽字符，再转换为本地编码
-            let text_slice = crate::utils::mem::slice_until_null(lp_string, 512);
-            let wide_text = crate::code_cvt::ansi_to_wide_char(text_slice);
-            let ansi_text = crate::code_cvt::wide_char_to_multi_byte_with_null(&wide_text, 0);
+            let text_slice = crate::utils::mem::slice_until_null(lp_string, 1024);
 
             #[cfg(feature = "debug_output")]
             {
-                let raw_text = String::from_utf16_lossy(&wide_text);
+                let raw_text =
+                    String::from_utf16_lossy(&crate::code_cvt::ansi_to_wide_char(text_slice));
                 debug!("Get SetWindowTextA text: {raw_text}");
             }
 
-            HOOK_SET_WINDOW_TEXT_A.call(h_wnd, ansi_text.as_ptr())
+            let opt_trans_msg =
+                crate::text_patch::lookup_or_add_message_ansi_to_u16_with_null(text_slice);
+
+            #[cfg(not(feature = "text_extracting"))]
+            if let Some(trans_msg) = opt_trans_msg {
+                use windows_sys::Win32::UI::WindowsAndMessaging::SetWindowTextW;
+                return SetWindowTextW(h_wnd, trans_msg.as_ptr());
+            }
+
+            HOOK_SET_WINDOW_TEXT_A.call(h_wnd, lp_string)
         }
     }
 
@@ -326,25 +381,21 @@ pub trait WindowHook: Send + Sync + 'static {
             use windows_sys::Win32::UI::WindowsAndMessaging::SendMessageW;
 
             if crate::utils::win32::needs_text_conversion(msg) && l_param != 0 {
-                let text_slice = crate::utils::mem::slice_until_null(l_param as *const u8, 1024);
-                let wide_text = crate::code_cvt::ansi_to_wide_char(text_slice);
+                let text_slice = crate::utils::mem::slice_until_null(l_param as *const u8, 4096);
 
-                if !wide_text.contains(&0xFFFDu16) {
-                    let msg_text = String::from_utf8_unchecked(
-                        crate::code_cvt::wide_char_to_utf8(&wide_text).to_vec(),
-                    );
+                #[cfg(feature = "debug_output")]
+                {
+                    let raw_text =
+                        String::from_utf16_lossy(&crate::code_cvt::ansi_to_wide_char(text_slice));
+                    debug!("Get SendMessageA (msg={msg:#x}) text: {raw_text}");
+                }
 
-                    #[cfg(feature = "debug_output")]
-                    debug!("SendMessageA (msg={:#x}) text: {}", msg, msg_text);
+                let opt_trans_msg =
+                    crate::text_patch::lookup_or_add_message_ansi_to_u16_with_null(text_slice);
 
-                    let opt_trans_msg = crate::text_patch::process_message(&msg_text);
-
-                    #[cfg(not(feature = "text_extracting"))]
-                    if let Some(trans_msg) = opt_trans_msg {
-                        let trans_msg_u16 =
-                            crate::code_cvt::utf8_to_wide_char_with_null(trans_msg.as_bytes());
-                        return SendMessageW(h_wnd, msg, w_param, trans_msg_u16.as_ptr() as LPARAM);
-                    }
+                #[cfg(not(feature = "text_extracting"))]
+                if let Some(trans_msg) = opt_trans_msg {
+                    return SendMessageW(h_wnd, msg, w_param, trans_msg.as_ptr() as LPARAM);
                 }
             }
             HOOK_SEND_MESSAGE_A.call(h_wnd, msg, w_param, l_param)
@@ -358,13 +409,13 @@ pub fn enable_featured_hooks() {
     unsafe {
         HOOK_DEF_WINDOW_PROC_A.enable().unwrap();
         HOOK_DEF_WINDOW_PROC_W.enable().unwrap();
-        HOOK_MODIFY_MENU_A.enable().unwrap();
-        HOOK_MESSAGE_BOX_A.enable().unwrap();
-        HOOK_SET_DLG_ITEM_TEXT_A.enable().unwrap();
-        HOOK_SET_WINDOW_TEXT_A.enable().unwrap();
 
         #[cfg(feature = "text_patch")]
         {
+            HOOK_MODIFY_MENU_A.enable().unwrap();
+            HOOK_MESSAGE_BOX_A.enable().unwrap();
+            HOOK_SET_DLG_ITEM_TEXT_A.enable().unwrap();
+            HOOK_SET_WINDOW_TEXT_A.enable().unwrap();
             HOOK_SEND_MESSAGE_A.enable().unwrap();
         }
     }
@@ -378,13 +429,13 @@ pub fn disable_featured_hooks() {
     unsafe {
         HOOK_DEF_WINDOW_PROC_A.disable().unwrap();
         HOOK_DEF_WINDOW_PROC_W.disable().unwrap();
-        HOOK_MODIFY_MENU_A.disable().unwrap();
-        HOOK_MESSAGE_BOX_A.disable().unwrap();
-        HOOK_SET_DLG_ITEM_TEXT_A.disable().unwrap();
-        HOOK_SET_WINDOW_TEXT_A.disable().unwrap();
 
         #[cfg(feature = "text_patch")]
         {
+            HOOK_MODIFY_MENU_A.disable().unwrap();
+            HOOK_MESSAGE_BOX_A.disable().unwrap();
+            HOOK_SET_DLG_ITEM_TEXT_A.disable().unwrap();
+            HOOK_SET_WINDOW_TEXT_A.disable().unwrap();
             HOOK_SEND_MESSAGE_A.disable().unwrap();
         }
     }
