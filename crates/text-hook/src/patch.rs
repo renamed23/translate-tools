@@ -47,11 +47,6 @@ pub unsafe fn try_patching(ptr: *mut u8, len: usize) -> bool {
     let slice = unsafe { core::slice::from_raw_parts_mut(ptr, len) };
 
     if let Some(patch) = get_patch(slice) {
-        if patch.len() != slice.len() {
-            debug!("Error: Patch and raw have different lengths");
-            return false;
-        }
-
         #[cfg(feature = "debug_output")]
         {
             use crate::patch::get_filename;
