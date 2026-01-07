@@ -45,14 +45,12 @@ pub trait WindowHook: Send + Sync + 'static {
 
                 let text_slice = crate::utils::mem::slice_until_null((*params_a).lpszName, 512);
 
-                let window_title = if (*params_a).hwndParent.is_null() {
-                    if cfg!(feature = "override_window_title") {
-                        crate::code_cvt::u16_with_null(WINDOW_TITLE)
-                    } else {
-                        crate::mapping::map_chars_with_null(text_slice)
-                    }
+                let window_title = if (*params_a).hwndParent.is_null()
+                    && cfg!(feature = "override_window_title")
+                {
+                    crate::code_cvt::u16_with_null(WINDOW_TITLE)
                 } else {
-                    crate::code_cvt::ansi_to_wide_char_with_null(text_slice)
+                    crate::mapping::map_chars_with_null(text_slice)
                 };
 
                 params_w.lpszClass = class_name.as_ptr();
@@ -76,14 +74,11 @@ pub trait WindowHook: Send + Sync + 'static {
 
                 let text_slice = crate::utils::mem::slice_until_null(text_ptr, 512);
 
-                let text = if GetParent(h_wnd).is_null() {
-                    if cfg!(feature = "override_window_title") {
-                        crate::code_cvt::u16_with_null(WINDOW_TITLE)
-                    } else {
-                        crate::mapping::map_chars_with_null(text_slice)
-                    }
+                let text = if GetParent(h_wnd).is_null() && cfg!(feature = "override_window_title")
+                {
+                    crate::code_cvt::u16_with_null(WINDOW_TITLE)
                 } else {
-                    crate::code_cvt::ansi_to_wide_char_with_null(text_slice)
+                    crate::mapping::map_chars_with_null(text_slice)
                 };
 
                 #[cfg(feature = "debug_output")]
@@ -192,13 +187,11 @@ pub trait WindowHook: Send + Sync + 'static {
         u_id_new_item: usize,
         lp_new_item: *const u8,
     ) -> BOOL {
-        #[cfg(not(feature = "text_patch"))]
-        unimplemented!();
-
         #[cfg(feature = "text_patch")]
         unsafe {
             if (u_flags & (MF_BITMAP | MF_OWNERDRAW)) == 0 && !lp_new_item.is_null() {
                 let text_slice = crate::utils::mem::slice_until_null(lp_new_item, 512);
+                use windows_sys::Win32::UI::WindowsAndMessaging::ModifyMenuW;
 
                 #[cfg(feature = "debug_output")]
                 {
@@ -213,7 +206,6 @@ pub trait WindowHook: Send + Sync + 'static {
 
                 #[cfg(not(feature = "text_extracting"))]
                 if let Some(trans_msg) = opt_trans_msg {
-                    use windows_sys::Win32::UI::WindowsAndMessaging::ModifyMenuW;
                     return ModifyMenuW(
                         h_menu,
                         u_position,
@@ -223,9 +215,9 @@ pub trait WindowHook: Send + Sync + 'static {
                     );
                 }
             }
-
-            HOOK_MODIFY_MENU_A.call(h_menu, u_position, u_flags, u_id_new_item, lp_new_item)
         }
+
+        unsafe { HOOK_MODIFY_MENU_A.call(h_menu, u_position, u_flags, u_id_new_item, lp_new_item) }
     }
 
     #[detour(dll = "user32.dll", symbol = "MessageBoxA", fallback = "0")]
@@ -236,9 +228,6 @@ pub trait WindowHook: Send + Sync + 'static {
         lp_caption: *const u8,
         u_type: u32,
     ) -> i32 {
-        #[cfg(not(feature = "text_patch"))]
-        unimplemented!();
-
         #[cfg(feature = "text_patch")]
         unsafe {
             if lp_text.is_null() && lp_caption.is_null() {
@@ -289,9 +278,9 @@ pub trait WindowHook: Send + Sync + 'static {
                 use windows_sys::Win32::UI::WindowsAndMessaging::MessageBoxW;
                 return MessageBoxW(h_wnd, wide_text_ptr, wide_caption_ptr, u_type);
             }
-
-            HOOK_MESSAGE_BOX_A.call(h_wnd, lp_text, lp_caption, u_type)
         }
+
+        unsafe { HOOK_MESSAGE_BOX_A.call(h_wnd, lp_text, lp_caption, u_type) }
     }
 
     #[detour(dll = "user32.dll", symbol = "SetDlgItemTextA", fallback = "0")]
@@ -301,9 +290,6 @@ pub trait WindowHook: Send + Sync + 'static {
         n_id_dlg_item: i32,
         lp_string: *const u8,
     ) -> BOOL {
-        #[cfg(not(feature = "text_patch"))]
-        unimplemented!();
-
         #[cfg(feature = "text_patch")]
         unsafe {
             if lp_string.is_null() {
@@ -327,16 +313,13 @@ pub trait WindowHook: Send + Sync + 'static {
                 use windows_sys::Win32::UI::WindowsAndMessaging::SetDlgItemTextW;
                 return SetDlgItemTextW(h_dlg, n_id_dlg_item, trans_msg.as_ptr());
             }
-
-            HOOK_SET_DLG_ITEM_TEXT_A.call(h_dlg, n_id_dlg_item, lp_string)
         }
+
+        unsafe { HOOK_SET_DLG_ITEM_TEXT_A.call(h_dlg, n_id_dlg_item, lp_string) }
     }
 
     #[detour(dll = "user32.dll", symbol = "SetWindowTextA", fallback = "0")]
     unsafe fn set_window_text_a(&self, h_wnd: HWND, lp_string: *const u8) -> BOOL {
-        #[cfg(not(feature = "text_patch"))]
-        unimplemented!();
-
         #[cfg(feature = "text_patch")]
         unsafe {
             if lp_string.is_null() {
@@ -360,9 +343,9 @@ pub trait WindowHook: Send + Sync + 'static {
                 use windows_sys::Win32::UI::WindowsAndMessaging::SetWindowTextW;
                 return SetWindowTextW(h_wnd, trans_msg.as_ptr());
             }
-
-            HOOK_SET_WINDOW_TEXT_A.call(h_wnd, lp_string)
         }
+
+        unsafe { HOOK_SET_WINDOW_TEXT_A.call(h_wnd, lp_string) }
     }
 
     #[detour(dll = "user32.dll", symbol = "SendMessageA", fallback = "0")]
@@ -373,9 +356,6 @@ pub trait WindowHook: Send + Sync + 'static {
         w_param: WPARAM,
         l_param: LPARAM,
     ) -> LRESULT {
-        #[cfg(not(feature = "text_patch"))]
-        unimplemented!();
-
         #[cfg(feature = "text_patch")]
         unsafe {
             use windows_sys::Win32::UI::WindowsAndMessaging::SendMessageW;
@@ -398,8 +378,8 @@ pub trait WindowHook: Send + Sync + 'static {
                     return SendMessageW(h_wnd, msg, w_param, trans_msg.as_ptr() as LPARAM);
                 }
             }
-            HOOK_SEND_MESSAGE_A.call(h_wnd, msg, w_param, l_param)
         }
+        unsafe { HOOK_SEND_MESSAGE_A.call(h_wnd, msg, w_param, l_param) }
     }
 }
 
