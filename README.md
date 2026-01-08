@@ -53,7 +53,9 @@ cargo build --release --features default_impl
 }
 ```
 
-若未开启`enum_font_families`特性，那么则使用`FONT_FACE`固定字体，若开启了`enum_font_families`，那么传入字体是`FONT_FILTER`，则使用`FONT_FACE`，否则使用传入的字体
+若未开启`enum_font_families`特性，如果传入字体非`FONT_FILTER`则使用`FONT_FACE`固定字体，若开启了`enum_font_families`，那么传入字体是`FONT_FILTER`，则使用`FONT_FACE`，否则使用传入的字体
+
+> 当未开启`enum_font_families`特性时，`FONT_FILTER`是白名单，开启时则变成黑名单了
 
 `CHAR_SET`对应于GDI函数的`CharSet`
 

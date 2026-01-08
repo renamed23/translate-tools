@@ -13,13 +13,12 @@ use windows_sys::{
 use crate::debug;
 use crate::{
     code_cvt::TextVec,
-    constant::{CHAR_SET, FONT_FACE},
+    constant::{CHAR_SET, FONT_FACE, FONT_FILTER},
 };
 
 #[cfg(feature = "enum_font_families")]
-use crate::{
-    constant::FONT_FILTER,
-    hook::trait_impls::enum_font_proc::{EnumFontInfo, enum_fonts_proc_a, enum_fonts_proc_w},
+use crate::hook::trait_impls::enum_font_proc::{
+    EnumFontInfo, enum_fonts_proc_a, enum_fonts_proc_w,
 };
 
 #[detour_trait]
@@ -374,36 +373,28 @@ pub trait TextHook: Send + Sync + 'static {
         i_pitch_and_family: u32,
         psz_face_name: PCWSTR,
     ) -> HFONT {
-        #[cfg(feature = "debug_output")]
-        {
-            let u16_slice = unsafe {
-                crate::utils::mem::slice_until_null(psz_face_name, (LF_FACESIZE - 1) as usize)
-            };
+        let mut u16_slice: &[u16] = unsafe {
+            crate::utils::mem::slice_until_null(psz_face_name, (LF_FACESIZE - 1) as usize)
+        };
 
-            debug!(
-                "Requested font name: {}",
-                String::from_utf16_lossy(u16_slice)
-            );
-        }
+        debug!(
+            "Requested font name: {}",
+            String::from_utf16_lossy(u16_slice)
+        );
 
         let mut buf: Option<TextVec<u16>>;
 
-        let mut u16_slice: &[u16];
         #[cfg(not(feature = "enum_font_families"))]
-        {
+        if !FONT_FILTER.contains(&u16_slice) {
             buf = Some(crate::code_cvt::u16_with_null(FONT_FACE));
             u16_slice = buf.as_ref().unwrap().as_slice();
         }
-        #[cfg(feature = "enum_font_families")]
-        unsafe {
-            u16_slice =
-                crate::utils::mem::slice_until_null(psz_face_name, (LF_FACESIZE - 1) as usize);
 
-            if FONT_FILTER.contains(&u16_slice) {
-                buf = Some(crate::code_cvt::u16_with_null(FONT_FACE));
-                u16_slice = buf.as_ref().unwrap().as_slice();
-            }
-        };
+        #[cfg(feature = "enum_font_families")]
+        if FONT_FILTER.contains(&u16_slice) {
+            buf = Some(crate::code_cvt::u16_with_null(FONT_FACE));
+            u16_slice = buf.as_ref().unwrap().as_slice();
+        }
 
         unsafe {
             HOOK_CREATE_FONT_W.call(
@@ -475,41 +466,30 @@ pub trait TextHook: Send + Sync + 'static {
         let mut logfontw = unsafe { *lplf };
         logfontw.lfCharSet = CHAR_SET;
 
-        #[cfg(feature = "debug_output")]
-        {
-            let u16_slice = unsafe {
-                crate::utils::mem::slice_until_null(
-                    logfontw.lfFaceName.as_ptr(),
-                    logfontw.lfFaceName.len() - 1,
-                )
-            };
+        let u16_slice = unsafe {
+            crate::utils::mem::slice_until_null(
+                logfontw.lfFaceName.as_ptr(),
+                logfontw.lfFaceName.len() - 1,
+            )
+        };
 
-            debug!(
-                "Requested font name: {}",
-                String::from_utf16_lossy(u16_slice)
-            );
-        }
+        debug!(
+            "Requested font name: {}",
+            String::from_utf16_lossy(u16_slice)
+        );
 
         // `FONT_FACE` 长度确保不超过 LF_FACESIZE - 1，可以直接复制
         #[cfg(not(feature = "enum_font_families"))]
-        {
+        if !FONT_FILTER.contains(&u16_slice) {
             let face_u16 = crate::code_cvt::u16_with_null(FONT_FACE);
             logfontw.lfFaceName[..face_u16.len()].copy_from_slice(face_u16.as_slice());
         }
-        #[cfg(feature = "enum_font_families")]
-        {
-            let u16_slice = unsafe {
-                crate::utils::mem::slice_until_null(
-                    logfontw.lfFaceName.as_ptr(),
-                    logfontw.lfFaceName.len() - 1, // 最后一个字节必须为null
-                )
-            };
 
-            if FONT_FILTER.contains(&u16_slice) {
-                let face_u16 = crate::code_cvt::u16_with_null(FONT_FACE);
-                logfontw.lfFaceName[..face_u16.len()].copy_from_slice(face_u16.as_slice());
-            }
-        };
+        #[cfg(feature = "enum_font_families")]
+        if FONT_FILTER.contains(&u16_slice) {
+            let face_u16 = crate::code_cvt::u16_with_null(FONT_FACE);
+            logfontw.lfFaceName[..face_u16.len()].copy_from_slice(face_u16.as_slice());
+        }
 
         let ptr = &logfontw as *const LOGFONTW;
         unsafe { HOOK_CREATE_FONT_INDIRECT_W.call(ptr) }
