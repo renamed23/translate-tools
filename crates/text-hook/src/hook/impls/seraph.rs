@@ -1,20 +1,39 @@
 use std::{borrow::Cow, path::Path};
-use translate_macros::ffi_catch_unwind;
+use translate_macros::{detour_fn, ffi_catch_unwind};
 use windows_sys::{
     Win32::{
-        Foundation::MAX_PATH,
+        Foundation::{HMODULE, MAX_PATH},
         Globalization::{CP_ACP, WideCharToMultiByte},
         System::WindowsProgramming::{GetPrivateProfileIntA, GetPrivateProfileStringA},
     },
     core::{PCSTR, PSTR},
 };
 
-use crate::{debug, utils::mem::slice_until_null};
+use crate::{constant::ARG1, debug, hook::traits::CoreHook, utils::mem::slice_until_null};
+
+// 之前版本的ARG1为"LUSTS"
+
+#[derive(Default)]
+pub struct SeraphHook;
+
+impl CoreHook for SeraphHook {
+    fn on_process_attach(&self, _hinst_dll: HMODULE) {
+        unsafe {
+            HOOK_GET_PRIVATE_PROFILES_INT_A.enable().unwrap();
+        };
+    }
+
+    fn on_process_detach(&self, _hinst_dll: HMODULE) {
+        unsafe {
+            HOOK_GET_PRIVATE_PROFILES_INT_A.disable().unwrap();
+        };
+    }
+}
 
 fn query_game_ini_string(section: &str, key: &str) -> Option<String> {
     match (section, key) {
-        ("LUSTS", "CDROM") => Some("Y:\\".to_string()),
-        ("LUSTS", "InstDIR") => {
+        (ARG1, "CDROM") => Some("Y:\\".to_string()),
+        (ARG1, "InstDIR") => {
             if let Ok(exe) = std::env::current_exe()
                 && let Some(dir) = exe.parent()
             {
@@ -29,11 +48,11 @@ fn query_game_ini_string(section: &str, key: &str) -> Option<String> {
 fn query_game_ini_int(section: &str, key: &str) -> Option<i32> {
     match (section, key) {
         ("Games", "InstCount") => Some(1),
-        ("LUSTS", "Music") => Some(1),
-        ("LUSTS", "Voice") => Some(1),
-        ("LUSTS", "VoiceCD") => Some(0),
-        ("LUSTS", "Data") => Some(0),
-        ("LUSTS", "Verson") => Some(100),
+        (ARG1, "Music") => Some(1),
+        (ARG1, "Voice") => Some(1),
+        (ARG1, "VoiceCD") => Some(0),
+        (ARG1, "Data") => Some(0),
+        (ARG1, "Verson") => Some(100),
         _ => None,
     }
 }
@@ -159,9 +178,12 @@ pub unsafe extern "system" fn get_private_profiles_string(
     }
 }
 
-#[ffi_catch_unwind(n_default as _)]
-#[unsafe(no_mangle)]
-pub unsafe extern "system" fn get_private_profiles_int(
+#[detour_fn(
+    dll = "kernel32.dll",
+    symbol = "GetPrivateProfileIntA",
+    fallback = "n_default as _"
+)]
+unsafe extern "system" fn get_private_profiles_int_a(
     lp_app_name: PCSTR,
     lp_key_name: PCSTR,
     n_default: i32,
@@ -185,6 +207,6 @@ pub unsafe extern "system" fn get_private_profiles_int(
         }
 
         debug!("passed");
-        GetPrivateProfileIntA(lp_app_name, lp_key_name, n_default, lp_file_name)
+        HOOK_GET_PRIVATE_PROFILES_INT_A.call(lp_app_name, lp_key_name, n_default, lp_file_name)
     }
 }
