@@ -1,11 +1,7 @@
 use std::{borrow::Cow, path::Path};
-use translate_macros::{detour_fn, ffi_catch_unwind};
+use translate_macros::detour_fn;
 use windows_sys::{
-    Win32::{
-        Foundation::{HMODULE, MAX_PATH},
-        Globalization::{CP_ACP, WideCharToMultiByte},
-        System::WindowsProgramming::{GetPrivateProfileIntA, GetPrivateProfileStringA},
-    },
+    Win32::Foundation::{HMODULE, MAX_PATH},
     core::{PCSTR, PSTR},
 };
 
@@ -19,28 +15,28 @@ pub struct SeraphHook;
 impl CoreHook for SeraphHook {
     fn on_process_attach(&self, _hinst_dll: HMODULE) {
         unsafe {
-            HOOK_GET_PRIVATE_PROFILES_INT_A.enable().unwrap();
+            HOOK_GET_PRIVATE_PROFILE_INT_A.enable().unwrap();
+            HOOK_GET_PRIVATE_PROFILE_STRING_A.enable().unwrap();
         };
     }
 
     fn on_process_detach(&self, _hinst_dll: HMODULE) {
         unsafe {
-            HOOK_GET_PRIVATE_PROFILES_INT_A.disable().unwrap();
+            HOOK_GET_PRIVATE_PROFILE_INT_A.disable().unwrap();
+            HOOK_GET_PRIVATE_PROFILE_STRING_A.disable().unwrap();
         };
     }
 }
 
+translate_macros::expand_by_files!("src/hook/traits" => {
+    #[cfg(feature = __file_str__)]
+    impl crate::hook::traits::__file_pascal__ for SeraphHook {}
+});
+
 fn query_game_ini_string(section: &str, key: &str) -> Option<String> {
     match (section, key) {
         (ARG1, "CDROM") => Some("Y:\\".to_string()),
-        (ARG1, "InstDIR") => {
-            if let Ok(exe) = std::env::current_exe()
-                && let Some(dir) = exe.parent()
-            {
-                return Some(format!("{}\\", dir.display())); // 注意加上尾部的 "\"
-            }
-            None
-        }
+        (ARG1, "InstDIR" | "MusicDIR" | "VoiceDIR" | "DataDIR") => Some(".\\".to_string()),
         _ => None,
     }
 }
@@ -82,9 +78,12 @@ unsafe fn to_string(app_name: PCSTR, key_name: PCSTR) -> (String, String) {
     (section.into_owned(), key.into_owned())
 }
 
-#[ffi_catch_unwind(0u32)]
-#[unsafe(no_mangle)]
-pub unsafe extern "system" fn get_private_profiles_string(
+#[detour_fn(
+    dll = "kernel32.dll",
+    symbol = "GetPrivateProfileStringA",
+    fallback = "0u32"
+)]
+pub unsafe extern "system" fn get_private_profile_string_a(
     lp_app_name: PCSTR,
     lp_key_name: PCSTR,
     lp_default: PCSTR,
@@ -103,54 +102,12 @@ pub unsafe extern "system" fn get_private_profiles_string(
 
             if let Some(val) = query_game_ini_string(&section, &key) {
                 debug!("found value: {val}");
-                // 将UTF-8字符串转换为宽字符字符串（UTF-16）
-                let wide_str: Vec<u16> = val.encode_utf16().collect();
-                let wide_len = wide_str.len() as i32;
-
-                // 计算所需的ANSI缓冲区大小
-                let ansi_size = WideCharToMultiByte(
-                    CP_ACP,
-                    0,
-                    wide_str.as_ptr(),
-                    wide_len,
-                    core::ptr::null_mut(),
-                    0,
-                    core::ptr::null(),
-                    core::ptr::null_mut(),
-                );
-
-                if ansi_size == 0 {
-                    return 0; // 转换失败
-                }
-
-                // 分配ANSI缓冲区
-                let mut ansi_buffer = Vec::<u8>::with_capacity(ansi_size as usize);
-                let ansi_ptr = ansi_buffer.as_mut_ptr();
-
-                // 执行实际转换
-                let result = WideCharToMultiByte(
-                    CP_ACP,
-                    0,
-                    wide_str.as_ptr(),
-                    wide_len,
-                    ansi_ptr,
-                    ansi_size,
-                    core::ptr::null(),
-                    core::ptr::null_mut(),
-                );
-
-                if result == 0 {
-                    return 0; // 转换失败
-                }
-
-                // 设置向量长度并确保以null结尾
-                ansi_buffer.set_len(ansi_size as usize);
 
                 // 计算实际需要复制的长度
-                let copy_len = ansi_buffer.len().min(n_size as usize);
+                let copy_len = val.len().min(n_size as usize);
 
                 // 复制到输出缓冲区
-                core::ptr::copy_nonoverlapping(ansi_buffer.as_ptr(), lp_returned_string, copy_len);
+                core::ptr::copy_nonoverlapping(val.as_ptr(), lp_returned_string, copy_len);
 
                 // 确保在缓冲区不足时正确终止字符串
                 if copy_len < n_size as usize {
@@ -167,7 +124,7 @@ pub unsafe extern "system" fn get_private_profiles_string(
 
         debug!("passed");
 
-        GetPrivateProfileStringA(
+        HOOK_GET_PRIVATE_PROFILE_STRING_A.call(
             lp_app_name,
             lp_key_name,
             lp_default,
@@ -183,7 +140,7 @@ pub unsafe extern "system" fn get_private_profiles_string(
     symbol = "GetPrivateProfileIntA",
     fallback = "n_default as _"
 )]
-unsafe extern "system" fn get_private_profiles_int_a(
+unsafe extern "system" fn get_private_profile_int_a(
     lp_app_name: PCSTR,
     lp_key_name: PCSTR,
     n_default: i32,
@@ -207,6 +164,6 @@ unsafe extern "system" fn get_private_profiles_int_a(
         }
 
         debug!("passed");
-        HOOK_GET_PRIVATE_PROFILES_INT_A.call(lp_app_name, lp_key_name, n_default, lp_file_name)
+        HOOK_GET_PRIVATE_PROFILE_INT_A.call(lp_app_name, lp_key_name, n_default, lp_file_name)
     }
 }

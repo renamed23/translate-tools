@@ -82,7 +82,7 @@ default_impl = ["export_default_dll_main"]
 bleed = ["export_default_dll_main", "text_hook"]
 sukisuki = ["default_impl", "text_hook"]
 noise = ["patch", "default_impl", "text_hook"]
-seraph = ["export_default_dll_main", "text_hook"]
+seraph = ["export_default_dll_main"]
 lucky_crosse = ["default_impl", "export_patch_process_fn", "text_hook"]
 cosmos = ["default_impl", "export_patch_process_fn", "text_hook"]
 # 非C社的c4
