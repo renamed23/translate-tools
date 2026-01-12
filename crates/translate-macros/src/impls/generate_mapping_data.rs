@@ -6,7 +6,6 @@ use syn::{
     LitInt, LitStr,
     parse::{Parse, ParseStream},
 };
-use translate_utils::encoding_type::EncodingType;
 
 use crate::utils::get_full_path_by_manifest;
 
@@ -21,6 +20,14 @@ impl Parse for PathInput {
     }
 }
 
+fn get_code_page_from_src_encoding(src_encoding: &str) -> syn::Result<u32> {
+    match src_encoding {
+        "ShiftJIS" | "CP932" => Ok(932),
+        "GBK" => Ok(936),
+        _ => syn_bail2!("不支持的 src_encoding: {}", src_encoding),
+    }
+}
+
 pub fn generate_mapping_data(input: TokenStream) -> syn::Result<TokenStream> {
     let parsed = syn::parse2::<PathInput>(input)?;
 
@@ -31,15 +38,6 @@ pub fn generate_mapping_data(input: TokenStream) -> syn::Result<TokenStream> {
 
     let json_value: Value = serde_json::from_str(&mapping_str)
         .map_err(|e| syn_err2!("解析 {} 失败: {}", mapping_path.display(), e))?;
-
-    // 获取编码类型
-    let src_encoding = match json_value["src_encoding"].as_str() {
-        Some(s) => Some(
-            s.parse::<EncodingType>()
-                .map_err(|e| syn_err2!("解析为 EncodingType 出错: {e}"))?,
-        ),
-        None => None,
-    };
 
     // 获取映射数据
     let mapping_obj = json_value["mapping"]
@@ -52,8 +50,8 @@ pub fn generate_mapping_data(input: TokenStream) -> syn::Result<TokenStream> {
         cp_value
             .as_u64()
             .ok_or_else(|| syn_err2!("code_page 必须是数字"))? as u32
-    } else if let Some(src_encoding) = src_encoding {
-        src_encoding.code_page()
+    } else if let Some(src_encoding) = json_value["src_encoding"].as_str() {
+        get_code_page_from_src_encoding(src_encoding)?
     } else {
         0
     };
