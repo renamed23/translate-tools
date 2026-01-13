@@ -132,6 +132,7 @@ complets = [
     "enum_font_families",
     "text_out_arg_c_is_bytes",
 ]
+natsu_natsu = ["export_default_dll_main", "enum_font_families", "text_hook"]
 
 [dependencies]
 translate-macros.workspace = true
