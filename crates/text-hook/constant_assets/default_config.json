@@ -15,9 +15,12 @@
     "FONT_FILTER": {
         "type": "&[&[u16]]",
         "value": [
+            "",
             "ＭＳ ゴシック",
             "俵俽 僑僔僢僋",
-            "MS Gothic"
+            "MS Gothic",
+            "俵俽僑僔僢僋",
+            "ＭＳゴシック"
         ],
         "encode_to_u16": true
     },
