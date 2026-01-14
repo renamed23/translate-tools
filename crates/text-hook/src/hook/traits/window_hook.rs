@@ -2,8 +2,7 @@ use translate_macros::{detour, detour_trait};
 use windows_sys::Win32::{
     Foundation::{HWND, LPARAM, LRESULT, WPARAM},
     UI::WindowsAndMessaging::{
-        CREATESTRUCTA, CREATESTRUCTW, GetParent, HMENU, MF_BITMAP, MF_OWNERDRAW, WM_NCCREATE,
-        WM_SETTEXT,
+        CREATESTRUCTA, CREATESTRUCTW, GetParent, HMENU, WM_NCCREATE, WM_SETTEXT,
     },
 };
 use windows_sys::core::BOOL;
@@ -189,6 +188,8 @@ pub trait WindowHook: Send + Sync + 'static {
     ) -> BOOL {
         #[cfg(feature = "text_patch")]
         unsafe {
+            use windows_sys::Win32::UI::WindowsAndMessaging::{MF_BITMAP, MF_OWNERDRAW};
+
             if (u_flags & (MF_BITMAP | MF_OWNERDRAW)) == 0 && !lp_new_item.is_null() {
                 let text_slice = crate::utils::mem::slice_until_null(lp_new_item, 512);
                 use windows_sys::Win32::UI::WindowsAndMessaging::ModifyMenuW;
