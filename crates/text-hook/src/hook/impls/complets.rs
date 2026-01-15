@@ -5,7 +5,7 @@ use windows_sys::Win32::System::Registry::{
 };
 use windows_sys::core::PCSTR;
 
-use crate::constant::ARG1;
+use crate::constant::ARG_REG_PATH;
 use crate::hook::traits::{CoreHook, TextHook, WindowHook};
 use crate::{debug, print_system_error_message};
 
@@ -31,7 +31,7 @@ impl CoreHook for CompletsHook {
 impl TextHook for CompletsHook {}
 impl WindowHook for CompletsHook {}
 
-const EXPECTED: &str = const_str::concat!("Software\\", ARG1, "\\savedata");
+const EXPECTED: &str = const_str::concat!("Software\\", ARG_REG_PATH, "\\savedata");
 
 #[detour_fn(dll = "advapi32.dll", symbol = "RegOpenKeyExA", fallback = "1")]
 unsafe extern "system" fn reg_open_key_ex_a(

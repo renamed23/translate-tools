@@ -5,9 +5,9 @@ use windows_sys::{
     core::{PCSTR, PSTR},
 };
 
-use crate::{constant::ARG1, debug, hook::traits::CoreHook, utils::mem::slice_until_null};
+use crate::{constant::ARG_NAME, debug, hook::traits::CoreHook, utils::mem::slice_until_null};
 
-// 之前版本的ARG1为"LUSTS"
+// 之前版本的ARG_NAME为"LUSTS"
 
 #[derive(Default)]
 pub struct SeraphHook;
@@ -35,8 +35,8 @@ translate_macros::expand_by_files!("src/hook/traits" => {
 
 fn query_game_ini_string(section: &str, key: &str) -> Option<String> {
     match (section, key) {
-        (ARG1, "CDROM") => Some("Y:\\".to_string()),
-        (ARG1, "InstDIR" | "MusicDIR" | "VoiceDIR" | "DataDIR") => Some(".\\".to_string()),
+        (ARG_NAME, "CDROM") => Some("Y:\\".to_string()),
+        (ARG_NAME, "InstDIR" | "MusicDIR" | "VoiceDIR" | "DataDIR") => Some(".\\".to_string()),
         _ => None,
     }
 }
@@ -44,11 +44,11 @@ fn query_game_ini_string(section: &str, key: &str) -> Option<String> {
 fn query_game_ini_int(section: &str, key: &str) -> Option<i32> {
     match (section, key) {
         ("Games", "InstCount") => Some(1),
-        (ARG1, "Music") => Some(1),
-        (ARG1, "Voice") => Some(1),
-        (ARG1, "VoiceCD") => Some(0),
-        (ARG1, "Data") => Some(0),
-        (ARG1, "Verson") => Some(100),
+        (ARG_NAME, "Music") => Some(1),
+        (ARG_NAME, "Voice") => Some(1),
+        (ARG_NAME, "VoiceCD") => Some(0),
+        (ARG_NAME, "Data") => Some(0),
+        (ARG_NAME, "Verson") => Some(100),
         _ => None,
     }
 }

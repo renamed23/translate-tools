@@ -10,7 +10,7 @@ pub struct BrunsHook;
 
 impl CoreHook for BrunsHook {
     fn on_process_attach(&self, _hinst_dll: HMODULE) {
-        patch_by_arg1();
+        patch_by_arg_game_type();
     }
 }
 
@@ -157,8 +157,8 @@ fn patch_nerbor() {
     }
 }
 
-fn patch_by_arg1() {
-    match constant::ARG1 {
+fn patch_by_arg_game_type() {
+    match constant::ARG_GAME_TYPE {
         "v1" => patch_v1(),
         "v2" | "v3" => patch_v2(),
         "隣人" => patch_nerbor(),

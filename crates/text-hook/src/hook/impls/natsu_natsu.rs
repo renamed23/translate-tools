@@ -2,7 +2,7 @@ use std::ops::Add;
 
 use windows_sys::Win32::Foundation::HMODULE;
 
-use crate::constant::ARG1;
+use crate::constant::ARG_CHARS_SIZE;
 use crate::debug;
 use crate::hook::traits::CoreHook;
 use crate::utils::mem::patch::write_asm;
@@ -16,7 +16,7 @@ impl CoreHook for NatsuNatsuHook {
     fn on_process_attach(&self, _hinst_dll: HMODULE) {
         unsafe {
             CHARS_MEM_PTR =
-                Box::leak(Box::<[u8]>::new_zeroed_slice(ARG1.parse().unwrap())).as_ptr() as usize
+                Box::leak(Box::<[u8]>::new_zeroed_slice(ARG_CHARS_SIZE)).as_ptr() as usize
         };
 
         let Some(handle) = crate::utils::win32::get_module_handle("") else {

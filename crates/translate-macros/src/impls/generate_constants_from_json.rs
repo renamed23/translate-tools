@@ -55,33 +55,48 @@ pub fn generate_constants_from_json(input: TokenStream) -> syn::Result<TokenStre
         Err(_) => HashMap::new(), // 文件不存在则当空覆盖
     };
 
+    let mut merged_json: HashMap<String, JsonValue> = HashMap::new();
+
+    // 1. 先处理 default_json
+    for (key, def_entry) in &default_json {
+        let mut merged_entry = def_entry.clone();
+
+        // 如果 user 有对应值，则覆盖
+        if let Some(user_entry) = user_json.get(key)
+            && let Some(obj) = merged_entry.as_object_mut()
+        {
+            obj.insert("value".to_string(), user_entry.clone());
+        }
+
+        merged_json.insert(key.clone(), merged_entry);
+    }
+
+    // 2. 再处理 user_json 中 default 不存在的 key
+    for (key, user_entry) in &user_json {
+        if !merged_json.contains_key(key) {
+            merged_json.insert(key.clone(), user_entry.clone());
+        }
+    }
+
     // 为每个键生成 const
     let mut const_tokens = Vec::new();
-    for (key, def_val) in &default_json {
-        // 获取 type & value 字段
-        let type_str = match def_val.get("type").and_then(|t| t.as_str()) {
+    for (key, entry) in &merged_json {
+        let type_str = match entry.get("type").and_then(|t| t.as_str()) {
             Some(s) => s,
-            None => {
-                syn_bail2!("default_config.json 中字段 '{key}' 缺少 type");
-            }
+            None => syn_bail2!("配置字段 '{key}' 缺少 type"),
         };
 
-        let default_v = match def_val.get("value") {
+        let value = match entry.get("value") {
             Some(v) => v,
-            None => {
-                syn_bail2!("default_config.json 中字段 '{key}' 缺少 value")
-            }
+            None => syn_bail2!("配置字段 '{key}' 缺少 value"),
         };
 
-        let encode_to_u16 = def_val
+        let encode_to_u16 = entry
             .get("encode_to_u16")
             .and_then(|b| b.as_bool())
             .unwrap_or(false);
 
-        // final_value 优先使用 user_json 中的值
-        let final_value = user_json.get(key).unwrap_or(default_v);
-
-        match json_value_to_rust_tokens(key, type_str, final_value, encode_to_u16) {
+        match json_value_to_rust_tokens(key, type_str, value, encode_to_u16) {
             Ok(token) => const_tokens.push(token),
             Err(e) => syn_bail2!("解析 {key} (type '{type_str}') 失败，错误信息为: {e}"),
         };
