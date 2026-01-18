@@ -382,6 +382,56 @@ pub trait WindowHook: Send + Sync + 'static {
         }
         unsafe { HOOK_SEND_MESSAGE_A.call(h_wnd, msg, w_param, l_param) }
     }
+
+    #[detour(dll = "comctl32.dll", symbol = "PropertySheetA", fallback = "0")]
+    unsafe fn property_sheet_a(
+        &self,
+        ppsh: *const windows_sys::Win32::UI::Controls::PROPSHEETHEADERA_V2,
+    ) -> isize {
+        #[cfg(feature = "text_patch")]
+        unsafe {
+            use windows_sys::Win32::UI::Controls::PROPSHEETHEADERA_V2;
+
+            if ppsh.is_null() {
+                return HOOK_PROPERTY_SHEET_A.call(ppsh);
+            }
+
+            let header = &*ppsh;
+
+            if header.pszCaption.is_null() {
+                return HOOK_PROPERTY_SHEET_A.call(ppsh);
+            }
+
+            let caption_slice = crate::utils::mem::slice_until_null(header.pszCaption, 1024);
+
+            #[cfg(feature = "debug_output")]
+            {
+                let raw =
+                    String::from_utf16_lossy(&crate::code_cvt::ansi_to_wide_char(caption_slice));
+                debug!("PropertySheetA original caption (ANSI): {raw}");
+            }
+
+            let opt_trans =
+                crate::text_patch::lookup_or_add_message_ansi_to_u16_with_null(caption_slice)
+                    .map(|s| crate::code_cvt::wide_char_to_multi_byte_with_null(&s, 0));
+
+            #[cfg(not(feature = "text_extracting"))]
+            if let Some(trans) = opt_trans {
+                let dw_size = header.dwSize as usize;
+
+                let mut new_buf: Vec<u8> = vec![0; dw_size];
+                core::ptr::copy_nonoverlapping(ppsh as *const u8, new_buf.as_mut_ptr(), dw_size);
+
+                let new_hdr_ptr = new_buf.as_mut_ptr() as *mut PROPSHEETHEADERA_V2;
+
+                (*new_hdr_ptr).pszCaption = trans.as_ptr();
+
+                return HOOK_PROPERTY_SHEET_A.call(new_hdr_ptr as *const PROPSHEETHEADERA_V2);
+            }
+        }
+
+        unsafe { HOOK_PROPERTY_SHEET_A.call(ppsh) }
+    }
 }
 
 /// 开启窗口过程相关的特性钩子
@@ -393,6 +443,7 @@ pub fn enable_featured_hooks() {
 
         #[cfg(feature = "text_patch")]
         {
+            HOOK_PROPERTY_SHEET_A.enable().unwrap();
             HOOK_MODIFY_MENU_A.enable().unwrap();
             HOOK_MESSAGE_BOX_A.enable().unwrap();
             HOOK_SET_DLG_ITEM_TEXT_A.enable().unwrap();
@@ -413,6 +464,7 @@ pub fn disable_featured_hooks() {
 
         #[cfg(feature = "text_patch")]
         {
+            HOOK_PROPERTY_SHEET_A.disable().unwrap();
             HOOK_MODIFY_MENU_A.disable().unwrap();
             HOOK_MESSAGE_BOX_A.disable().unwrap();
             HOOK_SET_DLG_ITEM_TEXT_A.disable().unwrap();
