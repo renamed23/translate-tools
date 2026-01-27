@@ -86,17 +86,21 @@ pub fn generate_constants_from_json(input: TokenStream) -> syn::Result<TokenStre
             None => syn_bail2!("配置字段 '{key}' 缺少 type"),
         };
 
-        let value = match entry.get("value") {
-            Some(v) => v,
-            None => syn_bail2!("配置字段 '{key}' 缺少 value"),
-        };
-
         let encode_to_u16 = entry
             .get("encode_to_u16")
             .and_then(|b| b.as_bool())
             .unwrap_or(false);
 
-        match json_value_to_rust_tokens(key, type_str, value, encode_to_u16) {
+        // 新增 optional 标记
+        let optional = entry
+            .get("optional")
+            .and_then(|b| b.as_bool())
+            .unwrap_or(false);
+
+        // 这里不再直接取 value；把 Option<&JsonValue> 传入转换函数以便处理 optional
+        let value_opt = entry.get("value");
+
+        match json_item_to_const_tokens(key, type_str, value_opt, encode_to_u16, optional) {
             Ok(token) => const_tokens.push(token),
             Err(e) => syn_bail2!("解析 {key} (type '{type_str}') 失败，错误信息为: {e}"),
         };
@@ -109,20 +113,8 @@ pub fn generate_constants_from_json(input: TokenStream) -> syn::Result<TokenStre
     Ok(expanded)
 }
 
-/// 将 JSON 值转换为用于生成 const 的 token（字符串/数组/数字/布尔）
-fn json_value_to_rust_tokens(
-    key: &str,
-    type_str: &str,
-    v: &JsonValue,
-    encode_to_u16: bool,
-) -> syn::Result<TokenStream> {
-    // 生成一个合法的 Rust 标识符（不改变大小写，只做简单替换）
-    let ident_name = key
-        .chars()
-        .map(|c| if c.is_ascii_alphanumeric() { c } else { '_' })
-        .collect::<String>();
-    let ident = format_ident!("{}", ident_name);
-
+/// 将 JSON 值转换为对应的 TokenStream（支持基本类型和数组）
+fn value_to_tokens(v: &JsonValue, encode_to_u16: bool) -> syn::Result<TokenStream> {
     fn primitive_to_tokens(v: &JsonValue, encode_to_u16: bool) -> syn::Result<TokenStream> {
         match v {
             JsonValue::String(s) => {
@@ -155,25 +147,61 @@ fn json_value_to_rust_tokens(
         }
     }
 
-    // 支持数组（数组内元素可以是 primitive 或字符串）
-    let rhs = if let Some(arr) = v.as_array() {
-        // 对数组的每个元素应用 primitive_to_tokens
+    if let Some(arr) = v.as_array() {
         let mut elems_tokens = Vec::new();
         for el in arr {
             let el_toks = primitive_to_tokens(el, encode_to_u16)?;
             elems_tokens.push(el_toks);
         }
-        // 这里我们生成 &[ elem0, elem1, ... ]
-        quote! { &[ #(#elems_tokens),* ] }
+        Ok(quote! { &[ #(#elems_tokens),* ] })
     } else {
-        primitive_to_tokens(v, encode_to_u16)?
+        primitive_to_tokens(v, encode_to_u16)
+    }
+}
+
+/// 根据给定的键、类型字符串和值，生成对应的常量定义 TokenStream
+fn json_item_to_const_tokens(
+    key: &str,
+    type_str: &str,
+    v_opt: Option<&JsonValue>,
+    encode_to_u16: bool,
+    optional: bool,
+) -> syn::Result<TokenStream> {
+    // 生成一个合法的 Rust 标识符（不改变大小写，只做简单替换）
+    let ident_name = key
+        .chars()
+        .map(|c| if c.is_ascii_alphanumeric() { c } else { '_' })
+        .collect::<String>();
+    let ident = format_ident!("{}", ident_name);
+
+    // 生成类型 token，并在 optional 时包裹 Option<...>
+    let ty_tokens = syn::parse_str::<TokenStream>(type_str)?;
+    let final_ty = if optional {
+        quote! { Option<#ty_tokens> }
+    } else {
+        quote! { #ty_tokens }
     };
 
-    // 最终生成： pub const <IDENT>: <type_str> = <rhs>;
-    // type_str 直接插入为标识符或路径；但它可能包含 `::` 等。我们简单把它作为 TokenStream 解析。
-    let ty_tokens = syn::parse_str::<TokenStream>(type_str)?;
+    let rhs = match v_opt {
+        None | Some(JsonValue::Null) => {
+            // 如果非可选并且没有值，我们直接忽略该条目
+            if !optional {
+                return Ok(quote! {});
+            }
+
+            quote! { None }
+        }
+        Some(v) => {
+            let inner = value_to_tokens(v, encode_to_u16)?;
+            if optional {
+                quote! { Some( #inner ) }
+            } else {
+                quote! { #inner }
+            }
+        }
+    };
 
     Ok(quote! {
-        pub const #ident: #ty_tokens = #rhs;
+        pub const #ident: #final_ty = #rhs;
     })
 }

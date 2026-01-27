@@ -9,10 +9,7 @@ use windows_sys::{
     core::{BOOL, PCSTR, PCWSTR},
 };
 
-use crate::{
-    constant::{REDIRECTION_SRC_PATH, REDIRECTION_TARGET_PATH},
-    debug,
-};
+use crate::debug;
 
 #[detour_trait]
 pub trait FileHook: Send + Sync + 'static {
@@ -33,6 +30,8 @@ pub trait FileHook: Send + Sync + 'static {
     ) -> HANDLE {
         #[cfg(feature = "create_file_redirect")]
         unsafe {
+            use crate::constant::{REDIRECTION_SRC_PATH, REDIRECTION_TARGET_PATH};
+
             let filename_bytes = crate::utils::mem::slice_until_null(lp_file_name, 4096);
             let new_path;
 

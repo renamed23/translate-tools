@@ -3,7 +3,10 @@ use windows_sys::Win32::{
     Graphics::Gdi::{FONTENUMPROCA, FONTENUMPROCW, LOGFONTA, LOGFONTW, TEXTMETRICA, TEXTMETRICW},
 };
 
-use crate::{constant::ENUM_FONT_PROC_CHAR_SET, debug};
+use crate::{
+    constant::ENUM_FONT_PROC_CHAR_SET, constant::ENUM_FONT_PROC_OUT_PRECISION,
+    constant::ENUM_FONT_PROC_PITCH, debug,
+};
 
 pub struct EnumFontInfo {
     original_proc_a: FONTENUMPROCA,
@@ -48,9 +51,34 @@ pub unsafe extern "system" fn enum_fonts_proc_a(
         };
 
         let mut modified_lf = *lplf;
-        modified_lf.lfCharSet = ENUM_FONT_PROC_CHAR_SET;
 
-        debug!("Enuming font...");
+        if let Some(charset) = ENUM_FONT_PROC_CHAR_SET {
+            modified_lf.lfCharSet = charset;
+        }
+
+        if let Some(pitch) = ENUM_FONT_PROC_PITCH {
+            modified_lf.lfPitchAndFamily = (modified_lf.lfPitchAndFamily & 0b1111_1100) | pitch;
+        }
+
+        if let Some(out_precision) = ENUM_FONT_PROC_OUT_PRECISION {
+            modified_lf.lfOutPrecision = out_precision;
+        }
+
+        #[cfg(feature = "debug_output")]
+        {
+            let facename_slice = crate::utils::mem::slice_until_null(
+                modified_lf.lfFaceName.as_ptr() as *const u8,
+                modified_lf.lfFaceName.len(),
+            );
+
+            debug!(
+                "Enuming font '{}'...",
+                String::from_utf16_lossy(&crate::code_cvt::multi_byte_to_wide_char(
+                    facename_slice,
+                    0
+                ))
+            );
+        }
 
         original_proc(&modified_lf, lptm, font_type, info.original_lparam)
     }
@@ -75,9 +103,31 @@ pub unsafe extern "system" fn enum_fonts_proc_w(
         };
 
         let mut modified_lf = *lplf;
-        modified_lf.lfCharSet = ENUM_FONT_PROC_CHAR_SET;
 
-        debug!("Enuming font...");
+        if let Some(charset) = ENUM_FONT_PROC_CHAR_SET {
+            modified_lf.lfCharSet = charset;
+        }
+
+        if let Some(pitch) = ENUM_FONT_PROC_PITCH {
+            modified_lf.lfPitchAndFamily = (modified_lf.lfPitchAndFamily & 0b1111_1100) | pitch;
+        }
+
+        if let Some(out_precision) = ENUM_FONT_PROC_OUT_PRECISION {
+            modified_lf.lfOutPrecision = out_precision;
+        }
+
+        #[cfg(feature = "debug_output")]
+        {
+            let facename_slice = crate::utils::mem::slice_until_null(
+                modified_lf.lfFaceName.as_ptr(),
+                modified_lf.lfFaceName.len(),
+            );
+
+            debug!(
+                "Enuming font '{}'...",
+                String::from_utf16_lossy(facename_slice)
+            );
+        }
 
         original_proc(&modified_lf, lptm, font_type, info.original_lparam)
     }
