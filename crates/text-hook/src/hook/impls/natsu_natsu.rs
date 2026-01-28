@@ -1,5 +1,5 @@
 use std::ops::Add;
-
+use translate_macros::DefaultHook;
 use windows_sys::Win32::Foundation::HMODULE;
 
 use crate::constant::ARG_CHARS_SIZE;
@@ -7,7 +7,7 @@ use crate::debug;
 use crate::hook::traits::CoreHook;
 use crate::utils::mem::patch::write_asm;
 
-#[derive(Default)]
+#[derive(Default, DefaultHook)]
 pub struct NatsuNatsuHook;
 
 static mut CHARS_MEM_PTR: usize = 0;
@@ -88,8 +88,3 @@ impl CoreHook for NatsuNatsuHook {
         }
     }
 }
-
-translate_macros::expand_by_files!("src/hook/traits" => {
-    #[cfg(feature = __file_str__)]
-    impl crate::hook::traits::__file_pascal__ for NatsuNatsuHook {}
-});

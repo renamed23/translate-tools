@@ -760,3 +760,20 @@ pub fn generate_patch_fn_from_1337(input: TokenStream) -> TokenStream {
         Err(err) => err.into_compile_error().into(),
     }
 }
+
+/// 为结构体自动生成默认的钩子实现的过程宏
+///
+/// 该Derive宏实际上生成如下代码
+/// ```ignore
+/// ::translate_macros::expand_by_files!("src/hook/traits" => {
+///       #[cfg(feature = __file_str__)]
+///       impl crate::hook::traits::__file_pascal__ for #struct_name {}
+/// });
+/// ```
+#[proc_macro_derive(DefaultHook)]
+pub fn derive_default_hook(input: TokenStream) -> TokenStream {
+    match impls::derive_default_hook::derive_default_hook(input.into()) {
+        Ok(ts) => ts.into(),
+        Err(err) => err.into_compile_error().into(),
+    }
+}

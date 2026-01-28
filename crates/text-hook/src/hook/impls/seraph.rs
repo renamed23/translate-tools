@@ -1,5 +1,5 @@
 use std::{borrow::Cow, path::Path};
-use translate_macros::detour_fn;
+use translate_macros::{DefaultHook, detour_fn};
 use windows_sys::{
     Win32::Foundation::{HMODULE, MAX_PATH},
     core::{PCSTR, PSTR},
@@ -9,7 +9,7 @@ use crate::{constant::ARG_NAME, debug, hook::traits::CoreHook, utils::mem::slice
 
 // 之前版本的ARG_NAME为"LUSTS"
 
-#[derive(Default)]
+#[derive(Default, DefaultHook)]
 pub struct SeraphHook;
 
 impl CoreHook for SeraphHook {
@@ -27,11 +27,6 @@ impl CoreHook for SeraphHook {
         };
     }
 }
-
-translate_macros::expand_by_files!("src/hook/traits" => {
-    #[cfg(feature = __file_str__)]
-    impl crate::hook::traits::__file_pascal__ for SeraphHook {}
-});
 
 fn query_game_ini_string(section: &str, key: &str) -> Option<String> {
     match (section, key) {

@@ -43,6 +43,7 @@ macro_rules! syn_err2 {
 }
 
 pub(crate) mod byte_slice;
+pub(crate) mod derive_default_hook;
 pub(crate) mod detour;
 pub(crate) mod expand_by_files;
 pub(crate) mod ffi_catch_unwind;
