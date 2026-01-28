@@ -71,6 +71,28 @@ cargo build --release --features default_impl
 > 仍然推荐使用修改导入表的方式注入DLL，因为可以精准影响到你想要影响的EXE，比如`chs`版本
 
 
+### hook_lists.json
+
+```json
+{
+  "enable": ["TextOutA"],
+  "disable": [
+    "ExtTextOutA",
+    "ExtTextOutW"
+  ]
+}
+```
+
+哪些钩子会被启用取决于`hook_lists.json`以及开启了哪些feature，可以查看 [featured_hook_lists.json](crates/text-hook/constant_assets/featured_hook_lists.json) 了解。
+
+通过`hook_lists.json`来显式指定哪些钩子会被禁止，以及哪些钩子会被开启。
+
+1. `disable` 列表中的钩子会从任何条件中移除
+2. `enable` 列表中的钩子会无条件启用
+3. `hook_lists.json`中同一个钩子不能同时出现在 enable 和 disable 中
+
+> 例如，如果开启了`text_hook`特性，那么`CreateFontA`钩子会自动启用，可以通过在`disable`指定`CreateFontA`来移除这个钩子。
+
 
 ### font
 
