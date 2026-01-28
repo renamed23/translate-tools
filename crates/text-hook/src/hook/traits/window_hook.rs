@@ -407,10 +407,11 @@ pub trait WindowHook: Send + Sync + 'static {
             if let Some(trans) = opt_trans {
                 let dw_size = header.dwSize as usize;
 
-                let mut new_buf: Vec<u8> = vec![0; dw_size];
-                core::ptr::copy_nonoverlapping(ppsh as *const u8, new_buf.as_mut_ptr(), dw_size);
+                let mut new_buf = Box::<[u8]>::new_uninit_slice(dw_size);
+                let new_hdr_slice = new_buf
+                    .write_copy_of_slice(core::slice::from_raw_parts(ppsh.cast::<u8>(), dw_size));
 
-                let new_hdr_ptr = new_buf.as_mut_ptr() as *mut PROPSHEETHEADERA_V2;
+                let new_hdr_ptr = new_hdr_slice.as_mut_ptr() as *mut PROPSHEETHEADERA_V2;
 
                 (*new_hdr_ptr).pszCaption = trans.as_ptr();
 

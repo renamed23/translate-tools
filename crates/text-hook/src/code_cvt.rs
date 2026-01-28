@@ -253,7 +253,7 @@ pub fn byte_len(ptr: *const u8, chars: usize, code_page: u16) -> usize {
 
     unsafe {
         for _ in 0..chars {
-            let next = CharNextExA(code_page, cur, 0) as *const u8;
+            let next = CharNextExA(code_page, cur, 0);
             if next.is_null() {
                 break;
             }
