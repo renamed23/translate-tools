@@ -33,15 +33,3 @@ pub trait CodeCvtHook: Send + Sync + 'static {
         unimplemented!();
     }
 }
-
-/// 开启字符编码转换相关的特性钩子
-#[allow(dead_code)]
-pub fn enable_featured_hooks() {
-    debug!("Code Conversion Hooked!");
-}
-
-/// 关闭字符编码转换相关的特性钩子
-#[allow(dead_code)]
-pub fn disable_featured_hooks() {
-    debug!("Code Conversion Unhooked!");
-}

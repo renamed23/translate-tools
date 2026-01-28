@@ -1,6 +1,7 @@
 pub(crate) mod detour_fn;
 pub(crate) mod detour_trait;
 
+use convert_case::{Case, Casing};
 use quote::format_ident;
 use syn::{Attribute, Expr, Ident, LitStr};
 
@@ -84,7 +85,10 @@ fn parse_detour_attrs<'a>(
     Ok(detour_meta)
 }
 
-fn generate_detour_ident(ident: &Ident) -> Ident {
-    let static_name = format!("HOOK_{}", ident.to_string().to_uppercase());
-    format_ident!("{}", static_name)
+pub fn generate_detour_ident(ident: &Ident) -> Ident {
+    let static_name = format!(
+        "HOOK_{}",
+        ident.to_string().to_case(Case::Snake).to_uppercase()
+    );
+    format_ident!("{static_name}")
 }

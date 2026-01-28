@@ -1,0 +1,44 @@
+{
+    "all(feature = \"file_hook\", feature = \"read_file_patch_impl\")": [
+        "ReadFile"
+    ],
+    "all(feature = \"file_hook\", feature = \"create_file_redirect\")": [
+        "CreateFileA"
+    ],
+    "feature = \"text_hook\"": [
+        "CreateFontA",
+        "CreateFontW",
+        "CreateFontIndirectA",
+        "CreateFontIndirectW"
+    ],
+    "all(feature = \"text_hook\", not(feature = \"no_text_mapping\"))": [
+        "GetGlyphOutlineA",
+        "GetGlyphOutlineW",
+        "TextOutA",
+        "TextOutW",
+        "ExtTextOutA",
+        "ExtTextOutW",
+        "GetTextExtentPoint32A",
+        "GetTextExtentPoint32W"
+    ],
+    "all(feature = \"text_hook\", feature = \"enum_font_families\")": [
+        "EnumFontFamiliesExA",
+        "EnumFontFamiliesExW",
+        "EnumFontFamiliesA",
+        "EnumFontFamiliesW",
+        "EnumFontsA",
+        "EnumFontsW"
+    ],
+    "feature = \"window_hook\"": [
+        "DefWindowProcA",
+        "DefWindowProcW"
+    ],
+    "all(feature = \"window_hook\", feature = \"text_patch\")": [
+        "PropertySheetA",
+        "ModifyMenuA",
+        "MessageBoxA",
+        "SetDlgItemTextA",
+        "SetWindowTextA",
+        "SendMessageA"
+    ]
+}

@@ -211,35 +211,3 @@ pub trait FileHook: Send + Sync + 'static {
         unimplemented!();
     }
 }
-
-/// 开启文件相关的特性钩子
-#[allow(dead_code)]
-pub fn enable_featured_hooks() {
-    #[cfg(feature = "read_file_patch_impl")]
-    unsafe {
-        HOOK_READ_FILE.enable().unwrap();
-    }
-
-    #[cfg(feature = "create_file_redirect")]
-    unsafe {
-        HOOK_CREATE_FILE_A.enable().unwrap();
-    }
-
-    debug!("File Hooked!");
-}
-
-/// 关闭文件相关的特性钩子
-#[allow(dead_code)]
-pub fn disable_featured_hooks() {
-    #[cfg(feature = "read_file_patch_impl")]
-    unsafe {
-        HOOK_READ_FILE.disable().unwrap();
-    }
-
-    #[cfg(feature = "create_file_redirect")]
-    unsafe {
-        HOOK_CREATE_FILE_A.disable().unwrap();
-    }
-
-    debug!("File Unhooked!");
-}

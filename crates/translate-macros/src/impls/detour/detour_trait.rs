@@ -101,29 +101,20 @@ pub fn detour_trait(_attr: TokenStream, item: TokenStream) -> syn::Result<TokenS
                     }
 
                     // 自动生成：once_cell Lazy 的 retour detour 静态
-                    #[cfg(panic = "unwind")]
                     pub static #static_ident: ::once_cell::sync::Lazy<retour::GenericDetour<#fn_ty_tokens>> =
                         ::once_cell::sync::Lazy::new(|| {
+                            crate::debug!("initialize detour: {}!{}", #dll_lit, #symbol_lit);
                             let address = crate::utils::win32::get_module_symbol_addr(
                                 #dll_lit,
                                 ::windows_sys::s!(#symbol_lit)
                             ).expect(concat!("symbol not found: ", #symbol_lit));
                             let ori: #fn_ty_tokens = unsafe { ::core::mem::transmute(address) };
                             unsafe {
-                                ::retour::GenericDetour::new(ori, #export_ident).expect(concat!("Failed to create detour for ", #symbol_lit))
-                            }
-                        });
+                                #[cfg(panic = "unwind")]
+                                return ::retour::GenericDetour::new(ori, #export_ident).expect(concat!("Failed to create detour for ", #symbol_lit));
 
-                    #[cfg(panic = "abort")]
-                    pub static #static_ident: ::once_cell::sync::Lazy<retour::GenericDetour<#fn_ty_tokens>> =
-                        ::once_cell::sync::Lazy::new(|| {
-                            let address = crate::utils::win32::get_module_symbol_addr(
-                                #dll_lit,
-                                ::windows_sys::s!(#symbol_lit)
-                            ).unwrap();
-                            let ori: #fn_ty_tokens = unsafe { ::core::mem::transmute(address) };
-                            unsafe {
-                                ::retour::GenericDetour::new(ori, #export_ident).unwrap()
+                                #[cfg(panic = "abort")]
+                                return ::retour::GenericDetour::new(ori, #export_ident).unwrap();
                             }
                         });
                 });

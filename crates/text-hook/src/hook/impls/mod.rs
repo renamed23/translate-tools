@@ -63,7 +63,7 @@ pub fn default_dll_main(
             #[cfg(not(feature = "delayed_attach"))]
             {
                 crate::hook::hook_instance().enable_hooks();
-                crate::hook::enable_featured_hooks();
+                crate::hook::enable_hooks_from_lists();
             }
 
             #[cfg(feature = "delayed_attach")]
@@ -81,7 +81,7 @@ pub fn default_dll_main(
             }
 
             crate::hook::hook_instance().disable_hooks();
-            crate::hook::disable_featured_hooks();
+            crate::hook::disable_hooks_from_lists();
 
             #[cfg(feature = "delayed_attach")]
             crate::delayed_attach::disable_entry_point_hook();

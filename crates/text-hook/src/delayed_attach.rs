@@ -51,7 +51,7 @@ fn delayed_attach() {
     };
 
     crate::hook::hook_instance().enable_hooks();
-    crate::hook::enable_featured_hooks();
+    crate::hook::enable_hooks_from_lists();
     crate::hook::hook_instance().on_delayed_attach();
 }
 

@@ -777,3 +777,81 @@ pub fn derive_default_hook(input: TokenStream) -> TokenStream {
         Err(err) => err.into_compile_error().into(),
     }
 }
+
+/// 从 JSON 配置文件生成钩子的启用/禁用函数
+///
+/// 这个宏会在编译时读取两个 JSON 配置文件，根据条件配置和用户设置，
+/// 自动生成运行时启用和禁用钩子的函数。支持条件编译和用户覆盖配置。
+///
+/// # 参数
+/// - `featured_path`: 特性化钩子列表的 JSON 文件路径（相对于 `CARGO_MANIFEST_DIR`）
+/// - `user_path`: 用户钩子列表的 JSON 文件路径（相对于 `CARGO_MANIFEST_DIR`）
+///
+/// 参数格式：`"featured.json", "user.json"`
+///
+/// # JSON 文件格式
+///
+/// ## 特性化钩子列表格式
+/// ```json
+/// {
+///   "cfg_condition_1": ["hook_name_1", "hook_name_2"],
+///   "cfg_condition_2": ["hook_name_3"]
+/// }
+/// ```
+/// 键为 Rust 的 `#[cfg(...)]` 条件，值为该条件下需要启用的钩子名称数组。
+///
+/// ## 用户钩子列表格式
+/// ```json
+/// {
+///   "enable": ["hook_name_a", "hook_name_b"],
+///   "disable": ["hook_name_c"]
+/// }
+/// ```
+/// - `enable`: 强制启用的钩子列表（覆盖特性化配置）
+/// - `disable`: 强制禁用的钩子列表（覆盖特性化配置）
+///
+/// # 生成代码
+/// 宏展开后会生成以下两个函数：
+/// - `enable_hooks_from_lists()` - 根据配置启用所有符合条件的钩子
+/// - `disable_hooks_from_lists()` - 根据配置禁用所有已启用的钩子
+///
+/// 每个钩子通过 `generate_detour_ident` 生成对应的标识符，并调用其
+/// `enable()` 或 `disable()` 方法。
+///
+/// # 配置解析规则
+/// 1. 优先处理用户配置：`disable` 列表中的钩子会从任何条件中移除
+/// 2. `enable` 列表中的钩子无条件启用（即使在其他条件中被排除）
+/// 3. 用户配置中同一个钩子不能同时出现在 `enable` 和 `disable` 中
+/// 4. 特性化配置中每个条件会生成对应的 `#[cfg(...)]` 代码块
+/// 5. 空的条件配置（所有钩子都被用户配置覆盖）不会生成代码
+///
+/// # 示例
+/// ```
+/// generate_hook_lists_from_json!("hooks/featured.json", "hooks/user.json");
+/// ```
+///
+/// 假设 `featured.json` 内容：
+/// ```json
+/// {
+///   "target_os = \"windows\"": ["CreateWindowEx", "MessageBoxW"],
+///   "all(feature = \"directx\", target_os = \"windows\")": ["Direct3DCreate9"]
+/// }
+/// ```
+///
+/// `user.json` 内容：
+/// ```json
+/// {
+///   "enable": ["ExtraHook"],
+///   "disable": ["MessageBoxW"]
+/// }
+/// ```
+///
+/// 生成的代码将根据编译条件启用相应的钩子，同时无条件启用 `ExtraHook`，
+/// 并始终禁用 `MessageBoxW`。
+#[proc_macro]
+pub fn generate_hook_lists_from_json(input: TokenStream) -> TokenStream {
+    match impls::generate_hook_lists_from_json::generate_hook_lists_from_json(input.into()) {
+        Ok(ts) => ts.into(),
+        Err(err) => err.into_compile_error().into(),
+    }
+}
