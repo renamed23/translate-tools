@@ -1,9 +1,10 @@
+use translate_macros::DefaultHook;
 use windows_sys::Win32::Foundation::HMODULE;
 
 use crate::debug;
-use crate::hook::traits::{CoreHook, TextHook};
+use crate::hook::traits::CoreHook;
 
-#[derive(Default)]
+#[derive(Default, DefaultHook)]
 pub struct MizukakeHook;
 
 impl CoreHook for MizukakeHook {
@@ -55,8 +56,6 @@ unsafe extern "system" fn trampoline() {
         sym replace_script,
     );
 }
-
-impl TextHook for MizukakeHook {}
 
 #[translate_macros::ffi_catch_unwind]
 pub unsafe extern "system" fn replace_script(ptr: *mut u8, len: usize, ptr2: *mut u8, len2: usize) {

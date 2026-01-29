@@ -79,9 +79,7 @@ debug_file_impl = ["debug_output", "export_default_dll_main", "file_hook"]
 default_impl = ["export_default_dll_main"]
 
 # 针对特定游戏的impl-------------------------------------------
-bleed = ["export_default_dll_main", "text_hook"]
 sukisuki = ["default_impl", "text_hook"]
-noise = ["patch", "default_impl", "text_hook"]
 seraph = ["export_default_dll_main"]
 lucky_crosse = ["default_impl", "export_patch_process_fn", "text_hook"]
 cosmos = ["default_impl", "export_patch_process_fn", "text_hook"]

@@ -1,4 +1,4 @@
-use translate_macros::detour_fn;
+use translate_macros::{DefaultHook, detour_fn};
 use windows_sys::Win32::Foundation::{HMODULE, WIN32_ERROR};
 use windows_sys::Win32::System::Registry::{
     HKEY, HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE, REG_OPEN_CREATE_OPTIONS, REG_SAM_FLAGS,
@@ -6,10 +6,10 @@ use windows_sys::Win32::System::Registry::{
 use windows_sys::core::PCSTR;
 
 use crate::constant::ARG_REG_PATH;
-use crate::hook::traits::{CoreHook, TextHook, WindowHook};
+use crate::hook::traits::CoreHook;
 use crate::{debug, print_system_error_message};
 
-#[derive(Default)]
+#[derive(Default, DefaultHook)]
 pub struct CompletsHook;
 
 impl CoreHook for CompletsHook {
@@ -27,9 +27,6 @@ impl CoreHook for CompletsHook {
         };
     }
 }
-
-impl TextHook for CompletsHook {}
-impl WindowHook for CompletsHook {}
 
 const EXPECTED: &str = const_str::concat!("Software\\", ARG_REG_PATH, "\\savedata");
 

@@ -1,13 +1,10 @@
-use translate_macros::ffi_catch_unwind;
+use translate_macros::DefaultHook;
 #[cfg(feature = "patch_extracting")]
 use windows_sys::{Win32::Foundation::HMODULE, core::PCSTR};
 
-use crate::{
-    debug,
-    hook::traits::{CoreHook, TextHook, WindowHook},
-};
+use crate::hook::traits::CoreHook;
 
-#[derive(Default)]
+#[derive(Default, DefaultHook)]
 pub struct UminomHook;
 
 impl CoreHook for UminomHook {
@@ -15,11 +12,11 @@ impl CoreHook for UminomHook {
     #[cfg(feature = "patch_extracting")]
     fn on_process_attach(&self, _hinst_dll: HMODULE) {
         let Some(handle) = crate::utils::win32::get_module_handle("") else {
-            debug!("get_module_handle failed");
+            crate::debug!("get_module_handle failed");
             return;
         };
 
-        debug!("patch {handle:p}");
+        crate::debug!("patch {handle:p}");
 
         let module_addr = handle as *mut u8;
 
@@ -56,11 +53,8 @@ unsafe extern "system" fn trampoline() {
     );
 }
 
-impl TextHook for UminomHook {}
-impl WindowHook for UminomHook {}
-
 #[cfg(feature = "patch_extracting")]
-#[ffi_catch_unwind]
+#[translate_macros::ffi_catch_unwind]
 pub unsafe extern "system" fn extract_script(ptr: *mut u8, len: usize, filename: PCSTR) {
     unsafe {
         use std::io::Write;
@@ -77,7 +71,7 @@ pub unsafe extern "system" fn extract_script(ptr: *mut u8, len: usize, filename:
 
                 // 创建raw目录（如果不存在）
                 if let Err(e) = std::fs::create_dir_all(&raw_dir) {
-                    debug!("Failed to create raw directory: {e}");
+                    crate::debug!("Failed to create raw directory: {e}");
                     return;
                 }
 

@@ -1,11 +1,11 @@
-use translate_macros::{byte_slice, ffi_catch_unwind};
+use translate_macros::{DefaultHook, byte_slice, ffi_catch_unwind};
 use windows_sys::Win32::Foundation::HMODULE;
 
-use crate::hook::traits::{CoreHook, TextHook, WindowHook};
+use crate::hook::traits::CoreHook;
 use crate::utils::mem::patch::{create_trampoline_32, write_asm, write_bytes};
 use crate::{constant, debug};
 
-#[derive(Default)]
+#[derive(Default, DefaultHook)]
 pub struct BrunsHook;
 
 impl CoreHook for BrunsHook {
@@ -165,9 +165,6 @@ fn patch_by_arg_game_type() {
         _ => unreachable!(),
     }
 }
-
-impl TextHook for BrunsHook {}
-impl WindowHook for BrunsHook {}
 
 #[ffi_catch_unwind]
 pub unsafe extern "C" fn memcpy2(dst: *mut u8, src: *mut u8, len: usize) {
