@@ -22,4 +22,6 @@ opt-level = "s"
 codegen-units = 1
 
 # 默认为`unwind`，可以通过设置环境变量`RUSTFLAGS`为`-C panic=abort`指定为`abort`
+# 可以通过指定为 `immediate-abort` 极大减少DLL的体积
+# 请看 https://github.com/johnthagen/min-sized-rust
 panic = "unwind"

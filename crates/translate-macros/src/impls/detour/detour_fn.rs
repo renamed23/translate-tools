@@ -65,11 +65,7 @@ pub fn detour_fn(attr: TokenStream, item: TokenStream) -> syn::Result<TokenStrea
             ).expect(concat!("symbol not found: ", #symbol_lit));
             let ori: #fn_ty_tokens = unsafe { ::core::mem::transmute(address) };
             unsafe {
-                #[cfg(panic = "unwind")]
-                return ::retour::GenericDetour::new(ori, #fn_ident).expect(concat!("Failed to create detour for ", #symbol_lit));
-
-                #[cfg(panic = "abort")]
-                return ::retour::GenericDetour::new(ori, #fn_ident).unwrap();
+                ::retour::GenericDetour::new(ori, #fn_ident).expect(concat!("Failed to create detour for ", #symbol_lit))
             }
         });
     })

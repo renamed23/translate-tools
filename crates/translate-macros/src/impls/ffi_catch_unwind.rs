@@ -16,7 +16,7 @@ pub fn ffi_catch_unwind(attr: TokenStream, item: TokenStream) -> syn::Result<Tok
 
     // 生成根据 panic 策略选择的块：
     // - panic = "unwind" 时：用 catch_unwind 包装并在 Err 时返回 fallback
-    // - panic = "abort" 时：直接执行原始块（没有包装）
+    // - 否则：直接执行原始块（没有包装）
     let new_block = quote! {{
         #[cfg(panic = "unwind")]
         {
@@ -26,7 +26,7 @@ pub fn ffi_catch_unwind(attr: TokenStream, item: TokenStream) -> syn::Result<Tok
             }
         }
 
-        #[cfg(panic = "abort")]
+        #[cfg(not(panic = "unwind"))]
         {
             #original_block
         }
