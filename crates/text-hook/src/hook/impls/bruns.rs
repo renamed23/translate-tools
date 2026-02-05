@@ -5,7 +5,7 @@ use crate::hook::traits::CoreHook;
 use crate::utils::mem::patch::{create_trampoline_32, write_asm, write_bytes};
 use crate::{constant, debug};
 
-#[derive(Default, DefaultHook)]
+#[derive(DefaultHook)]
 pub struct BrunsHook;
 
 impl CoreHook for BrunsHook {
