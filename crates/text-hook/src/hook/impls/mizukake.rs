@@ -4,7 +4,7 @@ use windows_sys::Win32::Foundation::HMODULE;
 use crate::debug;
 use crate::hook::traits::CoreHook;
 
-#[derive(Default, DefaultHook)]
+#[derive(DefaultHook)]
 pub struct MizukakeHook;
 
 impl CoreHook for MizukakeHook {

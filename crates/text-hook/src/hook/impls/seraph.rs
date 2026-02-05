@@ -9,7 +9,7 @@ use crate::{constant::ARG_NAME, debug, hook::traits::CoreHook, utils::mem::slice
 
 // 之前版本的ARG_NAME为"LUSTS"
 
-#[derive(Default, DefaultHook)]
+#[derive(DefaultHook)]
 pub struct SeraphHook;
 
 impl CoreHook for SeraphHook {

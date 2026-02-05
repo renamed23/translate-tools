@@ -9,7 +9,7 @@ use crate::constant::ARG_REG_PATH;
 use crate::hook::traits::CoreHook;
 use crate::{debug, print_system_error_message};
 
-#[derive(Default, DefaultHook)]
+#[derive(DefaultHook)]
 pub struct CompletsHook;
 
 impl CoreHook for CompletsHook {

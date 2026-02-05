@@ -6,7 +6,6 @@ use crate::debug;
 use crate::hook::traits::text_hook::HOOK_TEXT_OUT_A;
 use crate::hook::traits::{CoreHook, TextHook};
 
-#[derive(Default)]
 pub struct SpiriteDestructionHook;
 
 impl CoreHook for SpiriteDestructionHook {

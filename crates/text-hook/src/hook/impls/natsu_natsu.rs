@@ -7,7 +7,7 @@ use crate::debug;
 use crate::hook::traits::CoreHook;
 use crate::utils::mem::patch::write_asm;
 
-#[derive(Default, DefaultHook)]
+#[derive(DefaultHook)]
 pub struct NatsuNatsuHook;
 
 static mut CHARS_MEM_PTR: usize = 0;

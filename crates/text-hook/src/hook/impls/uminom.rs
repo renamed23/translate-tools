@@ -4,7 +4,7 @@ use windows_sys::{Win32::Foundation::HMODULE, core::PCSTR};
 
 use crate::hook::traits::CoreHook;
 
-#[derive(Default, DefaultHook)]
+#[derive(DefaultHook)]
 pub struct UminomHook;
 
 impl CoreHook for UminomHook {
