@@ -1,5 +1,5 @@
-use std::collections::HashMap;
 use std::sync::RwLock;
+use std::{collections::HashMap, sync::LazyLock};
 
 use windows_sys::{
     Win32::{
@@ -11,22 +11,28 @@ use windows_sys::{
     core::{BOOL, PCSTR, PCWSTR},
 };
 
+use crate::code_cvt::multi_byte_to_wide_char;
+use crate::debug_msg;
 use crate::hook::traits::file_hook::{
     FileHook, HOOK_CLOSE_HANDLE, HOOK_CREATE_FILE_A, HOOK_CREATE_FILE_W, HOOK_FIND_CLOSE,
     HOOK_FIND_FIRST_FILE_A, HOOK_FIND_FIRST_FILE_W, HOOK_FIND_NEXT_FILE_A, HOOK_FIND_NEXT_FILE_W,
     HOOK_READ_FILE,
 };
-use crate::{code_cvt::ansi_to_wide_char, debug_msg};
 use crate::{hook::traits::CoreHook, utils::mem::slice_until_null};
 
 #[derive(Default)]
-pub struct DebugFileImplHook {
-    handles: RwLock<HashMap<usize, String>>,
-    find_handles: RwLock<HashMap<usize, String>>,
+struct DebugFileState {
+    handles: HashMap<usize, String>,
+    find_handles: HashMap<usize, String>,
 }
 
+static DEBUG_FILE_STATE: LazyLock<RwLock<DebugFileState>> =
+    LazyLock::new(|| RwLock::new(DebugFileState::default()));
+
+pub struct DebugFileImplHook;
+
 impl CoreHook for DebugFileImplHook {
-    fn enable_hooks(&self) {
+    fn enable_hooks() {
         unsafe {
             HOOK_CREATE_FILE_A.enable().unwrap();
             HOOK_CREATE_FILE_W.enable().unwrap();
@@ -40,7 +46,7 @@ impl CoreHook for DebugFileImplHook {
         }
     }
 
-    fn disable_hooks(&self) {
+    fn disable_hooks() {
         unsafe {
             HOOK_CREATE_FILE_A.disable().unwrap();
             HOOK_CREATE_FILE_W.disable().unwrap();
@@ -57,7 +63,6 @@ impl CoreHook for DebugFileImplHook {
 
 impl FileHook for DebugFileImplHook {
     unsafe fn create_file_a(
-        &self,
         lp_file_name: PCSTR,
         dw_desired_access: u32,
         dw_share_mode: u32,
@@ -68,7 +73,7 @@ impl FileHook for DebugFileImplHook {
     ) -> HANDLE {
         let file_name = if !lp_file_name.is_null() {
             let ansi_bytes = unsafe { slice_until_null(lp_file_name, MAX_PATH as _) };
-            String::from_utf16_lossy(&ansi_to_wide_char(ansi_bytes))
+            String::from_utf16_lossy(&multi_byte_to_wide_char(ansi_bytes, 0))
         } else {
             String::from("(null)")
         };
@@ -90,16 +95,15 @@ impl FileHook for DebugFileImplHook {
 
         // 如果句柄有效，存入handles
         if result != INVALID_HANDLE_VALUE
-            && let Ok(mut handles) = self.handles.write()
+            && let Ok(mut state) = DEBUG_FILE_STATE.write()
         {
-            handles.insert(result as usize, file_name);
+            state.handles.insert(result as usize, file_name);
         }
 
         result
     }
 
     unsafe fn create_file_w(
-        &self,
         lp_file_name: PCWSTR,
         dw_desired_access: u32,
         dw_share_mode: u32,
@@ -133,16 +137,15 @@ impl FileHook for DebugFileImplHook {
 
         // 如果句柄有效，存入handles
         if result != INVALID_HANDLE_VALUE
-            && let Ok(mut handles) = self.handles.write()
+            && let Ok(mut state) = DEBUG_FILE_STATE.write()
         {
-            handles.insert(result as usize, file_name);
+            state.handles.insert(result as usize, file_name);
         }
 
         result
     }
 
     unsafe fn read_file(
-        &self,
         h_file: HANDLE,
         lp_buffer: *mut u8,
         n_number_of_bytes_to_read: u32,
@@ -150,8 +153,8 @@ impl FileHook for DebugFileImplHook {
         lp_overlapped: *mut OVERLAPPED,
     ) -> BOOL {
         // 检查句柄是否在handles中
-        if let Ok(handles) = self.handles.read()
-            && let Some(file_name) = handles.get(&(h_file as usize))
+        if let Ok(state) = DEBUG_FILE_STATE.read()
+            && let Some(file_name) = state.handles.get(&(h_file as usize))
         {
             debug_msg!(
                 "ReadFile called for: {} (bytes to read: {}, start from buffer: {:p})",
@@ -175,8 +178,8 @@ impl FileHook for DebugFileImplHook {
         // 记录实际读取的字节数
         if result == TRUE
             && !lp_number_of_bytes_read.is_null()
-            && let Ok(handles) = self.handles.read()
-            && let Some(file_name) = handles.get(&(h_file as usize))
+            && let Ok(state) = DEBUG_FILE_STATE.read()
+            && let Some(file_name) = state.handles.get(&(h_file as usize))
         {
             let bytes_read = unsafe { *lp_number_of_bytes_read };
             debug_msg!(
@@ -189,10 +192,10 @@ impl FileHook for DebugFileImplHook {
         result
     }
 
-    unsafe fn close_handle(&self, h_object: HANDLE) -> BOOL {
+    unsafe fn close_handle(h_object: HANDLE) -> BOOL {
         // 检查句柄是否在handles中
-        let file_name = if let Ok(mut handles) = self.handles.write() {
-            handles.remove(&(h_object as usize))
+        let file_name = if let Ok(mut state) = DEBUG_FILE_STATE.write() {
+            state.handles.remove(&(h_object as usize))
         } else {
             None
         };
@@ -205,13 +208,12 @@ impl FileHook for DebugFileImplHook {
     }
 
     unsafe fn find_first_file_a(
-        &self,
         lp_file_name: PCSTR,
         lp_find_file_data: *mut WIN32_FIND_DATAA,
     ) -> HANDLE {
         let search_pattern = if !lp_file_name.is_null() {
             let ansi_bytes = unsafe { slice_until_null(lp_file_name, MAX_PATH as _) };
-            String::from_utf16_lossy(&ansi_to_wide_char(ansi_bytes))
+            String::from_utf16_lossy(&multi_byte_to_wide_char(ansi_bytes, 0))
         } else {
             String::from("(null)")
         };
@@ -223,9 +225,9 @@ impl FileHook for DebugFileImplHook {
 
         // 如果句柄有效，存入find_handles
         if result != INVALID_HANDLE_VALUE
-            && let Ok(mut find_handles) = self.find_handles.write()
+            && let Ok(mut state) = DEBUG_FILE_STATE.write()
         {
-            find_handles.insert(result as usize, search_pattern);
+            state.find_handles.insert(result as usize, search_pattern);
 
             // 打印找到的第一个文件信息
             if !lp_find_file_data.is_null() {
@@ -236,7 +238,8 @@ impl FileHook for DebugFileImplHook {
                         find_data.cFileName.len(),
                     )
                 };
-                let file_name = String::from_utf16_lossy(&ansi_to_wide_char(file_name_bytes));
+                let file_name =
+                    String::from_utf16_lossy(&multi_byte_to_wide_char(file_name_bytes, 0));
 
                 debug_msg!("FindFirstFileA found first file: {}", file_name);
             }
@@ -246,7 +249,6 @@ impl FileHook for DebugFileImplHook {
     }
 
     unsafe fn find_first_file_w(
-        &self,
         lp_file_name: PCWSTR,
         lp_find_file_data: *mut WIN32_FIND_DATAW,
     ) -> HANDLE {
@@ -265,9 +267,9 @@ impl FileHook for DebugFileImplHook {
 
         // 如果句柄有效，存入find_handles
         if result != INVALID_HANDLE_VALUE
-            && let Ok(mut find_handles) = self.find_handles.write()
+            && let Ok(mut state) = DEBUG_FILE_STATE.write()
         {
-            find_handles.insert(result as usize, search_pattern);
+            state.find_handles.insert(result as usize, search_pattern);
 
             // 打印找到的第一个文件信息
             if !lp_find_file_data.is_null() {
@@ -285,13 +287,12 @@ impl FileHook for DebugFileImplHook {
     }
 
     unsafe fn find_next_file_a(
-        &self,
         h_find_file: HANDLE,
         lp_find_file_data: *mut WIN32_FIND_DATAA,
     ) -> BOOL {
         // 检查句柄是否在find_handles中
-        let search_pattern = if let Ok(find_handles) = self.find_handles.read() {
-            find_handles.get(&(h_find_file as usize)).cloned()
+        let search_pattern = if let Ok(state) = DEBUG_FILE_STATE.read() {
+            state.find_handles.get(&(h_find_file as usize)).cloned()
         } else {
             None
         };
@@ -312,7 +313,7 @@ impl FileHook for DebugFileImplHook {
                     find_data.cFileName.len(),
                 )
             };
-            let file_name = String::from_utf16_lossy(&ansi_to_wide_char(file_name_bytes));
+            let file_name = String::from_utf16_lossy(&multi_byte_to_wide_char(file_name_bytes, 0));
 
             debug_msg!("FindNextFileA found file: {}", file_name);
         }
@@ -321,13 +322,12 @@ impl FileHook for DebugFileImplHook {
     }
 
     unsafe fn find_next_file_w(
-        &self,
         h_find_file: HANDLE,
         lp_find_file_data: *mut WIN32_FIND_DATAW,
     ) -> BOOL {
         // 检查句柄是否在find_handles中
-        let search_pattern = if let Ok(find_handles) = self.find_handles.read() {
-            find_handles.get(&(h_find_file as usize)).cloned()
+        let search_pattern = if let Ok(state) = DEBUG_FILE_STATE.read() {
+            state.find_handles.get(&(h_find_file as usize)).cloned()
         } else {
             None
         };
@@ -353,10 +353,10 @@ impl FileHook for DebugFileImplHook {
         result
     }
 
-    unsafe fn find_close(&self, h_find_file: HANDLE) -> BOOL {
+    unsafe fn find_close(h_find_file: HANDLE) -> BOOL {
         // 检查句柄是否在find_handles中
-        let search_pattern = if let Ok(mut find_handles) = self.find_handles.write() {
-            find_handles.remove(&(h_find_file as usize))
+        let search_pattern = if let Ok(mut state) = DEBUG_FILE_STATE.write() {
+            state.find_handles.remove(&(h_find_file as usize))
         } else {
             None
         };
