@@ -22,7 +22,7 @@ pub unsafe extern "system" fn patch_asm() {
         .unwrap();
 
         let code_buf = crate::utils::mem::patch::create_trampoline_32(
-            replace_script as _,
+            replace_script as *const () as _,
             // mov eax,[esp+28]; push eax
             &byte_slice!("8B 44 24 28 50"),
             // ret 0xC;

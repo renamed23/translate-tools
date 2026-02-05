@@ -10,17 +10,17 @@ use crate::hook::traits::{CoreHook, TextHook};
 pub struct SpiriteDestructionHook;
 
 impl CoreHook for SpiriteDestructionHook {
-    fn enable_hooks(&self) {
+    fn enable_hooks() {
         unsafe { HOOK_TEXT_OUT_A.enable().unwrap() };
     }
 
-    fn disable_hooks(&self) {
+    fn disable_hooks() {
         unsafe { HOOK_TEXT_OUT_A.disable().unwrap() };
     }
 }
 
 impl TextHook for SpiriteDestructionHook {
-    unsafe fn text_out_a(&self, hdc: HDC, x: i32, y: i32, lp_string: PCSTR, c: i32) -> BOOL {
+    unsafe fn text_out_a(hdc: HDC, x: i32, y: i32, lp_string: PCSTR, c: i32) -> BOOL {
         unsafe {
             let input_slice = crate::utils::mem::slice_from_raw_parts(lp_string, c as usize);
 

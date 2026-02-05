@@ -9,7 +9,7 @@ use crate::{constant, debug};
 pub struct BrunsHook;
 
 impl CoreHook for BrunsHook {
-    fn on_process_attach(&self, _hinst_dll: HMODULE) {
+    fn on_process_attach(_hinst_dll: HMODULE) {
         patch_by_arg_game_type();
     }
 }

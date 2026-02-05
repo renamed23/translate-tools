@@ -19,7 +19,6 @@ pub trait FileHook: Send + Sync + 'static {
         fallback = "windows_sys::Win32::Foundation::INVALID_HANDLE_VALUE"
     )]
     unsafe fn create_file_a(
-        &self,
         lp_file_name: PCSTR,
         dw_desired_access: u32,
         dw_share_mode: u32,
@@ -77,7 +76,6 @@ pub trait FileHook: Send + Sync + 'static {
         fallback = "windows_sys::Win32::Foundation::INVALID_HANDLE_VALUE"
     )]
     unsafe fn create_file_w(
-        &self,
         _lp_file_name: PCWSTR,
         _dw_desired_access: u32,
         _dw_share_mode: u32,
@@ -96,7 +94,6 @@ pub trait FileHook: Send + Sync + 'static {
         fallback = "windows_sys::Win32::Foundation::FALSE"
     )]
     unsafe fn read_file(
-        &self,
         h_file: HANDLE,
         lp_buffer: *mut u8,
         n_number_of_bytes_to_read: u32,
@@ -146,7 +143,7 @@ pub trait FileHook: Send + Sync + 'static {
         symbol = "CloseHandle",
         fallback = "windows_sys::Win32::Foundation::FALSE"
     )]
-    unsafe fn close_handle(&self, _h_object: HANDLE) -> BOOL {
+    unsafe fn close_handle(_h_object: HANDLE) -> BOOL {
         unimplemented!();
     }
 
@@ -156,7 +153,6 @@ pub trait FileHook: Send + Sync + 'static {
         fallback = "windows_sys::Win32::Foundation::INVALID_HANDLE_VALUE"
     )]
     unsafe fn find_first_file_a(
-        &self,
         _lp_file_name: PCSTR,
         _lp_find_file_data: *mut WIN32_FIND_DATAA,
     ) -> HANDLE {
@@ -169,7 +165,6 @@ pub trait FileHook: Send + Sync + 'static {
         fallback = "windows_sys::Win32::Foundation::INVALID_HANDLE_VALUE"
     )]
     unsafe fn find_first_file_w(
-        &self,
         _lp_file_name: PCWSTR,
         _lp_find_file_data: *mut WIN32_FIND_DATAW,
     ) -> HANDLE {
@@ -182,7 +177,6 @@ pub trait FileHook: Send + Sync + 'static {
         fallback = "windows_sys::Win32::Foundation::FALSE"
     )]
     unsafe fn find_next_file_a(
-        &self,
         _h_find_file: HANDLE,
         _lp_find_file_data: *mut WIN32_FIND_DATAA,
     ) -> BOOL {
@@ -195,7 +189,6 @@ pub trait FileHook: Send + Sync + 'static {
         fallback = "windows_sys::Win32::Foundation::FALSE"
     )]
     unsafe fn find_next_file_w(
-        &self,
         _h_find_file: HANDLE,
         _lp_find_file_data: *mut WIN32_FIND_DATAW,
     ) -> BOOL {
@@ -207,7 +200,7 @@ pub trait FileHook: Send + Sync + 'static {
         symbol = "FindClose",
         fallback = "windows_sys::Win32::Foundation::FALSE"
     )]
-    unsafe fn find_close(&self, _h_find_file: HANDLE) -> BOOL {
+    unsafe fn find_close(_h_find_file: HANDLE) -> BOOL {
         unimplemented!();
     }
 }

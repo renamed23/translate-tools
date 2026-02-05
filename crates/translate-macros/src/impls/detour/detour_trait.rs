@@ -96,7 +96,7 @@ pub fn detour_trait(_attr: TokenStream, item: TokenStream) -> syn::Result<TokenS
                     #[cfg_attr(feature = "export_hooks", unsafe(no_mangle))]
                     pub unsafe extern #calling_convention fn #export_ident( #(#param_pairs_iter),* ) #output {
                        unsafe {
-                            crate::hook::hook_instance().#method_ident( #(#call_args_iter),* )
+                            crate::hook::impls::HookImplType::#method_ident( #(#call_args_iter),* )
                         }
                     }
 

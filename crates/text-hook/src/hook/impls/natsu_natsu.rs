@@ -13,7 +13,7 @@ pub struct NatsuNatsuHook;
 static mut CHARS_MEM_PTR: usize = 0;
 
 impl CoreHook for NatsuNatsuHook {
-    fn on_process_attach(&self, _hinst_dll: HMODULE) {
+    fn on_process_attach(_hinst_dll: HMODULE) {
         unsafe {
             CHARS_MEM_PTR =
                 Box::leak(Box::<[u8]>::new_zeroed_slice(ARG_CHARS_SIZE)).as_ptr() as usize

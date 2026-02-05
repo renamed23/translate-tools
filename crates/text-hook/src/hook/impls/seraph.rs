@@ -13,14 +13,14 @@ use crate::{constant::ARG_NAME, debug, hook::traits::CoreHook, utils::mem::slice
 pub struct SeraphHook;
 
 impl CoreHook for SeraphHook {
-    fn on_process_attach(&self, _hinst_dll: HMODULE) {
+    fn on_process_attach(_hinst_dll: HMODULE) {
         unsafe {
             HOOK_GET_PRIVATE_PROFILE_INT_A.enable().unwrap();
             HOOK_GET_PRIVATE_PROFILE_STRING_A.enable().unwrap();
         };
     }
 
-    fn on_process_detach(&self, _hinst_dll: HMODULE) {
+    fn on_process_detach(_hinst_dll: HMODULE) {
         unsafe {
             HOOK_GET_PRIVATE_PROFILE_INT_A.disable().unwrap();
             HOOK_GET_PRIVATE_PROFILE_STRING_A.disable().unwrap();

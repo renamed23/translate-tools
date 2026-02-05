@@ -48,8 +48,6 @@ pub fn default_dll_main(
             #[cfg(feature = "emulate_locale")]
             crate::emulate_locale::set_japanese_locale();
 
-            crate::hook::set_hook_instance(HookImplType::default());
-
             #[cfg(feature = "custom_font")]
             unsafe {
                 crate::custom_font::add_font();
@@ -62,14 +60,14 @@ pub fn default_dll_main(
 
             #[cfg(not(feature = "delayed_attach"))]
             {
-                crate::hook::hook_instance().enable_hooks();
+                HookImplType::enable_hooks();
                 crate::hook::enable_hooks_from_lists();
             }
 
             #[cfg(feature = "delayed_attach")]
             crate::delayed_attach::enable_entry_point_hook();
 
-            crate::hook::hook_instance().on_process_attach(hinst_dll);
+            HookImplType::on_process_attach(hinst_dll);
         }
         PROCESS_DETACH => {
             #[cfg(all(feature = "text_patch", feature = "text_extracting"))]
@@ -80,13 +78,13 @@ pub fn default_dll_main(
                 crate::custom_font::remove_font();
             }
 
-            crate::hook::hook_instance().disable_hooks();
+            HookImplType::disable_hooks();
             crate::hook::disable_hooks_from_lists();
 
             #[cfg(feature = "delayed_attach")]
             crate::delayed_attach::disable_entry_point_hook();
 
-            crate::hook::hook_instance().on_process_detach(hinst_dll);
+            HookImplType::on_process_detach(hinst_dll);
         }
         _ => {}
     }

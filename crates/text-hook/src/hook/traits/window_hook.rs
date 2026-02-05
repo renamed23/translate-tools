@@ -13,7 +13,6 @@ use crate::debug;
 pub trait WindowHook: Send + Sync + 'static {
     #[detour(dll = "user32.dll", symbol = "DefWindowProcA", fallback = "0")]
     unsafe fn def_window_proc_a(
-        &self,
         h_wnd: HWND,
         u_msg: u32,
         w_param: WPARAM,
@@ -94,7 +93,6 @@ pub trait WindowHook: Send + Sync + 'static {
 
     #[detour(dll = "user32.dll", symbol = "DefWindowProcW", fallback = "0")]
     unsafe fn def_window_proc_w(
-        &self,
         h_wnd: HWND,
         u_msg: u32,
         w_param: WPARAM,
@@ -167,7 +165,6 @@ pub trait WindowHook: Send + Sync + 'static {
 
     #[detour(dll = "user32.dll", symbol = "ModifyMenuA", fallback = "0")]
     unsafe fn modify_menu_a(
-        &self,
         h_menu: HMENU,
         u_position: u32,
         u_flags: u32,
@@ -211,7 +208,6 @@ pub trait WindowHook: Send + Sync + 'static {
 
     #[detour(dll = "user32.dll", symbol = "MessageBoxA", fallback = "0")]
     unsafe fn message_box_a(
-        &self,
         h_wnd: HWND,
         lp_text: *const u8,
         lp_caption: *const u8,
@@ -273,12 +269,7 @@ pub trait WindowHook: Send + Sync + 'static {
     }
 
     #[detour(dll = "user32.dll", symbol = "SetDlgItemTextA", fallback = "0")]
-    unsafe fn set_dlg_item_text_a(
-        &self,
-        h_dlg: HWND,
-        n_id_dlg_item: i32,
-        lp_string: *const u8,
-    ) -> BOOL {
+    unsafe fn set_dlg_item_text_a(h_dlg: HWND, n_id_dlg_item: i32, lp_string: *const u8) -> BOOL {
         #[cfg(feature = "text_patch")]
         unsafe {
             if lp_string.is_null() {
@@ -308,7 +299,7 @@ pub trait WindowHook: Send + Sync + 'static {
     }
 
     #[detour(dll = "user32.dll", symbol = "SetWindowTextA", fallback = "0")]
-    unsafe fn set_window_text_a(&self, h_wnd: HWND, lp_string: *const u8) -> BOOL {
+    unsafe fn set_window_text_a(h_wnd: HWND, lp_string: *const u8) -> BOOL {
         #[cfg(feature = "text_patch")]
         unsafe {
             if lp_string.is_null() {
@@ -338,13 +329,7 @@ pub trait WindowHook: Send + Sync + 'static {
     }
 
     #[detour(dll = "user32.dll", symbol = "SendMessageA", fallback = "0")]
-    unsafe fn send_message_a(
-        &self,
-        h_wnd: HWND,
-        msg: u32,
-        w_param: WPARAM,
-        l_param: LPARAM,
-    ) -> LRESULT {
+    unsafe fn send_message_a(h_wnd: HWND, msg: u32, w_param: WPARAM, l_param: LPARAM) -> LRESULT {
         #[cfg(feature = "text_patch")]
         unsafe {
             use windows_sys::Win32::UI::WindowsAndMessaging::SendMessageW;
@@ -373,7 +358,6 @@ pub trait WindowHook: Send + Sync + 'static {
 
     #[detour(dll = "comctl32.dll", symbol = "PropertySheetA", fallback = "0")]
     unsafe fn property_sheet_a(
-        &self,
         ppsh: *const windows_sys::Win32::UI::Controls::PROPSHEETHEADERA_V2,
     ) -> isize {
         #[cfg(feature = "text_patch")]

@@ -50,9 +50,9 @@ fn delayed_attach() {
         crate::dll_hijacking::load_library()
     };
 
-    crate::hook::hook_instance().enable_hooks();
+    crate::hook::impls::HookImplType::enable_hooks();
     crate::hook::enable_hooks_from_lists();
-    crate::hook::hook_instance().on_delayed_attach();
+    crate::hook::impls::HookImplType::on_delayed_attach();
 }
 
 fn delayed_attach_clean() {
@@ -63,7 +63,7 @@ fn delayed_attach_clean() {
         crate::dll_hijacking::unload_library()
     };
 
-    crate::hook::hook_instance().on_delayed_attach_clean();
+    crate::hook::impls::HookImplType::on_delayed_attach_clean();
 }
 
 unsafe extern "C" fn entry_point() {

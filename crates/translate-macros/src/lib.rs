@@ -75,7 +75,7 @@ pub fn byte_slice(input: TokenStream) -> TokenStream {
 ///     fallback = "FALSE"                              // 可选，捕获 panic/unwind 时的回退值（字符串字面量，内部会解析为 Rust 表达式）
 ///     calling_convention = "system"                   // 可选，调用约定（字符串字面量），默认 "system"
 /// )]
-/// unsafe fn text_out(&self, hdc: HDC, x: c_int, y: c_int, lp: LPCSTR, c: c_int) -> BOOL;
+/// unsafe fn text_out(hdc: HDC, x: c_int, y: c_int, lp: LPCSTR, c: c_int) -> BOOL;
 /// ```
 ///
 /// # 字段说明
@@ -96,7 +96,7 @@ pub fn detour(_attr: TokenStream, item: TokenStream) -> TokenStream {
 /// 宏会基于方法签名自动生成两类项：
 ///
 /// 1. 一个 `pub unsafe extern "system" fn <export_name>(...) -> Ret` 的 C-ABI 风格 wrapper（导出函数），
-///    wrapper 内部通过 `crate::hook::hook_instance().<method>(...)` 转发到当前的 Hook 实现，并使用 `ffi_catch_unwind`
+///    wrapper 内部通过 `crate::hook::impls::HookImplType::<method>(...)` 转发到当前的 Hook 实现，并使用 `ffi_catch_unwind`
 ///    或等价保护来在 panic/unwind 时返回 `fallback` 指定的值；
 /// 2. 一个名为 `HOOK_<METHOD_UPPER>` 的 `pub static` 变量，类型为
 ///    `once_cell::sync::Lazy<retour::GenericDetour<unsafe extern "system" fn(...) -> Ret>>`，
@@ -117,10 +117,10 @@ pub fn detour(_attr: TokenStream, item: TokenStream) -> TokenStream {
 ///         fallback = "FALSE"                              // 可选，捕获 panic/unwind 时的回退值（字符串字面量，内部会解析为 Rust 表达式）
 ///         calling_convention = "system"                   // 可选，调用约定（字符串字面量），默认 "system"
 ///     )]
-///     unsafe fn text_out(&self, hdc: HDC, x: c_int, y: c_int, lp: LPCSTR, c: c_int) -> BOOL;
+///     unsafe fn text_out(hdc: HDC, x: c_int, y: c_int, lp: LPCSTR, c: c_int) -> BOOL;
 ///
 ///     // 未标注 detour 的方法不会生成 wrapper / static
-///     fn font_face(&self) -> &'static str;
+///     fn font_face() -> &'static str;
 /// }
 /// ```
 #[proc_macro_attribute]
@@ -189,7 +189,6 @@ pub fn detour_fn(attr: TokenStream, item: TokenStream) -> TokenStream {
 ///     // 原始函数体保持不变；若内部 panic 则返回 FALSE
 ///     const PROCESS_ATTACH: DWORD = 1;
 ///     if fdw_reason == PROCESS_ATTACH {
-///         crate::hook::set_hook_instance(Box::new(DefaultHook));
 ///
 ///         #[cfg(feature = "custom_font")]
 ///         crate::custom_font::add_font();

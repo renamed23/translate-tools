@@ -8,7 +8,7 @@ use crate::hook::traits::CoreHook;
 pub struct MizukakeHook;
 
 impl CoreHook for MizukakeHook {
-    fn on_process_attach(&self, _hinst_dll: HMODULE) {
+    fn on_process_attach(_hinst_dll: HMODULE) {
         let Some(handle) = crate::utils::win32::get_module_handle("") else {
             debug!("get_module_handle failed");
             return;

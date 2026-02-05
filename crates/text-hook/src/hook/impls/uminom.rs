@@ -10,7 +10,7 @@ pub struct UminomHook;
 impl CoreHook for UminomHook {
     // 解压器实现，仅为了获取解包数据，不要在真补丁中使用
     #[cfg(feature = "patch_extracting")]
-    fn on_process_attach(&self, _hinst_dll: HMODULE) {
+    fn on_process_attach(_hinst_dll: HMODULE) {
         let Some(handle) = crate::utils::win32::get_module_handle("") else {
             crate::debug!("get_module_handle failed");
             return;

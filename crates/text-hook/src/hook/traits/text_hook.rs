@@ -28,7 +28,7 @@ pub trait TextHook: Send + Sync + 'static {
         symbol = "TextOutA",
         fallback = "windows_sys::Win32::Foundation::FALSE"
     )]
-    unsafe fn text_out_a(&self, hdc: HDC, x: i32, y: i32, lp_string: PCSTR, c: i32) -> BOOL {
+    unsafe fn text_out_a(hdc: HDC, x: i32, y: i32, lp_string: PCSTR, c: i32) -> BOOL {
         unsafe {
             #[cfg(not(feature = "text_out_arg_c_is_bytes"))]
             let byte_len = crate::code_cvt::ansi_byte_len(lp_string, c as usize);
@@ -55,7 +55,7 @@ pub trait TextHook: Send + Sync + 'static {
         symbol = "TextOutW",
         fallback = "windows_sys::Win32::Foundation::FALSE"
     )]
-    unsafe fn text_out_w(&self, hdc: HDC, x: i32, y: i32, lp_string: PCWSTR, c: i32) -> BOOL {
+    unsafe fn text_out_w(hdc: HDC, x: i32, y: i32, lp_string: PCWSTR, c: i32) -> BOOL {
         unsafe {
             // 假定文本均在BMP
             let input_slice = crate::utils::mem::slice_from_raw_parts(lp_string, c as usize);
@@ -78,7 +78,6 @@ pub trait TextHook: Send + Sync + 'static {
         fallback = "windows_sys::Win32::Foundation::FALSE"
     )]
     unsafe fn ext_text_out_a(
-        &self,
         hdc: HDC,
         x: i32,
         y: i32,
@@ -123,7 +122,6 @@ pub trait TextHook: Send + Sync + 'static {
         fallback = "windows_sys::Win32::Foundation::FALSE"
     )]
     unsafe fn ext_text_out_w(
-        &self,
         hdc: HDC,
         x: i32,
         y: i32,
@@ -163,7 +161,6 @@ pub trait TextHook: Send + Sync + 'static {
         fallback = "windows_sys::Win32::Foundation::FALSE"
     )]
     unsafe fn get_text_extent_point_32_a(
-        &self,
         hdc: HDC,
         lp_string: PCSTR,
         c: i32,
@@ -195,7 +192,6 @@ pub trait TextHook: Send + Sync + 'static {
         fallback = "windows_sys::Win32::Foundation::FALSE"
     )]
     unsafe fn get_text_extent_point_32_w(
-        &self,
         hdc: HDC,
         lp_string: PCWSTR,
         c: i32,
@@ -218,7 +214,6 @@ pub trait TextHook: Send + Sync + 'static {
 
     #[detour(dll = "gdi32.dll", symbol = "GetGlyphOutlineA", fallback = "0")]
     unsafe fn get_glyph_outline_a(
-        &self,
         hdc: HDC,
         u_char: u32,
         format: u32,
@@ -264,7 +259,6 @@ pub trait TextHook: Send + Sync + 'static {
 
     #[detour(dll = "gdi32.dll", symbol = "GetGlyphOutlineW", fallback = "0")]
     unsafe fn get_glyph_outline_w(
-        &self,
         hdc: HDC,
         u_char: u32,
         format: u32,
@@ -306,7 +300,6 @@ pub trait TextHook: Send + Sync + 'static {
         fallback = "core::ptr::null_mut()"
     )]
     unsafe fn create_font_a(
-        &self,
         c_height: i32,
         c_width: i32,
         c_escapement: i32,
@@ -331,7 +324,7 @@ pub trait TextHook: Send + Sync + 'static {
         };
 
         unsafe {
-            self.create_font_w(
+            Self::create_font_w(
                 c_height,
                 c_width,
                 c_escapement,
@@ -357,7 +350,6 @@ pub trait TextHook: Send + Sync + 'static {
         fallback = "core::ptr::null_mut()"
     )]
     unsafe fn create_font_w(
-        &self,
         c_height: i32,
         c_width: i32,
         c_escapement: i32,
@@ -422,7 +414,7 @@ pub trait TextHook: Send + Sync + 'static {
         symbol = "CreateFontIndirectA",
         fallback = "core::ptr::null_mut()"
     )]
-    unsafe fn create_font_indirect_a(&self, lplf: *const LOGFONTA) -> HFONT {
+    unsafe fn create_font_indirect_a(lplf: *const LOGFONTA) -> HFONT {
         let logfona = unsafe { &*lplf };
         let mut logfontw = unsafe { core::mem::zeroed::<LOGFONTW>() };
 
@@ -454,7 +446,7 @@ pub trait TextHook: Send + Sync + 'static {
         logfontw.lfFaceName[..face_u16.len()].copy_from_slice(face_u16.as_slice());
 
         let ptr = &logfontw as *const LOGFONTW;
-        unsafe { self.create_font_indirect_w(ptr) }
+        unsafe { Self::create_font_indirect_w(ptr) }
     }
 
     #[detour(
@@ -462,7 +454,7 @@ pub trait TextHook: Send + Sync + 'static {
         symbol = "CreateFontIndirectW",
         fallback = "core::ptr::null_mut()"
     )]
-    unsafe fn create_font_indirect_w(&self, lplf: *const LOGFONTW) -> HFONT {
+    unsafe fn create_font_indirect_w(lplf: *const LOGFONTW) -> HFONT {
         let mut logfontw = unsafe { *lplf };
         logfontw.lfCharSet = CHAR_SET;
 
@@ -498,7 +490,6 @@ pub trait TextHook: Send + Sync + 'static {
     #[allow(unused_variables)]
     #[detour(dll = "gdi32.dll", symbol = "EnumFontFamiliesExA", fallback = "0")]
     unsafe fn enum_font_families_ex_a(
-        &self,
         hdc: HDC,
         lp_logfont: *mut LOGFONTA,
         lp_enum_font_fam_proc: FONTENUMPROCA,
@@ -529,7 +520,6 @@ pub trait TextHook: Send + Sync + 'static {
     #[allow(unused_variables)]
     #[detour(dll = "gdi32.dll", symbol = "EnumFontFamiliesExW", fallback = "0")]
     unsafe fn enum_font_families_ex_w(
-        &self,
         hdc: HDC,
         lp_logfont: *mut LOGFONTW,
         lp_enum_font_fam_proc: FONTENUMPROCW,
@@ -559,7 +549,6 @@ pub trait TextHook: Send + Sync + 'static {
     #[allow(unused_variables)]
     #[detour(dll = "gdi32.dll", symbol = "EnumFontFamiliesA", fallback = "0")]
     unsafe fn enum_font_families_a(
-        &self,
         hdc: HDC,
         lpsz_family: PCSTR,
         lp_enum_font_fam_proc: FONTENUMPROCA,
@@ -584,7 +573,6 @@ pub trait TextHook: Send + Sync + 'static {
     #[allow(unused_variables)]
     #[detour(dll = "gdi32.dll", symbol = "EnumFontFamiliesW", fallback = "0")]
     unsafe fn enum_font_families_w(
-        &self,
         hdc: HDC,
         lpsz_family: PCWSTR,
         lp_enum_font_fam_proc: FONTENUMPROCW,
@@ -609,7 +597,6 @@ pub trait TextHook: Send + Sync + 'static {
     #[allow(unused_variables)]
     #[detour(dll = "gdi32.dll", symbol = "EnumFontsA", fallback = "0")]
     unsafe fn enum_fonts_a(
-        &self,
         hdc: HDC,
         lpsz_face: PCSTR,
         lp_enum_font_proc: FONTENUMPROCA,
@@ -634,7 +621,6 @@ pub trait TextHook: Send + Sync + 'static {
     #[allow(unused_variables)]
     #[detour(dll = "gdi32.dll", symbol = "EnumFontsW", fallback = "0")]
     unsafe fn enum_fonts_w(
-        &self,
         hdc: HDC,
         lpsz_face: PCWSTR,
         lp_enum_font_proc: FONTENUMPROCW,

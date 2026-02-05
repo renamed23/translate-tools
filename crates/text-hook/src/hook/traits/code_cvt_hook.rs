@@ -7,7 +7,6 @@ use crate::debug;
 pub trait CodeCvtHook: Send + Sync + 'static {
     #[detour(dll = "kernel32.dll", symbol = "MultiByteToWideChar", fallback = "0")]
     unsafe fn multi_byte_to_wide_char(
-        &self,
         _code_page: u32,
         _dw_flags: u32,
         _lp_multi_byte_str: PCSTR,
@@ -20,7 +19,6 @@ pub trait CodeCvtHook: Send + Sync + 'static {
 
     #[detour(dll = "kernel32.dll", symbol = "WideCharToMultiByte", fallback = "0")]
     unsafe fn wide_char_to_multi_byte(
-        &self,
         _code_page: u32,
         _dw_flags: u32,
         _lp_wide_char_str: PCWSTR,
