@@ -16,7 +16,7 @@ use windows_sys::{
     core::PCSTR,
 };
 
-use crate::{constant, print_system_error_message};
+use crate::{constant, print_last_error_message};
 
 /// 获取模块句柄的包装函数
 /// 当module_name为空字符串时，获取当前进程的模块句柄
@@ -35,7 +35,7 @@ pub fn get_module_handle(module_name: &str) -> Option<HMODULE> {
         unsafe {
             let handle = GetModuleHandleW(module_wide.as_ptr());
             if handle.is_null() {
-                print_system_error_message!();
+                print_last_error_message!();
                 None
             } else {
                 Some(handle)
@@ -88,7 +88,7 @@ pub fn get_system_directory() -> Option<String> {
     // 获取系统目录缓冲区大小
     let size = unsafe { GetSystemDirectoryW(core::ptr::null_mut(), 0) };
     if size == 0 {
-        print_system_error_message!();
+        print_last_error_message!();
         return None;
     }
 
@@ -114,7 +114,7 @@ pub fn load_library(path: &str) -> Option<HMODULE> {
     let path: Vec<u16> = path.encode_utf16().chain(core::iter::once(0)).collect();
     let handle = unsafe { LoadLibraryW(path.as_ptr()) };
     if handle.is_null() {
-        print_system_error_message!();
+        print_last_error_message!();
         None
     } else {
         Some(handle)
@@ -168,7 +168,7 @@ where
 
     #[cfg(feature = "debug_output")]
     if !success {
-        print_system_error_message!();
+        print_last_error_message!();
     }
 
     defer!(if success {

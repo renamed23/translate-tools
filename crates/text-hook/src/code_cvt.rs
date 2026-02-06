@@ -9,7 +9,7 @@ use windows_sys::Win32::Graphics::Gdi::{
 use windows_sys::Win32::UI::WindowsAndMessaging::CharNextExA;
 
 use crate::constant::{ANSI_CODE_PAGE, CHAR_SET, TEXT_STACK_BUF_LEN};
-use crate::print_system_error_message;
+use crate::print_last_error_message;
 
 /// 用于处理文本缓冲区的Vec
 pub type TextVec<T> = SmallVec<[T; TEXT_STACK_BUF_LEN]>;
@@ -40,7 +40,7 @@ pub fn multi_byte_to_wide_char(bytes: &[u8], code_page: u32) -> TextVec<u16> {
         );
 
         if wide_size == 0 {
-            print_system_error_message!();
+            print_last_error_message!();
             return TextVec::new();
         }
 
@@ -59,7 +59,7 @@ pub fn multi_byte_to_wide_char(bytes: &[u8], code_page: u32) -> TextVec<u16> {
         );
 
         if result == 0 {
-            print_system_error_message!();
+            print_last_error_message!();
             TextVec::new()
         } else {
             wide_buffer.set_len(wide_size as usize);
@@ -111,7 +111,7 @@ pub fn wide_char_to_multi_byte(wide_str: &[u16], code_page: u32) -> TextVec<u8> 
         );
 
         if multi_byte_size == 0 {
-            print_system_error_message!();
+            print_last_error_message!();
             return TextVec::new();
         }
 
@@ -132,7 +132,7 @@ pub fn wide_char_to_multi_byte(wide_str: &[u16], code_page: u32) -> TextVec<u8> 
         );
 
         if result == 0 {
-            print_system_error_message!();
+            print_last_error_message!();
             TextVec::new()
         } else {
             // 设置 TextVec 长度

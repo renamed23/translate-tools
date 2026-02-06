@@ -16,7 +16,7 @@ use windows_sys::w;
 use crate::utils::mem::align_up;
 use crate::utils::mem::slice_until_null;
 use crate::utils::win32::with_wow64_redirection_disabled;
-use crate::{debug, print_system_error_message};
+use crate::{debug, print_last_error_message};
 
 unsafe fn set_process_nls_tables(
     ansi_file: &str,
@@ -48,7 +48,7 @@ unsafe fn set_process_nls_tables(
         );
 
         if mem.is_null() {
-            print_system_error_message!();
+            print_last_error_message!();
             anyhow::bail!("VirtualAlloc failed");
         }
 
@@ -69,7 +69,7 @@ unsafe fn set_process_nls_tables(
         // 将内存保护改为只读
         let mut old_prot: u32 = 0;
         if VirtualProtect(mem, total, PAGE_READONLY, &mut old_prot) == 0 {
-            print_system_error_message!();
+            print_last_error_message!();
             anyhow::bail!("VirtualProtect failed");
         }
 
@@ -114,7 +114,7 @@ fn get_nls_filename_from_registry() -> anyhow::Result<String> {
     };
 
     if result != 0 {
-        print_system_error_message!();
+        print_last_error_message!();
         anyhow::bail!("Failed to open registry key");
     }
 
@@ -138,7 +138,7 @@ fn get_nls_filename_from_registry() -> anyhow::Result<String> {
     };
 
     if query_result != 0 {
-        print_system_error_message!();
+        print_last_error_message!();
         anyhow::bail!("Failed to query registry value");
     }
 

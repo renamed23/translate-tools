@@ -3,7 +3,7 @@ use ntapi::ntpsapi::PROCESS_BASIC_INFORMATION;
 use ntapi::ntpsapi::{NtQueryInformationProcess, ProcessBasicInformation};
 use windows_sys::Win32::System::Threading::GetCurrentProcess;
 
-use crate::{debug, print_system_error_message};
+use crate::{debug, print_last_error_message};
 
 /// 通过 `NtQueryInformationProcess` 系统调用获取当前进程的 PEB（进程环境块）地址
 ///
@@ -24,7 +24,7 @@ pub unsafe fn get_current_peb() -> Option<*mut PEB> {
     };
 
     if status < 0 {
-        print_system_error_message!(NT status);
+        print_last_error_message!(nt status);
         return None;
     }
 

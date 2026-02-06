@@ -12,7 +12,7 @@ use windows_sys::{
 };
 
 use crate::code_cvt::multi_byte_to_wide_char;
-use crate::debug_msg;
+use crate::debug;
 use crate::hook::traits::file_hook::{
     FileHook, HOOK_CLOSE_HANDLE, HOOK_CREATE_FILE_A, HOOK_CREATE_FILE_W, HOOK_FIND_CLOSE,
     HOOK_FIND_FIRST_FILE_A, HOOK_FIND_FIRST_FILE_W, HOOK_FIND_NEXT_FILE_A, HOOK_FIND_NEXT_FILE_W,
@@ -78,7 +78,7 @@ impl FileHook for DebugFileImplHook {
             String::from("(null)")
         };
 
-        debug_msg!("CreateFileA called: {}", file_name);
+        debug!(raw "CreateFileA called: {}", file_name);
 
         // 调用原始函数
         let result = unsafe {
@@ -120,7 +120,7 @@ impl FileHook for DebugFileImplHook {
             String::from("(null)")
         };
 
-        debug_msg!("CreateFileW called: {}", file_name);
+        debug!(raw "CreateFileW called: {}", file_name);
 
         // 调用原始函数
         let result = unsafe {
@@ -156,7 +156,7 @@ impl FileHook for DebugFileImplHook {
         if let Ok(state) = DEBUG_FILE_STATE.read()
             && let Some(file_name) = state.handles.get(&(h_file as usize))
         {
-            debug_msg!(
+            debug!(raw
                 "ReadFile called for: {} (bytes to read: {}, start from buffer: {:p})",
                 file_name,
                 n_number_of_bytes_to_read,
@@ -182,7 +182,7 @@ impl FileHook for DebugFileImplHook {
             && let Some(file_name) = state.handles.get(&(h_file as usize))
         {
             let bytes_read = unsafe { *lp_number_of_bytes_read };
-            debug_msg!(
+            debug!(raw
                 "ReadFile completed for: {} (bytes read: {})",
                 file_name,
                 bytes_read
@@ -201,7 +201,7 @@ impl FileHook for DebugFileImplHook {
         };
 
         if let Some(name) = &file_name {
-            debug_msg!("CloseHandle called for: {}", name);
+            debug!(raw "CloseHandle called for: {}", name);
         }
 
         unsafe { HOOK_CLOSE_HANDLE.call(h_object) }
@@ -218,7 +218,7 @@ impl FileHook for DebugFileImplHook {
             String::from("(null)")
         };
 
-        debug_msg!("FindFirstFileA called with pattern: {}", search_pattern);
+        debug!(raw "FindFirstFileA called with pattern: {}", search_pattern);
 
         // 调用原始函数
         let result = unsafe { HOOK_FIND_FIRST_FILE_A.call(lp_file_name, lp_find_file_data) };
@@ -241,7 +241,7 @@ impl FileHook for DebugFileImplHook {
                 let file_name =
                     String::from_utf16_lossy(&multi_byte_to_wide_char(file_name_bytes, 0));
 
-                debug_msg!("FindFirstFileA found first file: {}", file_name);
+                debug!(raw "FindFirstFileA found first file: {}", file_name);
             }
         }
 
@@ -260,7 +260,7 @@ impl FileHook for DebugFileImplHook {
             String::from("(null)")
         };
 
-        debug_msg!("FindFirstFileW called with pattern: {}", search_pattern);
+        debug!(raw "FindFirstFileW called with pattern: {}", search_pattern);
 
         // 调用原始函数
         let result = unsafe { HOOK_FIND_FIRST_FILE_W.call(lp_file_name, lp_find_file_data) };
@@ -279,7 +279,7 @@ impl FileHook for DebugFileImplHook {
                 };
                 let file_name = String::from_utf16_lossy(file_name_wide);
 
-                debug_msg!("FindFirstFileW found first file: {}", file_name);
+                debug!(raw "FindFirstFileW found first file: {}", file_name);
             }
         }
 
@@ -298,7 +298,7 @@ impl FileHook for DebugFileImplHook {
         };
 
         if let Some(pattern) = &search_pattern {
-            debug_msg!("FindNextFileA called for search pattern: {}", pattern);
+            debug!(raw "FindNextFileA called for search pattern: {}", pattern);
         }
 
         // 调用原始函数
@@ -315,7 +315,7 @@ impl FileHook for DebugFileImplHook {
             };
             let file_name = String::from_utf16_lossy(&multi_byte_to_wide_char(file_name_bytes, 0));
 
-            debug_msg!("FindNextFileA found file: {}", file_name);
+            debug!(raw "FindNextFileA found file: {}", file_name);
         }
 
         result
@@ -333,7 +333,7 @@ impl FileHook for DebugFileImplHook {
         };
 
         if let Some(pattern) = &search_pattern {
-            debug_msg!("FindNextFileW called for search pattern: {}", pattern);
+            debug!(raw "FindNextFileW called for search pattern: {}", pattern);
         }
 
         // 调用原始函数
@@ -347,7 +347,7 @@ impl FileHook for DebugFileImplHook {
             };
             let file_name = String::from_utf16_lossy(file_name_wide);
 
-            debug_msg!("FindNextFileW found file: {}", file_name);
+            debug!(raw "FindNextFileW found file: {}", file_name);
         }
 
         result
@@ -362,9 +362,9 @@ impl FileHook for DebugFileImplHook {
         };
 
         if let Some(pattern) = &search_pattern {
-            debug_msg!("FindClose called for search pattern: {}", pattern);
+            debug!(raw "FindClose called for search pattern: {}", pattern);
         } else {
-            debug_msg!("FindClose called for unknown handle: {:?}", h_find_file);
+            debug!(raw "FindClose called for unknown handle: {:?}", h_find_file);
         }
 
         // 调用原始函数

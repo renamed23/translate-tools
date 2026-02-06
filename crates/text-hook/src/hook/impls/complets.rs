@@ -7,7 +7,7 @@ use windows_sys::core::PCSTR;
 
 use crate::constant::ARG_REG_PATH;
 use crate::hook::traits::CoreHook;
-use crate::{debug, print_system_error_message};
+use crate::{debug, print_last_error_message};
 
 #[derive(DefaultHook)]
 pub struct CompletsHook;
@@ -55,7 +55,7 @@ unsafe extern "system" fn reg_open_key_ex_a(
                 );
 
                 if result != 0 {
-                    print_system_error_message!();
+                    print_last_error_message!();
                 }
 
                 return result;
@@ -99,7 +99,7 @@ unsafe extern "system" fn reg_create_key_ex_a(
                 );
 
                 if result != 0 {
-                    print_system_error_message!();
+                    print_last_error_message!();
                 }
 
                 return result;

@@ -3,7 +3,7 @@ use windows_sys::Win32::{
     Graphics::Gdi::{AddFontMemResourceEx, RemoveFontMemResourceEx},
 };
 
-use crate::{debug, print_system_error_message};
+use crate::{debug, print_last_error_message};
 
 translate_macros::flate!(
     static CUSTOM_FONT: [u8] from "assets\\font"
@@ -40,7 +40,7 @@ pub unsafe fn add_font() -> Option<u32> {
 
         if handle.is_null() {
             debug!("AddFontMemResourceEx failed");
-            print_system_error_message!();
+            print_last_error_message!();
             None
         } else {
             FONT_HANDLE = Some(handle);
