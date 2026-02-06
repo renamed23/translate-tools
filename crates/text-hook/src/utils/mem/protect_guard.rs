@@ -33,13 +33,12 @@ impl ProtectGuard {
     ///
     /// # 安全性
     /// 调用者必须确保地址和大小有效
-    #[allow(dead_code)]
-    pub unsafe fn new<T>(address: *mut T, size: usize, new_protect: u32) -> anyhow::Result<Self> {
+    pub unsafe fn new<T>(address: *mut T, size: usize, new_protect: u32) -> crate::Result<Self> {
         if size == 0 {
-            anyhow::bail!("size must be > 0");
+            crate::bail!("size must be > 0");
         }
         if !crate::utils::mem::quick_memory_check_win32(address as *mut u8, size) {
-            anyhow::bail!("address is invalid: ({address:p};{size})");
+            crate::bail!("address is invalid: ({address:p};{size})");
         }
 
         // 获取系统 page size
@@ -48,13 +47,13 @@ impl ProtectGuard {
             GetSystemInfo(&mut sys as _);
             let page_size = sys.dwPageSize as usize;
             if page_size == 0 {
-                anyhow::bail!("GetSystemInfo returned page_size == 0");
+                crate::bail!("GetSystemInfo returned page_size == 0");
             }
 
             let addr_usize = address as usize;
             let end = addr_usize
                 .checked_add(size)
-                .ok_or_else(|| anyhow::anyhow!("address+size overflow"))?;
+                .ok_or_else(|| crate::anyhow!("address+size overflow"))?;
 
             // 计算从哪个 page 开始（向下对齐）到哪个 page 结束（不包含 end）
             let start_page = (addr_usize / page_size) * page_size;
@@ -78,7 +77,7 @@ impl ProtectGuard {
                             &mut _tmp as _,
                         );
                     }
-                    anyhow::bail!("VirtualProtect failed for page {:p}", page as *const u8);
+                    crate::bail!("VirtualProtect failed for page {:p}", page as *const u8);
                 }
 
                 pages.push(PageProtect {
@@ -102,13 +101,11 @@ impl ProtectGuard {
     }
 
     /// 获取原始地址
-    #[allow(dead_code)]
     pub fn address(&self) -> *mut u8 {
         self.address
     }
 
     /// 获取内存区域大小
-    #[allow(dead_code)]
     pub fn size(&self) -> usize {
         self.size
     }
@@ -117,7 +114,6 @@ impl ProtectGuard {
     ///
     /// # 安全性
     /// 调用者必须确保写入的值类型正确且对齐
-    #[allow(dead_code)]
     pub unsafe fn write<U: Copy>(&self, value: U) {
         unsafe { self.write_offset(0, value) };
     }
@@ -130,7 +126,6 @@ impl ProtectGuard {
     ///
     /// # 安全性
     /// 调用者必须确保偏移量在保护范围内，且类型正确对齐
-    #[allow(dead_code)]
     pub unsafe fn write_offset<U: Copy>(&self, offset: usize, value: U) {
         unsafe {
             let elem = mem::size_of::<U>();
@@ -150,7 +145,6 @@ impl ProtectGuard {
     ///
     /// # 安全性
     /// 调用者必须确保读取的类型正确且对齐
-    #[allow(dead_code)]
     pub unsafe fn read<U: Copy>(&self) -> U {
         unsafe { self.read_offset(0) }
     }
@@ -162,7 +156,6 @@ impl ProtectGuard {
     ///
     /// # 安全性
     /// 调用者必须确保偏移量在保护范围内，且类型正确对齐
-    #[allow(dead_code)]
     pub unsafe fn read_offset<U: Copy>(&self, offset: usize) -> U {
         unsafe {
             let elem = mem::size_of::<U>();
@@ -182,7 +175,6 @@ impl ProtectGuard {
     ///
     /// # 安全性
     /// 调用者必须确保写入的值类型正确，且偏移量在保护范围内
-    #[allow(dead_code)]
     pub unsafe fn write_unaligned<U: Copy>(&self, value: U) {
         unsafe { self.write_offset_unaligned(0, value) };
     }
@@ -195,7 +187,6 @@ impl ProtectGuard {
     ///
     /// # 安全性
     /// 调用者必须确保偏移量在保护范围内
-    #[allow(dead_code)]
     pub unsafe fn write_offset_unaligned<U: Copy>(&self, offset: usize, value: U) {
         unsafe {
             let elem = mem::size_of::<U>();
@@ -211,7 +202,6 @@ impl ProtectGuard {
     ///
     /// # 安全性
     /// 调用者必须确保读取的类型正确，且偏移量在保护范围内
-    #[allow(dead_code)]
     pub unsafe fn read_unaligned<U: Copy>(&self) -> U {
         unsafe { self.read_offset_unaligned(0) }
     }
@@ -223,7 +213,6 @@ impl ProtectGuard {
     ///
     /// # 安全性
     /// 调用者必须确保偏移量在保护范围内
-    #[allow(dead_code)]
     pub unsafe fn read_offset_unaligned<U: Copy>(&self, offset: usize) -> U {
         unsafe {
             let elem = mem::size_of::<U>();
@@ -239,7 +228,6 @@ impl ProtectGuard {
     ///
     /// # 安全性
     /// 调用者必须确保类型正确且对齐，且不会超出保护范围
-    #[allow(dead_code)]
     pub unsafe fn as_slice<U>(&self) -> &[U] {
         let elem = mem::size_of::<U>();
         assert!(elem > 0, "ZST not supported");
@@ -264,7 +252,6 @@ impl ProtectGuard {
     ///
     /// # 安全性
     /// 调用者必须确保类型正确且对齐，且不会超出保护范围
-    #[allow(dead_code)]
     pub unsafe fn as_mut_slice<U>(&mut self) -> &mut [U] {
         let elem = mem::size_of::<U>();
         assert!(elem > 0, "ZST not supported");
@@ -292,7 +279,6 @@ impl ProtectGuard {
     ///
     /// # 安全性
     /// 调用者必须确保切片长度不超过保护范围
-    #[allow(dead_code)]
     pub unsafe fn write_bytes(&self, data: &[u8]) {
         unsafe { self.write_bytes_ex(0, data, false) }
     }
@@ -305,7 +291,6 @@ impl ProtectGuard {
     ///
     /// # 安全性
     /// 调用者必须确保切片长度不超过保护范围
-    #[allow(dead_code)]
     pub unsafe fn write_bytes_offset(&self, offset: usize, data: &[u8]) {
         unsafe { self.write_bytes_ex(offset, data, false) }
     }
@@ -317,7 +302,6 @@ impl ProtectGuard {
     ///
     /// # 安全性
     /// 调用者必须确保切片长度不超过保护范围
-    #[allow(dead_code)]
     pub unsafe fn write_asm_bytes(&self, data: &[u8]) {
         unsafe { self.write_bytes_ex(0, data, true) }
     }
@@ -330,7 +314,6 @@ impl ProtectGuard {
     ///
     /// # 安全性
     /// 调用者必须确保切片长度不超过保护范围
-    #[allow(dead_code)]
     pub unsafe fn write_asm_bytes_offset(&self, offset: usize, data: &[u8]) {
         unsafe { self.write_bytes_ex(offset, data, true) }
     }
@@ -341,7 +324,6 @@ impl ProtectGuard {
     /// - `offset`: 字节偏移量
     /// - `data`: 要写入的字节切片
     /// - `asm`: 若为true，则在写入后会刷新指令缓存
-    #[allow(dead_code)]
     pub unsafe fn write_bytes_ex(&self, offset: usize, data: &[u8], asm: bool) {
         if data.is_empty() {
             return;
@@ -370,7 +352,6 @@ impl ProtectGuard {
     ///
     /// # 安全性
     /// 调用者必须确保缓冲区有效
-    #[allow(dead_code)]
     pub unsafe fn read_bytes(&self, buffer: &mut [u8]) -> usize {
         unsafe { self.read_bytes_offset(0, buffer) }
     }
@@ -386,7 +367,6 @@ impl ProtectGuard {
     ///
     /// # 安全性
     /// 调用者必须确保偏移量和缓冲区有效
-    #[allow(dead_code)]
     pub unsafe fn read_bytes_offset(&self, offset: usize, buffer: &mut [u8]) -> usize {
         if buffer.is_empty() {
             return 0;

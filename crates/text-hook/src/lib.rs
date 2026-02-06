@@ -1,10 +1,14 @@
 #![crate_type = "cdylib"]
 
+pub use error_handling::{Error, Result};
+
 pub(crate) mod debug_output;
 pub(crate) mod hook;
 
 #[allow(dead_code)]
 pub(crate) mod code_cvt;
+#[allow(dead_code)]
+pub(crate) mod error_handling;
 #[allow(dead_code)]
 pub(crate) mod mapping;
 #[allow(dead_code)]

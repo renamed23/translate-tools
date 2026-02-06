@@ -9,10 +9,7 @@ pub struct RainmemoryHook;
 
 impl CoreHook for RainmemoryHook {
     fn on_process_attach(_hinst_dll: HMODULE) {
-        let Some(handle) = crate::utils::win32::get_module_handle("") else {
-            debug!("get_module_handle failed");
-            return;
-        };
+        let handle = crate::utils::win32::get_module_handle("").unwrap();
 
         debug!("patch {handle:p}");
 

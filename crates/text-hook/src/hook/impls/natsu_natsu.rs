@@ -19,10 +19,7 @@ impl CoreHook for NatsuNatsuHook {
                 Box::leak(Box::<[u8]>::new_zeroed_slice(ARG_CHARS_SIZE)).as_ptr() as usize
         };
 
-        let Some(handle) = crate::utils::win32::get_module_handle("") else {
-            debug!("get_module_handle failed");
-            return;
-        };
+        let handle = crate::utils::win32::get_module_handle("").unwrap();
 
         let module_addr = handle as *mut u8;
 

@@ -135,7 +135,6 @@ natsu_natsu = ["export_default_dll_main", "enum_font_families", "text_hook"]
 [dependencies]
 translate-macros.workspace = true
 translate-utils.workspace = true
-anyhow.workspace = true
 once_cell.workspace = true
 serde.workspace = true
 serde_json.workspace = true

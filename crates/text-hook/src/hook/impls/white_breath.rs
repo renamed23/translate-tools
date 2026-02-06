@@ -5,10 +5,8 @@ use crate::debug;
 #[ffi_catch_unwind]
 #[unsafe(no_mangle)]
 pub unsafe extern "system" fn patch_asm() {
-    let Some(handle) = crate::utils::win32::get_module_handle("system.unt") else {
-        debug!("get_module_handle failed");
-        return;
-    };
+    let handle = crate::utils::win32::get_module_handle("system.unt").unwrap();
+
     debug!("patch {handle:p}");
 
     let module_addr = handle as *mut u8;
@@ -21,7 +19,7 @@ pub unsafe extern "system" fn patch_asm() {
         )
         .unwrap();
 
-        let code_buf = crate::utils::mem::patch::create_trampoline_32(
+        let code_buf = crate::utils::mem::patch::generate_trampoline_stub_32(
             replace_script as *const () as _,
             // mov eax,[esp+28]; push eax
             &byte_slice!("8B 44 24 28 50"),

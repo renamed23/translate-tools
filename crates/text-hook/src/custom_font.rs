@@ -3,7 +3,7 @@ use windows_sys::Win32::{
     Graphics::Gdi::{AddFontMemResourceEx, RemoveFontMemResourceEx},
 };
 
-use crate::{debug, print_last_error_message};
+use crate::print_last_error_message;
 
 translate_macros::flate!(
     static CUSTOM_FONT: [u8] from "assets\\font"
@@ -16,15 +16,14 @@ pub fn get_font_data() -> &'static [u8] {
 
 static mut FONT_HANDLE: Option<HANDLE> = None;
 
-/// 将内嵌字体添加到系统中，返回字体句柄（u32）。
+/// 将内嵌字体添加到系统中，返回字体句柄。
 /// 如果已经添加过，则返回之前的句柄。
-/// 如果添加失败，返回`None`
-///
+/// 如果添加失败，返回`Err`
 /// 注意该函数应该只在DLL attach的时候才调用
-pub unsafe fn add_font() -> Option<u32> {
+pub unsafe fn add_font() -> crate::Result<usize> {
     unsafe {
         if let Some(handle) = FONT_HANDLE {
-            return Some(handle as u32);
+            return Ok(handle as usize);
         }
 
         let font_data = get_font_data();
@@ -39,34 +38,32 @@ pub unsafe fn add_font() -> Option<u32> {
         );
 
         if handle.is_null() {
-            debug!("AddFontMemResourceEx failed");
             print_last_error_message!();
-            None
+            crate::bail!("AddFontMemResourceEx failed");
         } else {
             FONT_HANDLE = Some(handle);
-            Some(handle as u32)
+            Ok(handle as usize)
         }
     }
 }
 
 /// 从系统中移除已添加的内嵌字体。
-/// 如果尚未添加或移除失败，返回`false`。
+/// 如果尚未添加，返回`false`。
 /// 移除成功会清空内部句柄缓存。
 ///
 /// 注意该函数应该只在DLL detach时才调用
-pub unsafe fn remove_font() -> bool {
+pub unsafe fn remove_font() -> crate::Result<bool> {
     unsafe {
         if let Some(handle) = FONT_HANDLE {
-            let ok = RemoveFontMemResourceEx(handle) != 0;
-            if ok {
-                FONT_HANDLE = None;
+            FONT_HANDLE = None;
+            if RemoveFontMemResourceEx(handle) != 0 {
+                Ok(true)
             } else {
-                debug!("RemoveFontMemResourceEx failed");
+                crate::bail!("RemoveFontMemResourceEx failed");
             }
-            ok
         } else {
             // 未添加，无需移除
-            false
+            Ok(false)
         }
     }
 }

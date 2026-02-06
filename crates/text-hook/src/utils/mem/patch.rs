@@ -2,13 +2,13 @@ use translate_macros::byte_slice;
 use windows_sys::Win32::System::{
     Diagnostics::Debug::FlushInstructionCache,
     Memory::{PAGE_EXECUTE_READWRITE, PAGE_READWRITE},
+    SystemServices::{IMAGE_DOS_HEADER, IMAGE_DOS_SIGNATURE, IMAGE_NT_SIGNATURE},
     Threading::GetCurrentProcess,
 };
 
 use crate::utils::mem::protect_guard::ProtectGuard;
 
 /// 刷新指令缓存（在修改代码段字节后必须调用）
-#[allow(dead_code)]
 pub fn flush_icache(addr: *const u8, size: usize) {
     unsafe {
         let _ = FlushInstructionCache(GetCurrentProcess(), addr as _, size as _);
@@ -16,10 +16,9 @@ pub fn flush_icache(addr: *const u8, size: usize) {
 }
 
 /// 写入汇编字节到指定地址，自动处理内存保护和指令缓存刷新
-#[allow(dead_code)]
-pub fn write_asm(address: *mut u8, data: &[u8]) -> anyhow::Result<()> {
+pub fn write_asm(address: *mut u8, data: &[u8]) -> crate::Result<()> {
     if address.is_null() {
-        anyhow::bail!("address is null");
+        crate::bail!("address is null");
     }
     if data.is_empty() {
         return Ok(());
@@ -33,10 +32,9 @@ pub fn write_asm(address: *mut u8, data: &[u8]) -> anyhow::Result<()> {
 }
 
 /// 写入字节到指定地址，自动处理内存保护
-#[allow(dead_code)]
-pub fn write_bytes(address: *mut u8, data: &[u8]) -> anyhow::Result<()> {
+pub fn write_bytes(address: *mut u8, data: &[u8]) -> crate::Result<()> {
     if address.is_null() {
-        anyhow::bail!("address is null");
+        crate::bail!("address is null");
     }
     if data.is_empty() {
         return Ok(());
@@ -49,7 +47,7 @@ pub fn write_bytes(address: *mut u8, data: &[u8]) -> anyhow::Result<()> {
     Ok(())
 }
 
-/// 创建一个32位的汇编跳板代码
+/// 生成一个32位的汇编跳板代码的缓冲区
 ///
 /// # 参数
 /// - `target_fn_addr`: 目标函数地址
@@ -58,8 +56,11 @@ pub fn write_bytes(address: *mut u8, data: &[u8]) -> anyhow::Result<()> {
 ///
 /// # 返回
 /// - 返回包含跳板代码的字节向量
-#[allow(dead_code)]
-pub fn create_trampoline_32(target_fn_addr: usize, pre_asm: &[u8], post_asm: &[u8]) -> Vec<u8> {
+pub fn generate_trampoline_stub_32(
+    target_fn_addr: usize,
+    pre_asm: &[u8],
+    post_asm: &[u8],
+) -> Vec<u8> {
     let mut code_buf: Vec<u8> = Vec::with_capacity(32);
 
     // pushad; pushfd;
@@ -79,13 +80,12 @@ pub fn create_trampoline_32(target_fn_addr: usize, pre_asm: &[u8], post_asm: &[u
     code_buf
 }
 
-/// 解析可修补的32位地址，处理短跳转指令链(最多8次跳转)
+/// 解析可修补的地址，处理短跳转指令链(最多8次跳转)
 ///
 /// 这个函数用于解析可能包含跳转指令的地址，通过跟随相对短跳转(0xEB)指令，
 /// 找到最终的跳转目标地址。这在inline hook中特别有用，
 /// 因为短跳转的字节长度太小会导致inline hook失败
-#[allow(dead_code)]
-pub unsafe fn resolve_patchable_addr_32(mut addr: usize) -> usize {
+pub unsafe fn resolve_patchable_addr(mut addr: usize) -> crate::Result<usize> {
     // 防止无限循环
     const MAX_FOLLOW: usize = 8;
 
@@ -100,12 +100,12 @@ pub unsafe fn resolve_patchable_addr_32(mut addr: usize) -> usize {
                 continue;
             }
             _ => {
-                break;
+                return Ok(addr);
             }
         }
     }
 
-    addr
+    crate::bail!("Too many jumps followed when resolving patchable address");
 }
 
 /// 在指定地址写入32位相对跳转指令（E9 jmp）
@@ -120,7 +120,7 @@ pub unsafe fn resolve_patchable_addr_32(mut addr: usize) -> usize {
 ///
 /// # 返回值
 ///
-/// 返回`anyhow::Result<()>`，成功时返回`Ok(())`，失败时返回错误信息。
+/// 返回`crate::Result<()>`，成功时返回`Ok(())`。
 ///
 /// # 错误
 ///
@@ -128,7 +128,7 @@ pub unsafe fn resolve_patchable_addr_32(mut addr: usize) -> usize {
 pub unsafe fn write_jmp_instruction(
     patch_address: *mut u8,
     target_function: *const u8,
-) -> anyhow::Result<()> {
+) -> crate::Result<()> {
     let next = unsafe { patch_address.add(5) } as isize;
     let target = target_function as isize;
 
@@ -136,7 +136,7 @@ pub unsafe fn write_jmp_instruction(
 
     // 验证偏移量范围
     let rel32 = i32::try_from(offset).map_err(|_| {
-        anyhow::anyhow!(
+        crate::anyhow!(
             "rel32 out of range: target={:#x}, next={:#x}, diff={:#x}",
             target as usize,
             next as usize,
@@ -150,4 +150,52 @@ pub unsafe fn write_jmp_instruction(
     opcode[1..5].copy_from_slice(&rel32.to_le_bytes());
 
     write_asm(patch_address, &opcode)
+}
+
+#[cfg(target_pointer_width = "32")]
+use windows_sys::Win32::System::Diagnostics::Debug::IMAGE_NT_HEADERS32 as IMAGE_NT_HEADERS;
+
+#[cfg(target_pointer_width = "64")]
+use windows_sys::Win32::System::Diagnostics::Debug::IMAGE_NT_HEADERS64 as IMAGE_NT_HEADERS;
+
+/// 获取目标模块的DOS头和NT头
+pub unsafe fn get_dos_and_nt_headers(
+    module_base: usize,
+) -> crate::Result<(&'static IMAGE_DOS_HEADER, &'static IMAGE_NT_HEADERS)> {
+    let dos = unsafe { &*(module_base as *const IMAGE_DOS_HEADER) };
+
+    if dos.e_magic != IMAGE_DOS_SIGNATURE {
+        crate::bail!(
+            "Invalid DOS signature: expected 0x5A4D, found 0x{:X}",
+            dos.e_magic
+        );
+    }
+
+    let nt = unsafe { &*((module_base + dos.e_lfanew as usize) as *const IMAGE_NT_HEADERS) };
+
+    if nt.Signature != IMAGE_NT_SIGNATURE {
+        crate::bail!(
+            "Invalid NT signature: expected 0x00004550, found 0x{:X}",
+            nt.Signature
+        );
+    }
+
+    Ok((dos, nt))
+}
+
+/// 获取当前模块（可执行文件）的入口点地址（Entry Point）
+pub unsafe fn get_entry_point_addr() -> crate::Result<usize> {
+    let h_module = crate::utils::win32::get_module_handle("")? as usize;
+
+    unsafe {
+        let (_, nt_headers) = get_dos_and_nt_headers(h_module)?;
+
+        // 计算入口点：基址 + 偏移 (RVA)
+        let rva = nt_headers.OptionalHeader.AddressOfEntryPoint;
+        if rva == 0 {
+            crate::bail!("Entry point RVA is 0");
+        }
+
+        Ok(h_module + rva as usize)
+    }
 }

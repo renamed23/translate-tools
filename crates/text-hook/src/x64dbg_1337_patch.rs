@@ -6,7 +6,7 @@ mod patch_from_1337 {
 
 /// 应用1337文件的补丁数据，会对指定的模块进行写入字节；
 /// 目前还不支持恢复数据
-pub fn apply() -> anyhow::Result<()> {
+pub fn apply() -> crate::Result<()> {
     debug!("Start 1337 patch...");
     patch_from_1337::apply()
 }

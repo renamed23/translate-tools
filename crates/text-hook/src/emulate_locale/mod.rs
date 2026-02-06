@@ -22,11 +22,10 @@ unsafe fn set_process_nls_tables(
     ansi_file: &str,
     oem_file: &str,
     lang_file: &str,
-) -> anyhow::Result<()> {
+) -> crate::Result<()> {
     let (ansi_buf, oem_buf, lang_buf) = with_wow64_redirection_disabled(|| {
-        let sysdir = crate::utils::win32::get_system_directory()
-            .ok_or_else(|| anyhow::anyhow!("Get system directory fails"))?;
-        anyhow::Ok((
+        let sysdir = crate::utils::win32::get_system_directory()?;
+        Ok::<_, crate::Error>((
             std::fs::read(format!("{}\\{}", sysdir, ansi_file))?,
             std::fs::read(format!("{}\\{}", sysdir, oem_file))?,
             std::fs::read(format!("{}\\{}", sysdir, lang_file))?,
@@ -49,7 +48,7 @@ unsafe fn set_process_nls_tables(
 
         if mem.is_null() {
             print_last_error_message!();
-            anyhow::bail!("VirtualAlloc failed");
+            crate::bail!("VirtualAlloc failed");
         }
 
         let base = mem as *mut u8;
@@ -70,7 +69,7 @@ unsafe fn set_process_nls_tables(
         let mut old_prot: u32 = 0;
         if VirtualProtect(mem, total, PAGE_READONLY, &mut old_prot) == 0 {
             print_last_error_message!();
-            anyhow::bail!("VirtualProtect failed");
+            crate::bail!("VirtualProtect failed");
         }
 
         let ansi_ptr = base as *mut u16;
@@ -86,9 +85,7 @@ unsafe fn set_process_nls_tables(
         RtlResetRtlTranslations(&mut table_info);
 
         // 获取当前进程的PEB并更新代码页数据指针
-        let Some(peb) = crate::utils::nt::get_current_peb() else {
-            anyhow::bail!("get_current_peb fails");
-        };
+        let peb = crate::utils::nt::get_current_peb()?;
 
         let peb_ref = &mut *peb;
 
@@ -100,7 +97,7 @@ unsafe fn set_process_nls_tables(
     Ok(())
 }
 
-fn get_nls_filename_from_registry() -> anyhow::Result<String> {
+fn get_nls_filename_from_registry() -> crate::Result<String> {
     let mut hkey: HKEY = core::ptr::null_mut();
 
     let result = unsafe {
@@ -115,7 +112,7 @@ fn get_nls_filename_from_registry() -> anyhow::Result<String> {
 
     if result != 0 {
         print_last_error_message!();
-        anyhow::bail!("Failed to open registry key");
+        crate::bail!("Failed to open registry key");
     }
 
     defer!(unsafe {
@@ -139,11 +136,11 @@ fn get_nls_filename_from_registry() -> anyhow::Result<String> {
 
     if query_result != 0 {
         print_last_error_message!();
-        anyhow::bail!("Failed to query registry value");
+        crate::bail!("Failed to query registry value");
     }
 
     if data_type != REG_SZ {
-        anyhow::bail!("Registry value is not a string type");
+        crate::bail!("Registry value is not a string type");
     }
 
     Ok(String::from_utf16_lossy(unsafe {
@@ -158,15 +155,15 @@ pub fn set_japanese_locale() {
 
     let ansi_file = match get_nls_filename_from_registry() {
         Ok(filename) => filename,
-        Err(e) => {
-            debug!("Failed to get NLS filename from registry: {e}, using default");
+        Err(_) => {
+            debug!("Failed to get NLS filename from registry, using default");
             "C_932.NLS".to_string()
         }
     };
 
     unsafe {
-        if let Err(e) = set_process_nls_tables(&ansi_file, &ansi_file, "l_intl.nls") {
-            debug!("init nls fails with {e}");
+        if set_process_nls_tables(&ansi_file, &ansi_file, "l_intl.nls").is_err() {
+            debug!("Init nls failed");
         }
     }
 }

@@ -206,8 +206,7 @@ pub fn generate_patch_fn_from_1337(input: TokenStream) -> syn::Result<TokenStrea
 
         module_patches_ts.push(quote! {
             // Patch模块: #module
-            let module_base = #module_handle_expr
-                .ok_or_else(|| anyhow::anyhow!("Cannot get module handle '{}'", #module))? as usize;
+            let module_base = #module_handle_expr? as usize;
             #(#patch_stmts)*
         });
     }
@@ -215,7 +214,7 @@ pub fn generate_patch_fn_from_1337(input: TokenStream) -> syn::Result<TokenStrea
     let fn_ident = &input.fn_ident;
 
     let output = quote! {
-        #vis_ts fn #fn_ident() -> anyhow::Result<()> {
+        #vis_ts fn #fn_ident() -> crate::Result<()> {
             #(#module_patches_ts)*
             Ok(())
         }

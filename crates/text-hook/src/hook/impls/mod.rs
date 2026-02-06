@@ -50,12 +50,14 @@ pub fn default_dll_main(
 
             #[cfg(feature = "custom_font")]
             unsafe {
-                crate::custom_font::add_font();
+                if crate::custom_font::add_font().is_err() {
+                    crate::debug!("add_font failed");
+                }
             }
 
             #[cfg(feature = "apply_1337_patch_on_attach")]
-            if let Err(e) = crate::x64dbg_1337_patch::apply() {
-                crate::debug!("1337 patch fails: {e}");
+            if crate::x64dbg_1337_patch::apply().is_err() {
+                crate::debug!("Apply 1337 patch failed");
             }
 
             #[cfg(not(feature = "delayed_attach"))]
@@ -75,7 +77,9 @@ pub fn default_dll_main(
 
             #[cfg(feature = "custom_font")]
             unsafe {
-                crate::custom_font::remove_font();
+                if crate::custom_font::remove_font().is_err() {
+                    crate::debug!("remove_font failed");
+                }
             }
 
             HookImplType::disable_hooks();

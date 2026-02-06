@@ -3,15 +3,15 @@ use ntapi::ntpsapi::PROCESS_BASIC_INFORMATION;
 use ntapi::ntpsapi::{NtQueryInformationProcess, ProcessBasicInformation};
 use windows_sys::Win32::System::Threading::GetCurrentProcess;
 
-use crate::{debug, print_last_error_message};
+use crate::print_last_error_message;
 
 /// 通过 `NtQueryInformationProcess` 系统调用获取当前进程的 PEB（进程环境块）地址
 ///
 /// # 返回
 ///
-/// - `Some(*mut PEB)` - 成功获取 PEB 基地址，返回指向 PEB 结构的可变指针(保证不为null)
-/// - `None` - 查询失败
-pub unsafe fn get_current_peb() -> Option<*mut PEB> {
+/// - `Ok(*mut PEB)` - 成功获取 PEB 基地址，返回指向 PEB 结构的可变指针(保证不为null)
+/// - `Err` - 查询失败
+pub unsafe fn get_current_peb() -> crate::Result<*mut PEB> {
     let mut pbi: PROCESS_BASIC_INFORMATION = unsafe { core::mem::zeroed() };
     let status = unsafe {
         NtQueryInformationProcess(
@@ -25,13 +25,15 @@ pub unsafe fn get_current_peb() -> Option<*mut PEB> {
 
     if status < 0 {
         print_last_error_message!(nt status);
-        return None;
+        crate::bail!(
+            "NtQueryInformationProcess failed with status 0x{:X}",
+            status
+        );
     }
 
     if pbi.PebBaseAddress.is_null() {
-        debug!("Error: pbi.PebBaseAddress is null");
-        return None;
+        crate::bail!("PEB base address is null");
     }
 
-    Some(pbi.PebBaseAddress)
+    Ok(pbi.PebBaseAddress)
 }

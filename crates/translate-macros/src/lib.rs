@@ -705,7 +705,7 @@ pub fn generated_text_patch_data(input: TokenStream) -> TokenStream {
 /// - 空行：自动忽略
 ///
 /// # 生成内容
-/// 宏展开后会生成一个返回 `anyhow::Result<()>` 的函数，该函数：
+/// 宏展开后会生成一个返回 `crate::Result<()>` 的函数，该函数：
 /// - 自动获取各模块的基址（主模块使用空字符串获取）
 /// - 按模块分组并应用所有补丁
 /// - 自动合并连续地址的补丁以优化内存写入操作
@@ -734,7 +734,7 @@ pub fn generated_text_patch_data(input: TokenStream) -> TokenStream {
 /// }
 ///
 /// // 在main函数中调用
-/// fn main() -> anyhow::Result<()> {
+/// fn main() -> crate::Result<()> {
 ///     apply_game_patches()?;
 ///     Ok(())
 /// }
@@ -742,10 +742,9 @@ pub fn generated_text_patch_data(input: TokenStream) -> TokenStream {
 ///
 /// ## 生成的代码大致如下
 /// ```ignore
-/// pub fn apply_game_patches() -> anyhow::Result<()> {
+/// pub fn apply_game_patches() -> crate::Result<()> {
 ///     // Patch模块: MyGame.exe
-///     let module_base = crate::utils::win32::get_module_handle("")
-///         .ok_or_else(|| anyhow::anyhow!("Cannot get module handle ''"))? as usize;
+///     let module_base = crate::utils::win32::get_module_handle("")? as usize;
 ///     let target_addr = module_base.wrapping_add(0x140001000 as usize);
 ///     let data: &[u8] = &[0xEB, 0x90, 0x90];
 ///     crate::utils::mem::patch::write_asm(target_addr as *mut u8, data)?;

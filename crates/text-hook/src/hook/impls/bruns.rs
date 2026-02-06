@@ -2,7 +2,7 @@ use translate_macros::{DefaultHook, byte_slice, ffi_catch_unwind};
 use windows_sys::Win32::Foundation::HMODULE;
 
 use crate::hook::traits::CoreHook;
-use crate::utils::mem::patch::{create_trampoline_32, write_asm, write_bytes};
+use crate::utils::mem::patch::{generate_trampoline_stub_32, write_asm, write_bytes};
 use crate::{constant, debug};
 
 #[derive(DefaultHook)]
@@ -15,10 +15,7 @@ impl CoreHook for BrunsHook {
 }
 
 fn patch_v1() {
-    let Some(handle) = crate::utils::win32::get_module_handle("libscr.dll") else {
-        debug!("get_module_handle failed");
-        return;
-    };
+    let handle = crate::utils::win32::get_module_handle("libscr.dll").unwrap();
     let module_addr = handle as *mut u8;
 
     // 改路径常量字符，让游戏找不到位图字体文件，并跳过错误报告;
@@ -64,10 +61,7 @@ fn patch_v1() {
 }
 
 fn patch_v2() {
-    let Some(handle) = crate::utils::win32::get_module_handle("libscr.dll") else {
-        debug!("get_module_handle failed");
-        return;
-    };
+    let handle = crate::utils::win32::get_module_handle("libscr.dll").unwrap();
     let module_addr = handle as *mut u8;
 
     unsafe {
@@ -110,10 +104,7 @@ fn patch_v2() {
 }
 
 fn patch_nerbor() {
-    let Some(handle) = crate::utils::win32::get_module_handle("") else {
-        debug!("get_module_handle failed");
-        return;
-    };
+    let handle = crate::utils::win32::get_module_handle("libscr.dll").unwrap();
     let module_addr = handle as *mut u8;
 
     unsafe {
@@ -145,7 +136,7 @@ fn patch_nerbor() {
         // jmp exe.132F90;
         write_asm(module_addr.add(0x11FD1B), &byte_slice!("E9 70 32 01 00")).unwrap();
 
-        let code_buf = create_trampoline_32(
+        let code_buf = generate_trampoline_stub_32(
             crate::patch::process_buffer_ffi as _,
             // mov eax,[esp+0x48]; movebx,[esp+0x70]; push eax; push ebx;
             &byte_slice!("8B 44 24 48 8B 5C 24 70 50 53"),

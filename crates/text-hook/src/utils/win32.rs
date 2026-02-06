@@ -4,13 +4,11 @@ use windows_sys::{
         Foundation::HMODULE,
         Storage::FileSystem::{Wow64DisableWow64FsRedirection, Wow64RevertWow64FsRedirection},
         System::{
-            LibraryLoader::{GetModuleHandleW, GetProcAddress, LoadLibraryW},
-            SystemInformation::GetSystemDirectoryW,
+            LibraryLoader::{GetModuleHandleW, GetProcAddress, LoadLibraryW}, SystemInformation::GetSystemDirectoryW,
         },
         UI::WindowsAndMessaging::{
-        CB_ADDSTRING, CB_INSERTSTRING, CB_FINDSTRING, CB_FINDSTRINGEXACT, CB_SELECTSTRING,
-        CB_GETLBTEXT, LB_ADDSTRING, LB_INSERTSTRING, LB_FINDSTRING, LB_FINDSTRINGEXACT,
-        LB_SELECTSTRING, LB_GETTEXT,
+        CB_ADDSTRING, CB_FINDSTRING, CB_FINDSTRINGEXACT, CB_GETLBTEXT, CB_INSERTSTRING, CB_SELECTSTRING, 
+        LB_ADDSTRING, LB_FINDSTRING, LB_FINDSTRINGEXACT, LB_GETTEXT, LB_INSERTSTRING, LB_SELECTSTRING
     },
     },
     core::PCSTR,
@@ -20,11 +18,10 @@ use crate::{constant, print_last_error_message};
 
 /// 获取模块句柄的包装函数
 /// 当module_name为空字符串时，获取当前进程的模块句柄
-#[allow(dead_code)]
-pub fn get_module_handle(module_name: &str) -> Option<HMODULE> {
+pub fn get_module_handle(module_name: &str) -> crate::Result<HMODULE> {
     if module_name.is_empty() {
         // 空字符串表示获取当前进程的句柄
-        unsafe { Some(GetModuleHandleW(core::ptr::null())) }
+        unsafe { Ok(GetModuleHandleW(core::ptr::null())) }
     } else {
         // 转换为UTF-16并调用GetModuleHandleW
         let module_wide: Vec<u16> = module_name
@@ -36,60 +33,58 @@ pub fn get_module_handle(module_name: &str) -> Option<HMODULE> {
             let handle = GetModuleHandleW(module_wide.as_ptr());
             if handle.is_null() {
                 print_last_error_message!();
-                None
+                crate::bail!("GetModuleHandleW for {:?} failed", module_name);
             } else {
-                Some(handle)
+                Ok(handle)
             }
         }
     }
 }
 
 /// 获取指定模块中单个符号的地址
-#[allow(dead_code)]
-pub fn get_module_symbol_addr(module: &str, symbol: PCSTR) -> Option<usize> {
+pub fn get_module_symbol_addr(module: &str, symbol: PCSTR) ->crate::Result<usize> {
     let handle = get_module_handle(module)?;
     get_module_symbol_addr_from_handle(handle, symbol)
 }
 
 /// 获取指定模块中多个符号的地址，只有所有符号地址全部找到才返回Some
-#[allow(dead_code)]
-pub fn get_module_symbol_addrs(module: &str, symbols: &[PCSTR]) -> Option<Vec<usize>> {
+pub fn get_module_symbol_addrs(module: &str, symbols: &[PCSTR]) -> crate::Result<Vec<usize>> {
     let handle = get_module_handle(module)?;
     get_module_symbol_addrs_from_handle(handle, symbols)
 }
 
 /// 从模块句柄获取单个符号的地址
-#[allow(dead_code)]
-pub fn get_module_symbol_addr_from_handle(module: HMODULE, symbol: PCSTR) -> Option<usize> {
-    Some(get_module_symbol_addrs_from_handle(module, &[symbol])?[0])
+pub fn get_module_symbol_addr_from_handle(module: HMODULE, symbol: PCSTR) -> crate::Result<usize> {
+    Ok(get_module_symbol_addrs_from_handle(module, &[symbol])?[0])
 }
 
 /// 从模块句柄获取多个符号的地址，只有所有符号地址全部找到才返回Some
-#[allow(dead_code)]
 pub fn get_module_symbol_addrs_from_handle(
     module: HMODULE,
     symbols: &[PCSTR],
-) -> Option<Vec<usize>> {
+) -> crate::Result<Vec<usize>> {
     let mut addrs = Vec::with_capacity(symbols.len());
 
     unsafe {
         for &sym in symbols {
-            let func = GetProcAddress(module, sym)?;
+            let func = GetProcAddress(module, sym).ok_or_else(|| {
+                print_last_error_message!();
+                crate::anyhow!("GetProcAddress for {:?} failed", sym)
+            })?;
             addrs.push(func as usize);
         }
     }
 
-    Some(addrs)
+    Ok(addrs)
 }
 
 /// 获取系统目录的路径，若失败返回None
-#[allow(dead_code)]
-pub fn get_system_directory() -> Option<String> {
+pub fn get_system_directory() -> crate::Result<String> {
     // 获取系统目录缓冲区大小
     let size = unsafe { GetSystemDirectoryW(core::ptr::null_mut(), 0) };
     if size == 0 {
         print_last_error_message!();
-        return None;
+        crate::bail!("GetSystemDirectoryW failed to get buffer size");
     }
 
     // 分配缓冲区并获取系统目录路径
@@ -97,7 +92,8 @@ pub fn get_system_directory() -> Option<String> {
     let actual_size = unsafe { GetSystemDirectoryW(system_dir.as_mut_ptr(), size) };
 
     if actual_size == 0 || actual_size >= size {
-        return None;
+        print_last_error_message!();
+        crate::bail!("GetSystemDirectoryW failed to get directory path");
     }
 
     // 设置缓冲区实际长度
@@ -105,19 +101,18 @@ pub fn get_system_directory() -> Option<String> {
         system_dir.set_len(actual_size as usize);
     }
 
-    String::from_utf16(&system_dir).ok()
+    Ok(String::from_utf16(&system_dir)?)
 }
 
-/// 根据路径加载指定DLL，若失败返回None
-#[allow(dead_code)]
-pub fn load_library(path: &str) -> Option<HMODULE> {
+/// 根据路径加载指定DLL，若失败返回Err
+pub fn load_library(path: &str) -> crate::Result<HMODULE> {
     let path: Vec<u16> = path.encode_utf16().chain(core::iter::once(0)).collect();
     let handle = unsafe { LoadLibraryW(path.as_ptr()) };
     if handle.is_null() {
         print_last_error_message!();
-        None
+        crate::bail!("LoadLibraryW for {:?} failed", path);
     } else {
-        Some(handle)
+        Ok(handle)
     }
 }
 
@@ -131,9 +126,9 @@ pub fn load_library(path: &str) -> Option<HMODULE> {
 /// * `dll_name` - 要加载的DLL文件名（例如："kernel32.dll"）
 ///
 /// # 返回值
-/// * `Option<HMODULE>` - 成功时返回DLL模块句柄，失败时返回None
-#[allow(dead_code, clippy::const_is_empty)]
-pub fn load_hijacked_library(dll_name: &str) -> Option<HMODULE> {
+/// * `Result<HMODULE>` - 成功时返回DLL模块句柄，失败时返回Err
+#[allow(clippy::const_is_empty)]
+pub fn load_hijacked_library(dll_name: &str) -> crate::Result<HMODULE> {
     // 检查是否设置了自定义劫持路径
     if constant::HIJACKED_DLL_PATH.is_empty() {
         let system_dir = get_system_directory()?;

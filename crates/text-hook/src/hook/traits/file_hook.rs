@@ -9,8 +9,6 @@ use windows_sys::{
     core::{BOOL, PCSTR, PCWSTR},
 };
 
-use crate::debug;
-
 #[detour_trait]
 pub trait FileHook: Send + Sync + 'static {
     #[detour(
@@ -41,7 +39,7 @@ pub trait FileHook: Send + Sync + 'static {
                     .saturating_sub(REDIRECTION_SRC_PATH.len())..,
             ) && tail.eq_ignore_ascii_case(REDIRECTION_SRC_PATH.as_bytes())
             {
-                debug!(
+                crate::debug!(
                     "'{REDIRECTION_SRC_PATH}' file reading hooked, replace to '{REDIRECTION_TARGET_PATH}'"
                 );
                 let mut new_path_vec =
@@ -116,7 +114,7 @@ pub trait FileHook: Send + Sync + 'static {
             );
 
             if result == FALSE {
-                debug!("ReadFile failed");
+                crate::debug!("ReadFile failed");
                 return FALSE;
             }
 
@@ -129,7 +127,7 @@ pub trait FileHook: Send + Sync + 'static {
                 let max = n_number_of_bytes_to_read as usize;
                 core::cmp::min(bytes, max)
             } else {
-                debug!("ReadFile: lp_number_of_bytes_read is NULL");
+                crate::debug!("ReadFile: lp_number_of_bytes_read is NULL");
                 return result;
             };
 
