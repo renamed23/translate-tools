@@ -283,10 +283,7 @@ pub trait TextHook: Send + Sync + 'static {
         let buf = crate::mapping::map_wide_chars(&[u_char as u16]);
 
         #[cfg(feature = "debug_text_mapping")]
-        match String::from_utf16(&buf) {
-            Ok(result) => debug!("result: {result}"),
-            Err(e) => debug!("Convert utf16 to utf8 fails with {e}"),
-        }
+        debug!("result: {}", String::from_utf16_lossy(&buf));
 
         // 直接使用第一个UTF-16字符（假设都在BMP内，不需要代理对）
         if let Some(&wchar) = buf.first() {
