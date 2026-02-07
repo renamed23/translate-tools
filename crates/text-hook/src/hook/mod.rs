@@ -27,3 +27,18 @@ pub fn enable_hooks_from_lists() {
 pub fn disable_hooks_from_lists() {
     hook_lists::disable_hooks_from_lists();
 }
+
+#[macro_export]
+macro_rules! call {
+    ($hook:ident, $($arg:tt)*) => {{
+        #[cfg(not(feature = "iat_hook"))]
+        {
+            $hook.call($($arg)*)
+        }
+
+        #[cfg(feature = "iat_hook")]
+        {
+            $hook.orig()($($arg)*)
+        }
+    }};
+}

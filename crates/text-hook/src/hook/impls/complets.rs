@@ -46,7 +46,8 @@ unsafe extern "system" fn reg_open_key_ex_a(
             debug!("get subkey : {subkey}");
 
             if subkey.eq_ignore_ascii_case(EXPECTED) {
-                let result = HOOK_REG_OPEN_KEY_EX_A.call(
+                let result = crate::call!(
+                    HOOK_REG_OPEN_KEY_EX_A,
                     HKEY_CURRENT_USER,
                     lpsubkey,
                     uloptions,
@@ -62,7 +63,14 @@ unsafe extern "system" fn reg_open_key_ex_a(
             }
         }
 
-        HOOK_REG_OPEN_KEY_EX_A.call(hkey, lpsubkey, uloptions, samdesired, phkresult)
+        crate::call!(
+            HOOK_REG_OPEN_KEY_EX_A,
+            hkey,
+            lpsubkey,
+            uloptions,
+            samdesired,
+            phkresult
+        )
     }
 }
 
@@ -86,7 +94,8 @@ unsafe extern "system" fn reg_create_key_ex_a(
             debug!("get subkey : {subkey}");
 
             if subkey.eq_ignore_ascii_case(EXPECTED) {
-                let result = HOOK_REG_CREATE_KEY_EX_A.call(
+                let result = crate::call!(
+                    HOOK_REG_CREATE_KEY_EX_A,
                     HKEY_CURRENT_USER,
                     lpsubkey,
                     reserved,
@@ -106,7 +115,8 @@ unsafe extern "system" fn reg_create_key_ex_a(
             }
         }
 
-        HOOK_REG_CREATE_KEY_EX_A.call(
+        crate::call!(
+            HOOK_REG_CREATE_KEY_EX_A,
             hkey,
             lpsubkey,
             reserved,

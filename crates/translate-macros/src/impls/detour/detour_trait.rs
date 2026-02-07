@@ -100,9 +100,10 @@ pub fn detour_trait(_attr: TokenStream, item: TokenStream) -> syn::Result<TokenS
                         }
                     }
 
-                    // 自动生成：once_cell Lazy 的 retour detour 静态
-                    pub static #static_ident: ::once_cell::sync::Lazy<retour::GenericDetour<#fn_ty_tokens>> =
-                        ::once_cell::sync::Lazy::new(|| {
+                    // 自动生成：LazyLock 的 retour detour 静态
+                    #[cfg(not(feature = "iat_hook"))]
+                    pub static #static_ident: ::std::sync::LazyLock<retour::GenericDetour<#fn_ty_tokens>> =
+                        ::std::sync::LazyLock::new(|| {
                             crate::debug!("initialize detour: {}!{}", #dll_lit, #symbol_lit);
                             let address = crate::utils::win32::get_module_symbol_addr(
                                 ::windows_sys::w!(#dll_lit),
@@ -113,6 +114,19 @@ pub fn detour_trait(_attr: TokenStream, item: TokenStream) -> syn::Result<TokenS
                                 ::retour::GenericDetour::new(ori, #export_ident).expect(concat!("Failed to create detour for ", #symbol_lit))
                             }
                         });
+
+                    // 自动生成：LazyLock 的 IAT 静态
+                    #[cfg(feature = "iat_hook")]
+                    pub static #static_ident: ::std::sync::LazyLock<crate::utils::mem::iat::IatHook<#fn_ty_tokens>> =
+                    ::std::sync::LazyLock::new(|| {
+                        crate::debug!("initialize iat: {}!{}", #dll_lit, #symbol_lit);
+                        let address = crate::utils::win32::get_module_symbol_addr(
+                            ::windows_sys::w!(#dll_lit),
+                            ::windows_sys::s!(#symbol_lit)
+                        ).expect(concat!("symbol not found: ", #symbol_lit));
+                        crate::utils::mem::iat::IatHook::new(address, #export_ident as usize)
+                        
+                    });
                 });
         }
     }

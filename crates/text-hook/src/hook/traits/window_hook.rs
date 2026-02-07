@@ -22,7 +22,7 @@ pub trait WindowHook: Send + Sync + 'static {
             WM_NCCREATE => unsafe {
                 let params_a = l_param as *const CREATESTRUCTA;
                 if params_a.is_null() || !(*params_a).hwndParent.is_null() {
-                    return HOOK_DEF_WINDOW_PROC_A.call(h_wnd, u_msg, w_param, l_param);
+                    return crate::call!(HOOK_DEF_WINDOW_PROC_A, h_wnd, u_msg, w_param, l_param);
                 }
 
                 let mut params_w: CREATESTRUCTW = core::mem::zeroed();
@@ -60,12 +60,18 @@ pub trait WindowHook: Send + Sync + 'static {
                     debug!("Get raw class: {raw_class}, raw window title: {raw_title}");
                 }
 
-                HOOK_DEF_WINDOW_PROC_W.call(h_wnd, u_msg, w_param, &params_w as *const _ as LPARAM)
+                crate::call!(
+                    HOOK_DEF_WINDOW_PROC_W,
+                    h_wnd,
+                    u_msg,
+                    w_param,
+                    &params_w as *const _ as LPARAM
+                )
             },
             WM_SETTEXT => unsafe {
                 let text_ptr = l_param as *const u8;
                 if text_ptr.is_null() || !GetParent(h_wnd).is_null() {
-                    return HOOK_DEF_WINDOW_PROC_A.call(h_wnd, u_msg, w_param, l_param);
+                    return crate::call!(HOOK_DEF_WINDOW_PROC_A, h_wnd, u_msg, w_param, l_param);
                 }
 
                 let text_slice = crate::utils::mem::slice_until_null(text_ptr, 512);
@@ -85,9 +91,15 @@ pub trait WindowHook: Send + Sync + 'static {
                     debug!("Get raw window text: {raw_text}");
                 }
 
-                HOOK_DEF_WINDOW_PROC_W.call(h_wnd, u_msg, w_param, text.as_ptr() as LPARAM)
+                crate::call!(
+                    HOOK_DEF_WINDOW_PROC_W,
+                    h_wnd,
+                    u_msg,
+                    w_param,
+                    text.as_ptr() as LPARAM
+                )
             },
-            _ => unsafe { HOOK_DEF_WINDOW_PROC_A.call(h_wnd, u_msg, w_param, l_param) },
+            _ => unsafe { crate::call!(HOOK_DEF_WINDOW_PROC_A, h_wnd, u_msg, w_param, l_param) },
         }
     }
 
@@ -102,7 +114,7 @@ pub trait WindowHook: Send + Sync + 'static {
             WM_NCCREATE => unsafe {
                 let params_w = l_param as *const CREATESTRUCTW;
                 if params_w.is_null() || !(*params_w).hwndParent.is_null() {
-                    return HOOK_DEF_WINDOW_PROC_W.call(h_wnd, u_msg, w_param, l_param);
+                    return crate::call!(HOOK_DEF_WINDOW_PROC_W, h_wnd, u_msg, w_param, l_param);
                 }
 
                 let title_slice = crate::utils::mem::slice_until_null((*params_w).lpszName, 512);
@@ -130,17 +142,18 @@ pub trait WindowHook: Send + Sync + 'static {
 
                 modified_params.lpszName = window_title.as_ptr();
 
-                HOOK_DEF_WINDOW_PROC_W.call(
+                crate::call!(
+                    HOOK_DEF_WINDOW_PROC_W,
                     h_wnd,
                     u_msg,
                     w_param,
-                    &modified_params as *const _ as LPARAM,
+                    &modified_params as *const _ as LPARAM
                 )
             },
             WM_SETTEXT => unsafe {
                 let text_ptr = l_param as *const u16;
                 if text_ptr.is_null() || !GetParent(h_wnd).is_null() {
-                    return HOOK_DEF_WINDOW_PROC_W.call(h_wnd, u_msg, w_param, l_param);
+                    return crate::call!(HOOK_DEF_WINDOW_PROC_W, h_wnd, u_msg, w_param, l_param);
                 }
 
                 let text_slice = crate::utils::mem::slice_until_null(l_param as *const u16, 512);
@@ -157,9 +170,15 @@ pub trait WindowHook: Send + Sync + 'static {
                 #[cfg(not(feature = "override_window_title"))]
                 let text = crate::mapping::map_wide_chars_with_null(text_slice);
 
-                HOOK_DEF_WINDOW_PROC_W.call(h_wnd, u_msg, w_param, text.as_ptr() as LPARAM)
+                crate::call!(
+                    HOOK_DEF_WINDOW_PROC_W,
+                    h_wnd,
+                    u_msg,
+                    w_param,
+                    text.as_ptr() as LPARAM
+                )
             },
-            _ => unsafe { HOOK_DEF_WINDOW_PROC_W.call(h_wnd, u_msg, w_param, l_param) },
+            _ => unsafe { crate::call!(HOOK_DEF_WINDOW_PROC_W, h_wnd, u_msg, w_param, l_param) },
         }
     }
 
@@ -203,7 +222,16 @@ pub trait WindowHook: Send + Sync + 'static {
             }
         }
 
-        unsafe { HOOK_MODIFY_MENU_A.call(h_menu, u_position, u_flags, u_id_new_item, lp_new_item) }
+        unsafe {
+            crate::call!(
+                HOOK_MODIFY_MENU_A,
+                h_menu,
+                u_position,
+                u_flags,
+                u_id_new_item,
+                lp_new_item
+            )
+        }
     }
 
     #[detour(dll = "user32.dll", symbol = "MessageBoxA", fallback = "0")]
@@ -216,7 +244,7 @@ pub trait WindowHook: Send + Sync + 'static {
         #[cfg(feature = "text_patch")]
         unsafe {
             if lp_text.is_null() && lp_caption.is_null() {
-                return HOOK_MESSAGE_BOX_A.call(h_wnd, lp_text, lp_caption, u_type);
+                return crate::call!(HOOK_MESSAGE_BOX_A, h_wnd, lp_text, lp_caption, u_type);
             }
 
             let text_slice = crate::utils::mem::slice_until_null(lp_text, 2048);
@@ -265,7 +293,7 @@ pub trait WindowHook: Send + Sync + 'static {
             }
         }
 
-        unsafe { HOOK_MESSAGE_BOX_A.call(h_wnd, lp_text, lp_caption, u_type) }
+        unsafe { crate::call!(HOOK_MESSAGE_BOX_A, h_wnd, lp_text, lp_caption, u_type) }
     }
 
     #[detour(dll = "user32.dll", symbol = "SetDlgItemTextA", fallback = "0")]
@@ -273,7 +301,7 @@ pub trait WindowHook: Send + Sync + 'static {
         #[cfg(feature = "text_patch")]
         unsafe {
             if lp_string.is_null() {
-                return HOOK_SET_DLG_ITEM_TEXT_A.call(h_dlg, n_id_dlg_item, lp_string);
+                return crate::call!(HOOK_SET_DLG_ITEM_TEXT_A, h_dlg, n_id_dlg_item, lp_string);
             }
 
             let text_slice = crate::utils::mem::slice_until_null(lp_string, 1024);
@@ -295,7 +323,7 @@ pub trait WindowHook: Send + Sync + 'static {
             }
         }
 
-        unsafe { HOOK_SET_DLG_ITEM_TEXT_A.call(h_dlg, n_id_dlg_item, lp_string) }
+        unsafe { crate::call!(HOOK_SET_DLG_ITEM_TEXT_A, h_dlg, n_id_dlg_item, lp_string) }
     }
 
     #[detour(dll = "user32.dll", symbol = "SetWindowTextA", fallback = "0")]
@@ -303,7 +331,7 @@ pub trait WindowHook: Send + Sync + 'static {
         #[cfg(feature = "text_patch")]
         unsafe {
             if lp_string.is_null() {
-                return HOOK_SET_WINDOW_TEXT_A.call(h_wnd, lp_string);
+                return crate::call!(HOOK_SET_WINDOW_TEXT_A, h_wnd, lp_string);
             }
 
             let text_slice = crate::utils::mem::slice_until_null(lp_string, 1024);
@@ -325,7 +353,7 @@ pub trait WindowHook: Send + Sync + 'static {
             }
         }
 
-        unsafe { HOOK_SET_WINDOW_TEXT_A.call(h_wnd, lp_string) }
+        unsafe { crate::call!(HOOK_SET_WINDOW_TEXT_A, h_wnd, lp_string) }
     }
 
     #[detour(dll = "user32.dll", symbol = "SendMessageA", fallback = "0")]
@@ -353,7 +381,7 @@ pub trait WindowHook: Send + Sync + 'static {
                 }
             }
         }
-        unsafe { HOOK_SEND_MESSAGE_A.call(h_wnd, msg, w_param, l_param) }
+        unsafe { crate::call!(HOOK_SEND_MESSAGE_A, h_wnd, msg, w_param, l_param) }
     }
 
     #[detour(dll = "comctl32.dll", symbol = "PropertySheetA", fallback = "0")]
@@ -365,13 +393,13 @@ pub trait WindowHook: Send + Sync + 'static {
             use windows_sys::Win32::UI::Controls::PROPSHEETHEADERA_V2;
 
             if ppsh.is_null() {
-                return HOOK_PROPERTY_SHEET_A.call(ppsh);
+                return crate::call!(HOOK_PROPERTY_SHEET_A, ppsh);
             }
 
             let header = &*ppsh;
 
             if header.pszCaption.is_null() {
-                return HOOK_PROPERTY_SHEET_A.call(ppsh);
+                return crate::call!(HOOK_PROPERTY_SHEET_A, ppsh);
             }
 
             let caption_slice = crate::utils::mem::slice_until_null(header.pszCaption, 1024);
@@ -399,10 +427,13 @@ pub trait WindowHook: Send + Sync + 'static {
 
                 (*new_hdr_ptr).pszCaption = trans.as_ptr();
 
-                return HOOK_PROPERTY_SHEET_A.call(new_hdr_ptr as *const PROPSHEETHEADERA_V2);
+                return crate::call!(
+                    HOOK_PROPERTY_SHEET_A,
+                    new_hdr_ptr as *const PROPSHEETHEADERA_V2
+                );
             }
         }
 
-        unsafe { HOOK_PROPERTY_SHEET_A.call(ppsh) }
+        unsafe { crate::call!(HOOK_PROPERTY_SHEET_A, ppsh) }
     }
 }

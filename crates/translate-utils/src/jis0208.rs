@@ -1,5 +1,5 @@
-use once_cell::sync::Lazy;
 use std::collections::HashSet;
+use std::sync::LazyLock;
 
 // 通过 https://www.unicode.org/Public/MAPPINGS/OBSOLETE/EASTASIA/JIS/JIS0208.TXT 生成
 #[allow(clippy::unreadable_literal)]
@@ -580,7 +580,7 @@ static JIS0208_CODEPOINTS: [u32; 6878] = [
     0xFFE3, 0xFFE5,
 ];
 
-static JIS0208_CHARS: Lazy<HashSet<char>> = Lazy::new(|| {
+static JIS0208_CHARS: LazyLock<HashSet<char>> = LazyLock::new(|| {
     let mut set = HashSet::with_capacity(6879);
     for &cp in JIS0208_CODEPOINTS.iter() {
         if let Some(ch) = std::char::from_u32(cp) {

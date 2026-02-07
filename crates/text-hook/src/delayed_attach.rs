@@ -1,10 +1,12 @@
-use once_cell::sync::Lazy;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{
+    LazyLock,
+    atomic::{AtomicBool, Ordering},
+};
 
 use crate::{debug, hook::traits::CoreHook};
 
-static HOOK_ENTRY_POINT: Lazy<retour::GenericDetour<unsafe extern "C" fn()>> =
-    Lazy::new(|| unsafe {
+static HOOK_ENTRY_POINT: LazyLock<retour::GenericDetour<unsafe extern "C" fn()>> =
+    LazyLock::new(|| unsafe {
         let entry_point_addr =
             crate::utils::mem::patch::get_entry_point_addr().expect("Get entry point addr failed");
 

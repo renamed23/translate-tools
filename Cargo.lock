@@ -452,7 +452,6 @@ dependencies = [
  "const-str",
  "encoding_rs",
  "ntapi",
- "once_cell",
  "phf",
  "retour",
  "scopeguard",
@@ -488,7 +487,6 @@ name = "translate-utils"
 version = "1.0.0"
 dependencies = [
  "anyhow",
- "once_cell",
  "serde",
  "serde_json",
 ]

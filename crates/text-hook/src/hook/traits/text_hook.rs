@@ -46,7 +46,7 @@ pub trait TextHook: Send + Sync + 'static {
                 String::from_utf16_lossy(&buf)
             );
 
-            HOOK_TEXT_OUT_W.call(hdc, x, y, buf.as_ptr(), buf.len() as i32)
+            crate::call!(HOOK_TEXT_OUT_W, hdc, x, y, buf.as_ptr(), buf.len() as i32)
         }
     }
 
@@ -68,7 +68,7 @@ pub trait TextHook: Send + Sync + 'static {
                 String::from_utf16_lossy(&buf)
             );
 
-            HOOK_TEXT_OUT_W.call(hdc, x, y, buf.as_ptr(), buf.len() as i32)
+            crate::call!(HOOK_TEXT_OUT_W, hdc, x, y, buf.as_ptr(), buf.len() as i32)
         }
     }
 
@@ -103,7 +103,8 @@ pub trait TextHook: Send + Sync + 'static {
                 String::from_utf16_lossy(&buf)
             );
 
-            HOOK_EXT_TEXT_OUT_W.call(
+            crate::call!(
+                HOOK_EXT_TEXT_OUT_W,
                 hdc,
                 x,
                 y,
@@ -111,7 +112,7 @@ pub trait TextHook: Send + Sync + 'static {
                 lprect,
                 buf.as_ptr(),
                 buf.len() as u32,
-                core::ptr::null(),
+                core::ptr::null()
             )
         }
     }
@@ -142,7 +143,8 @@ pub trait TextHook: Send + Sync + 'static {
                 String::from_utf16_lossy(&buf)
             );
 
-            HOOK_EXT_TEXT_OUT_W.call(
+            crate::call!(
+                HOOK_EXT_TEXT_OUT_W,
                 hdc,
                 x,
                 y,
@@ -150,7 +152,7 @@ pub trait TextHook: Send + Sync + 'static {
                 lprect,
                 buf.as_ptr(),
                 buf.len() as u32,
-                core::ptr::null(),
+                core::ptr::null()
             )
         }
     }
@@ -182,7 +184,13 @@ pub trait TextHook: Send + Sync + 'static {
                 String::from_utf16_lossy(&buf)
             );
 
-            HOOK_GET_TEXT_EXTENT_POINT_32_W.call(hdc, buf.as_ptr(), buf.len() as i32, lp_size)
+            crate::call!(
+                HOOK_GET_TEXT_EXTENT_POINT_32_W,
+                hdc,
+                buf.as_ptr(),
+                buf.len() as i32,
+                lp_size
+            )
         }
     }
 
@@ -205,7 +213,13 @@ pub trait TextHook: Send + Sync + 'static {
             #[cfg(feature = "debug_text_mapping")]
             debug!("result: {}", String::from_utf16_lossy(&buf));
 
-            HOOK_GET_TEXT_EXTENT_POINT_32_W.call(hdc, buf.as_ptr(), buf.len() as i32, lp_size)
+            crate::call!(
+                HOOK_GET_TEXT_EXTENT_POINT_32_W,
+                hdc,
+                buf.as_ptr(),
+                buf.len() as i32,
+                lp_size
+            )
         }
     }
 
@@ -239,14 +253,15 @@ pub trait TextHook: Send + Sync + 'static {
         // 直接使用第一个UTF-16字符（假设都在BMP内，不需要代理对）
         if let Some(&wchar) = buf.first() {
             return unsafe {
-                HOOK_GET_GLYPH_OUTLINE_W.call(
+                crate::call!(
+                    HOOK_GET_GLYPH_OUTLINE_W,
                     hdc,
                     wchar as u32,
                     format,
                     lpgm,
                     cb_buffer,
                     lpv_buffer,
-                    lpmat2,
+                    lpmat2
                 )
             };
         }
@@ -276,14 +291,15 @@ pub trait TextHook: Send + Sync + 'static {
         // 直接使用第一个UTF-16字符（假设都在BMP内，不需要代理对）
         if let Some(&wchar) = buf.first() {
             return unsafe {
-                HOOK_GET_GLYPH_OUTLINE_W.call(
+                crate::call!(
+                    HOOK_GET_GLYPH_OUTLINE_W,
                     hdc,
                     wchar as u32,
                     format,
                     lpgm,
                     cb_buffer,
                     lpv_buffer,
-                    lpmat2,
+                    lpmat2
                 )
             };
         }
@@ -386,7 +402,8 @@ pub trait TextHook: Send + Sync + 'static {
         }
 
         unsafe {
-            HOOK_CREATE_FONT_W.call(
+            crate::call!(
+                HOOK_CREATE_FONT_W,
                 c_height,
                 c_width,
                 c_escapement,
@@ -400,7 +417,7 @@ pub trait TextHook: Send + Sync + 'static {
                 i_clip_precision,
                 i_quality,
                 i_pitch_and_family,
-                u16_slice.as_ptr(),
+                u16_slice.as_ptr()
             )
         }
     }
@@ -481,7 +498,7 @@ pub trait TextHook: Send + Sync + 'static {
         }
 
         let ptr = &logfontw as *const LOGFONTW;
-        unsafe { HOOK_CREATE_FONT_INDIRECT_W.call(ptr) }
+        unsafe { crate::call!(HOOK_CREATE_FONT_INDIRECT_W, ptr) }
     }
 
     #[allow(unused_variables)]
@@ -504,12 +521,13 @@ pub trait TextHook: Send + Sync + 'static {
                 font.lfCharSet = CHAR_SET;
             }
 
-            HOOK_ENUM_FONT_FAMILIES_EX_A.call(
+            crate::call!(
+                HOOK_ENUM_FONT_FAMILIES_EX_A,
                 hdc,
                 lp_logfont,
                 Some(enum_fonts_proc_a),
                 &info as *const _ as LPARAM,
-                dw_flags,
+                dw_flags
             )
         }
     }
@@ -533,12 +551,13 @@ pub trait TextHook: Send + Sync + 'static {
             if let Some(font) = lp_logfont.as_mut() {
                 font.lfCharSet = CHAR_SET;
             }
-            HOOK_ENUM_FONT_FAMILIES_EX_W.call(
+            crate::call!(
+                HOOK_ENUM_FONT_FAMILIES_EX_W,
                 hdc,
                 lp_logfont,
                 Some(enum_fonts_proc_w),
                 &info as *const _ as LPARAM,
-                dw_flags,
+                dw_flags
             )
         }
     }
@@ -558,11 +577,12 @@ pub trait TextHook: Send + Sync + 'static {
         unsafe {
             let info = EnumFontInfo::from_ansi(l_param, lp_enum_font_fam_proc);
 
-            HOOK_ENUM_FONT_FAMILIES_A.call(
+            crate::call!(
+                HOOK_ENUM_FONT_FAMILIES_A,
                 hdc,
                 lpsz_family,
                 Some(enum_fonts_proc_a),
-                &info as *const _ as LPARAM,
+                &info as *const _ as LPARAM
             )
         }
     }
@@ -582,11 +602,12 @@ pub trait TextHook: Send + Sync + 'static {
         unsafe {
             let info = EnumFontInfo::from_wide(l_param, lp_enum_font_fam_proc);
 
-            HOOK_ENUM_FONT_FAMILIES_W.call(
+            crate::call!(
+                HOOK_ENUM_FONT_FAMILIES_W,
                 hdc,
                 lpsz_family,
                 Some(enum_fonts_proc_w),
-                &info as *const _ as LPARAM,
+                &info as *const _ as LPARAM
             )
         }
     }
@@ -606,11 +627,12 @@ pub trait TextHook: Send + Sync + 'static {
         unsafe {
             let info = EnumFontInfo::from_ansi(l_param, lp_enum_font_proc);
 
-            HOOK_ENUM_FONTS_A.call(
+            crate::call!(
+                HOOK_ENUM_FONTS_A,
                 hdc,
                 lpsz_face,
                 Some(enum_fonts_proc_a),
-                &info as *const _ as LPARAM,
+                &info as *const _ as LPARAM
             )
         }
     }
@@ -630,11 +652,12 @@ pub trait TextHook: Send + Sync + 'static {
         unsafe {
             let info = EnumFontInfo::from_wide(l_param, lp_enum_font_proc);
 
-            HOOK_ENUM_FONTS_W.call(
+            crate::call!(
+                HOOK_ENUM_FONTS_W,
                 hdc,
                 lpsz_face,
                 Some(enum_fonts_proc_w),
-                &info as *const _ as LPARAM,
+                &info as *const _ as LPARAM
             )
         }
     }

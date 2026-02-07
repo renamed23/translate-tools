@@ -198,7 +198,8 @@ pub unsafe extern "C" fn render_text(x: i32, y: i32, text: *const i8) {
         debug!("draw text '{text}' at ({mapped_x}, {mapped_y}) from ({x}, {y})");
 
         styled(hdc, || {
-            HOOK_TEXT_OUT_W.call(
+            crate::call!(
+                HOOK_TEXT_OUT_W,
                 hdc,
                 mapped_x,
                 mapped_y,

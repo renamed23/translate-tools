@@ -99,7 +99,7 @@ pub fn detour(_attr: TokenStream, item: TokenStream) -> TokenStream {
 ///    wrapper 内部通过 `crate::hook::impls::HookImplType::<method>(...)` 转发到当前的 Hook 实现，并使用 `ffi_catch_unwind`
 ///    或等价保护来在 panic/unwind 时返回 `fallback` 指定的值；
 /// 2. 一个名为 `HOOK_<METHOD_UPPER>` 的 `pub static` 变量，类型为
-///    `once_cell::sync::Lazy<retour::GenericDetour<unsafe extern "system" fn(...) -> Ret>>`，
+///    `std::sync::LazyLock<retour::GenericDetour<unsafe extern "system" fn(...) -> Ret>>`，
 ///    该静态在首次访问时会查找 `dll` 的 `symbol` 地址并尝试注册 detour（使用 `retour::GenericDetour::new`）。
 ///
 /// `detour_trait` 只负责生成 wrapper 与 detour 静态；它**不**自动触发静态初始化（即不会自动在 crate 初始化时启用 detour）。

@@ -2,14 +2,14 @@
 use std::sync::Mutex;
 
 #[cfg(feature = "text_extracting")]
-use once_cell::sync::Lazy;
+use std::sync::LazyLock;
 #[cfg(feature = "text_extracting")]
 use translate_utils::text::{Item, Text};
 
 use crate::code_cvt::TextVec;
 
 #[cfg(feature = "text_extracting")]
-static EXTRACTED_ITEMS: Lazy<Mutex<Text>> = Lazy::new(|| Mutex::new(Text::new()));
+static EXTRACTED_ITEMS: LazyLock<Mutex<Text>> = LazyLock::new(|| Mutex::new(Text::new()));
 
 /// 添加一项条目
 #[cfg(feature = "text_extracting")]

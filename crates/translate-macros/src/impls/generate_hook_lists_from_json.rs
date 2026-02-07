@@ -119,7 +119,9 @@ pub fn generate_hook_lists_from_json(input: TokenStream) -> syn::Result<TokenStr
         enable_blocks.push(quote! {
             {
                 #(
-                    #enable_idents.enable().unwrap();
+                    if #enable_idents.enable().is_err() {
+                        crate::debug!("failed to enable hook: {}", stringify!(#enable_idents));
+                    }
                 )*
             }
         });
@@ -127,7 +129,9 @@ pub fn generate_hook_lists_from_json(input: TokenStream) -> syn::Result<TokenStr
         disable_blocks.push(quote! {
             {
                 #(
-                    #disable_idents.disable().unwrap();
+                    if #disable_idents.disable().is_err() {
+                        crate::debug!("failed to disable hook: {}", stringify!(#disable_idents));
+                    }
                 )*
             }
         });
@@ -146,7 +150,9 @@ pub fn generate_hook_lists_from_json(input: TokenStream) -> syn::Result<TokenStr
             #[cfg(#cfg_inner)]
             {
                 #(
-                    #idents_enable.enable().unwrap();
+                    if #idents_enable.enable().is_err() {
+                        crate::debug!("failed to enable hook: {}", stringify!(#idents_enable));
+                    }
                 )*
             }
         });
@@ -156,7 +162,9 @@ pub fn generate_hook_lists_from_json(input: TokenStream) -> syn::Result<TokenStr
             #[cfg(#cfg_inner)]
             {
                 #(
-                    #idents_disable.disable().unwrap();
+                    if #idents_disable.disable().is_err() {
+                        crate::debug!("failed to disable hook: {}", stringify!(#idents_disable));
+                    }
                 )*
             }
         });

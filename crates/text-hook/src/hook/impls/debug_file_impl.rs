@@ -82,7 +82,8 @@ impl FileHook for DebugFileImplHook {
 
         // 调用原始函数
         let result = unsafe {
-            HOOK_CREATE_FILE_A.call(
+            crate::call!(
+                HOOK_CREATE_FILE_A,
                 lp_file_name,
                 dw_desired_access,
                 dw_share_mode,
@@ -124,7 +125,8 @@ impl FileHook for DebugFileImplHook {
 
         // 调用原始函数
         let result = unsafe {
-            HOOK_CREATE_FILE_W.call(
+            crate::call!(
+                HOOK_CREATE_FILE_W,
                 lp_file_name,
                 dw_desired_access,
                 dw_share_mode,
@@ -166,7 +168,8 @@ impl FileHook for DebugFileImplHook {
 
         // 调用原始函数
         let result = unsafe {
-            HOOK_READ_FILE.call(
+            crate::call!(
+                HOOK_READ_FILE,
                 h_file,
                 lp_buffer,
                 n_number_of_bytes_to_read,
@@ -204,7 +207,7 @@ impl FileHook for DebugFileImplHook {
             debug!(raw "CloseHandle called for: {}", name);
         }
 
-        unsafe { HOOK_CLOSE_HANDLE.call(h_object) }
+        unsafe { crate::call!(HOOK_CLOSE_HANDLE, h_object) }
     }
 
     unsafe fn find_first_file_a(
@@ -221,7 +224,8 @@ impl FileHook for DebugFileImplHook {
         debug!(raw "FindFirstFileA called with pattern: {}", search_pattern);
 
         // 调用原始函数
-        let result = unsafe { HOOK_FIND_FIRST_FILE_A.call(lp_file_name, lp_find_file_data) };
+        let result =
+            unsafe { crate::call!(HOOK_FIND_FIRST_FILE_A, lp_file_name, lp_find_file_data) };
 
         // 如果句柄有效，存入find_handles
         if result != INVALID_HANDLE_VALUE
@@ -263,7 +267,8 @@ impl FileHook for DebugFileImplHook {
         debug!(raw "FindFirstFileW called with pattern: {}", search_pattern);
 
         // 调用原始函数
-        let result = unsafe { HOOK_FIND_FIRST_FILE_W.call(lp_file_name, lp_find_file_data) };
+        let result =
+            unsafe { crate::call!(HOOK_FIND_FIRST_FILE_W, lp_file_name, lp_find_file_data) };
 
         // 如果句柄有效，存入find_handles
         if result != INVALID_HANDLE_VALUE
@@ -302,7 +307,7 @@ impl FileHook for DebugFileImplHook {
         }
 
         // 调用原始函数
-        let result = unsafe { HOOK_FIND_NEXT_FILE_A.call(h_find_file, lp_find_file_data) };
+        let result = unsafe { crate::call!(HOOK_FIND_NEXT_FILE_A, h_find_file, lp_find_file_data) };
 
         // 如果调用成功，打印找到的文件名
         if result == TRUE && !lp_find_file_data.is_null() {
@@ -337,7 +342,7 @@ impl FileHook for DebugFileImplHook {
         }
 
         // 调用原始函数
-        let result = unsafe { HOOK_FIND_NEXT_FILE_W.call(h_find_file, lp_find_file_data) };
+        let result = unsafe { crate::call!(HOOK_FIND_NEXT_FILE_W, h_find_file, lp_find_file_data) };
 
         // 如果调用成功，打印找到的文件名
         if result == TRUE && !lp_find_file_data.is_null() {
@@ -368,6 +373,6 @@ impl FileHook for DebugFileImplHook {
         }
 
         // 调用原始函数
-        unsafe { HOOK_FIND_CLOSE.call(h_find_file) }
+        unsafe { crate::call!(HOOK_FIND_CLOSE, h_find_file) }
     }
 }

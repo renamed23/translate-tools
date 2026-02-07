@@ -119,7 +119,8 @@ pub unsafe extern "system" fn get_private_profile_string_a(
 
         debug!("passed");
 
-        HOOK_GET_PRIVATE_PROFILE_STRING_A.call(
+        crate::call!(
+            HOOK_GET_PRIVATE_PROFILE_STRING_A,
             lp_app_name,
             lp_key_name,
             lp_default,
@@ -159,6 +160,12 @@ unsafe extern "system" fn get_private_profile_int_a(
         }
 
         debug!("passed");
-        HOOK_GET_PRIVATE_PROFILE_INT_A.call(lp_app_name, lp_key_name, n_default, lp_file_name)
+        crate::call!(
+            HOOK_GET_PRIVATE_PROFILE_INT_A,
+            lp_app_name,
+            lp_key_name,
+            n_default,
+            lp_file_name
+        )
     }
 }

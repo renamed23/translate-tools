@@ -53,7 +53,8 @@ pub trait FileHook: Send + Sync + 'static {
                 lp_file_name
             };
 
-            HOOK_CREATE_FILE_A.call(
+            crate::call!(
+                HOOK_CREATE_FILE_A,
                 file_name_ptr,
                 dw_desired_access,
                 dw_share_mode,
@@ -105,7 +106,8 @@ pub trait FileHook: Send + Sync + 'static {
         unsafe {
             use windows_sys::Win32::Foundation::FALSE;
 
-            let result = HOOK_READ_FILE.call(
+            let result = crate::call!(
+                HOOK_READ_FILE,
                 h_file,
                 lp_buffer,
                 n_number_of_bytes_to_read,
