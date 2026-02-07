@@ -41,65 +41,54 @@ pub fn get_module_symbol_addrs(module: PCWSTR, symbols: &[PCSTR]) -> crate::Resu
 
 /// 从模块句柄获取单个符号的地址
 pub fn get_module_symbol_addr_from_handle(module: HMODULE, symbol: PCSTR) -> crate::Result<usize> {
-    Ok(get_module_symbol_addrs_from_handle(module, &[symbol])?[0])
+    unsafe {
+        let func = GetProcAddress(module, symbol).ok_or_else(|| {
+            print_last_error_message!();
+            crate::anyhow!("GetProcAddress failed")
+        })?;
+        Ok(func as usize)
+    }
 }
 
-/// 从模块句柄获取多个符号的地址，只有所有符号地址全部找到才返回Some
+/// 从模块句柄获取多个符号的地址，只有所有符号地址全部找到才返回Ok
 pub fn get_module_symbol_addrs_from_handle(
     module: HMODULE,
     symbols: &[PCSTR],
 ) -> crate::Result<Vec<usize>> {
-    let mut addrs = Vec::with_capacity(symbols.len());
-
-    unsafe {
-        for &sym in symbols {
-            let func = GetProcAddress(module, sym).ok_or_else(|| {
-                print_last_error_message!();
-                crate::anyhow!("GetProcAddress for {:?} failed", sym)
-            })?;
-            addrs.push(func as usize);
-        }
-    }
-
-    Ok(addrs)
+    symbols.iter()
+        .map(|&sym| get_module_symbol_addr_from_handle(module, sym))
+        .collect()
 }
 
-/// 获取系统目录的路径，若失败返回None
+/// 获取系统目录的路径，若失败返回Err
 pub fn get_system_directory() -> crate::Result<String> {
-    // 获取系统目录缓冲区大小
     let size = unsafe { GetSystemDirectoryW(core::ptr::null_mut(), 0) };
     if size == 0 {
         print_last_error_message!();
-        crate::bail!("GetSystemDirectoryW failed to get buffer size");
+        crate::bail!("Failed to get buffer size");
     }
 
-    // 分配缓冲区并获取系统目录路径
-    let mut system_dir = Vec::<u16>::with_capacity(size as usize);
-    let actual_size = unsafe { GetSystemDirectoryW(system_dir.as_mut_ptr(), size) };
+    let mut buffer = vec![0u16; size as usize];
+    let actual_size = unsafe { GetSystemDirectoryW(buffer.as_mut_ptr(), size) };
 
     if actual_size == 0 || actual_size >= size {
         print_last_error_message!();
-        crate::bail!("GetSystemDirectoryW failed to get directory path");
+        crate::bail!("Failed to get system directory");
     }
 
-    // 设置缓冲区实际长度
-    unsafe {
-        system_dir.set_len(actual_size as usize);
-    }
-
-    Ok(String::from_utf16(&system_dir)?)
+    buffer.truncate(actual_size as usize);
+    Ok(String::from_utf16(&buffer)?)
 }
 
 /// 根据路径加载指定DLL，若失败返回Err
 pub fn load_library(path: &str) -> crate::Result<HMODULE> {
-    let path: Vec<u16> = path.encode_utf16().chain(core::iter::once(0)).collect();
-    let handle = unsafe { LoadLibraryW(path.as_ptr()) };
+    let wide_path: Vec<u16> = path.encode_utf16().chain(core::iter::once(0)).collect();
+    let handle = unsafe { LoadLibraryW(wide_path.as_ptr()) };
     if handle.is_null() {
         print_last_error_message!();
-        crate::bail!("LoadLibraryW for {:?} failed", path);
-    } else {
-        Ok(handle)
+        crate::bail!("LoadLibraryW failed for: {}", path);
     }
+    Ok(handle)
 }
 
 /// 加载被劫持的DLL库
@@ -115,13 +104,11 @@ pub fn load_library(path: &str) -> crate::Result<HMODULE> {
 /// * `Result<HMODULE>` - 成功时返回DLL模块句柄，失败时返回Err
 #[allow(clippy::const_is_empty)]
 pub fn load_hijacked_library(dll_name: &str) -> crate::Result<HMODULE> {
-    // 检查是否设置了自定义劫持路径
     if constant::HIJACKED_DLL_PATH.is_empty() {
         let system_dir = get_system_directory()?;
-        let full_path = format!("{system_dir}/{dll_name}");
+        let full_path = format!("{system_dir}\\{dll_name}");
         load_library(&full_path)
     } else {
-        // 直接从自定义劫持路径加载
         load_library(constant::HIJACKED_DLL_PATH)
     }
 }

@@ -40,7 +40,7 @@ pub unsafe extern "system" fn replace_script(ptr: *mut u8) {
         }
 
         // 读取 ptr + 0x14上的u32小端
-        let len = std::ptr::read_unaligned(ptr.add(0x14) as *const u32) as usize;
+        let len = core::ptr::read_unaligned(ptr.add(0x14) as *const u32) as usize;
         crate::patch::process_buffer(ptr, len);
     }
 }
