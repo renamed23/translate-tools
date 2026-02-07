@@ -1,9 +1,9 @@
 use translate_macros::{DefaultHook, byte_slice, ffi_catch_unwind};
 use windows_sys::Win32::Foundation::HMODULE;
 
+use crate::constant;
 use crate::hook::traits::CoreHook;
 use crate::utils::mem::patch::{generate_trampoline_stub_32, write_asm, write_bytes};
-use crate::{constant, debug};
 
 #[derive(DefaultHook)]
 pub struct BrunsHook;

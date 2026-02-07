@@ -16,6 +16,6 @@ pub fn sha256_of_bytes(data: &[u8]) -> [u8; 32] {
 }
 
 /// 使用 zstd 解压数据，`cap` 是解压后数据的预估大小
-pub fn decompress_zstd(data: &[u8], cap: usize) -> Vec<u8> {
-    zstd::bulk::decompress(data, cap).unwrap()
+pub fn decompress_zstd(data: &[u8], cap: usize) -> crate::Result<Vec<u8>> {
+    Ok(zstd::bulk::decompress(data, cap)?)
 }

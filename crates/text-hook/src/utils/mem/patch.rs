@@ -11,7 +11,11 @@ use crate::utils::mem::protect_guard::ProtectGuard;
 /// 刷新指令缓存（在修改代码段字节后必须调用）
 pub fn flush_icache(addr: *const u8, size: usize) {
     unsafe {
-        let _ = FlushInstructionCache(GetCurrentProcess(), addr as _, size as _);
+        let ok = FlushInstructionCache(GetCurrentProcess(), addr as _, size as _);
+        if ok == 0 {
+            crate::print_last_error_message!();
+            crate::debug!("Warning: FlushInstructionCache failed");
+        }
     }
 }
 

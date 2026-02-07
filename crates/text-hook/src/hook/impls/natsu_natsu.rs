@@ -3,7 +3,6 @@ use translate_macros::DefaultHook;
 use windows_sys::Win32::Foundation::HMODULE;
 
 use crate::constant::{ARG_CHARS_SIZE, ARG_PATCH_TYPE};
-use crate::debug;
 use crate::hook::traits::CoreHook;
 use crate::utils::mem::patch::write_asm;
 
