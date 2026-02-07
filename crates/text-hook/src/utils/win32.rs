@@ -11,44 +11,30 @@ use windows_sys::{
         LB_ADDSTRING, LB_FINDSTRING, LB_FINDSTRINGEXACT, LB_GETTEXT, LB_INSERTSTRING, LB_SELECTSTRING
     },
     },
-    core::PCSTR,
+    core::{PCSTR, PCWSTR},
 };
 
 use crate::{constant, print_last_error_message};
 
 /// 获取模块句柄的包装函数
-/// 当module_name为空字符串时，获取当前进程的模块句柄
-pub fn get_module_handle(module_name: &str) -> crate::Result<HMODULE> {
-    if module_name.is_empty() {
-        // 空字符串表示获取当前进程的句柄
-        unsafe { Ok(GetModuleHandleW(core::ptr::null())) }
+pub fn get_module_handle(module_name: PCWSTR) -> crate::Result<HMODULE> {
+    let handle = unsafe {GetModuleHandleW(module_name)};
+    if handle.is_null() {
+        print_last_error_message!();
+        crate::bail!("GetModuleHandleW for {:?} failed", module_name);
     } else {
-        // 转换为UTF-16并调用GetModuleHandleW
-        let module_wide: Vec<u16> = module_name
-            .encode_utf16()
-            .chain(core::iter::once(0))
-            .collect();
-
-        unsafe {
-            let handle = GetModuleHandleW(module_wide.as_ptr());
-            if handle.is_null() {
-                print_last_error_message!();
-                crate::bail!("GetModuleHandleW for {:?} failed", module_name);
-            } else {
-                Ok(handle)
-            }
-        }
-    }
+        Ok(handle)
+    } 
 }
 
 /// 获取指定模块中单个符号的地址
-pub fn get_module_symbol_addr(module: &str, symbol: PCSTR) ->crate::Result<usize> {
+pub fn get_module_symbol_addr(module: PCWSTR, symbol: PCSTR) -> crate::Result<usize> {
     let handle = get_module_handle(module)?;
     get_module_symbol_addr_from_handle(handle, symbol)
 }
 
 /// 获取指定模块中多个符号的地址，只有所有符号地址全部找到才返回Some
-pub fn get_module_symbol_addrs(module: &str, symbols: &[PCSTR]) -> crate::Result<Vec<usize>> {
+pub fn get_module_symbol_addrs(module: PCWSTR, symbols: &[PCSTR]) -> crate::Result<Vec<usize>> {
     let handle = get_module_handle(module)?;
     get_module_symbol_addrs_from_handle(handle, symbols)
 }

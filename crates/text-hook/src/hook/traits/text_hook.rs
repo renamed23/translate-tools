@@ -41,10 +41,10 @@ pub trait TextHook: Send + Sync + 'static {
             let buf = crate::mapping::map_chars(input_slice);
 
             #[cfg(feature = "debug_text_mapping")]
-            match String::from_utf16(&buf) {
-                Ok(result) => debug!("draw text '{result}' at ({x}, {y}), input: {input_slice:?}"),
-                Err(e) => debug!("Convert utf16 to utf8 fails with {e}"),
-            }
+            debug!(
+                "draw text '{}' at ({x}, {y}), input: {input_slice:?}",
+                String::from_utf16_lossy(&buf)
+            );
 
             HOOK_TEXT_OUT_W.call(hdc, x, y, buf.as_ptr(), buf.len() as i32)
         }
@@ -63,10 +63,10 @@ pub trait TextHook: Send + Sync + 'static {
             let buf = crate::mapping::map_wide_chars(input_slice);
 
             #[cfg(feature = "debug_text_mapping")]
-            match String::from_utf16(&buf) {
-                Ok(result) => debug!("draw text '{result}' at ({x}, {y})"),
-                Err(e) => debug!("Convert utf16 to utf8 fails with {e}"),
-            }
+            debug!(
+                "draw text '{}' at ({x}, {y})",
+                String::from_utf16_lossy(&buf)
+            );
 
             HOOK_TEXT_OUT_W.call(hdc, x, y, buf.as_ptr(), buf.len() as i32)
         }
@@ -98,10 +98,10 @@ pub trait TextHook: Send + Sync + 'static {
             let buf = crate::mapping::map_chars(input_slice);
 
             #[cfg(feature = "debug_text_mapping")]
-            match String::from_utf16(&buf) {
-                Ok(result) => debug!("ExtTextOutA '{result}' at ({x}, {y}), opt={options:#x}"),
-                Err(e) => debug!("Convert utf16 to utf8 fails with {e}"),
-            }
+            debug!(
+                "ExtTextOutA '{}' at ({x}, {y}), opt={options:#x}",
+                String::from_utf16_lossy(&buf)
+            );
 
             HOOK_EXT_TEXT_OUT_W.call(
                 hdc,
@@ -137,10 +137,10 @@ pub trait TextHook: Send + Sync + 'static {
             let buf = crate::mapping::map_wide_chars(input_slice);
 
             #[cfg(feature = "debug_text_mapping")]
-            match String::from_utf16(&buf) {
-                Ok(result) => debug!("ExtTextOutW '{result}' at ({x}, {y}), opt={options:#x}"),
-                Err(e) => debug!("Convert utf16 to utf8 fails with {e}"),
-            }
+            debug!(
+                "ExtTextOutW '{}' at ({x}, {y}), opt={options:#x}",
+                String::from_utf16_lossy(&buf)
+            );
 
             HOOK_EXT_TEXT_OUT_W.call(
                 hdc,
@@ -177,10 +177,10 @@ pub trait TextHook: Send + Sync + 'static {
             let buf = crate::mapping::map_chars(input_slice);
 
             #[cfg(feature = "debug_text_mapping")]
-            match String::from_utf16(&buf) {
-                Ok(result) => debug!("result: {result}, input: {input_slice:?}"),
-                Err(e) => debug!("Convert utf16 to utf8 fails with {e}"),
-            }
+            debug!(
+                "result: {}, input: {input_slice:?}",
+                String::from_utf16_lossy(&buf)
+            );
 
             HOOK_GET_TEXT_EXTENT_POINT_32_W.call(hdc, buf.as_ptr(), buf.len() as i32, lp_size)
         }
@@ -203,10 +203,7 @@ pub trait TextHook: Send + Sync + 'static {
             let buf = crate::mapping::map_wide_chars(input_slice);
 
             #[cfg(feature = "debug_text_mapping")]
-            match String::from_utf16(&buf) {
-                Ok(result) => debug!("result: {result}"),
-                Err(e) => debug!("Convert utf16 to utf8 fails with {e}"),
-            }
+            debug!("result: {}", String::from_utf16_lossy(&buf));
 
             HOOK_GET_TEXT_EXTENT_POINT_32_W.call(hdc, buf.as_ptr(), buf.len() as i32, lp_size)
         }
@@ -234,10 +231,10 @@ pub trait TextHook: Send + Sync + 'static {
         let buf = crate::mapping::map_chars(input_slice);
 
         #[cfg(feature = "debug_text_mapping")]
-        match String::from_utf16(&buf) {
-            Ok(result) => debug!("result: {result}, input: {input_slice:?}"),
-            Err(e) => debug!("Convert utf16 to utf8 fails with {e}"),
-        }
+        debug!(
+            "result: {}, input: {input_slice:?}",
+            String::from_utf16_lossy(&buf)
+        );
 
         // 直接使用第一个UTF-16字符（假设都在BMP内，不需要代理对）
         if let Some(&wchar) = buf.first() {

@@ -744,7 +744,7 @@ pub fn generated_text_patch_data(input: TokenStream) -> TokenStream {
 /// ```ignore
 /// pub fn apply_game_patches() -> crate::Result<()> {
 ///     // Patch模块: MyGame.exe
-///     let module_base = crate::utils::win32::get_module_handle("")? as usize;
+///     let module_base = crate::utils::win32::get_module_handle(core::ptr::null())? as usize;
 ///     let target_addr = module_base.wrapping_add(0x140001000 as usize);
 ///     let data: &[u8] = &[0xEB, 0x90, 0x90];
 ///     crate::utils::mem::patch::write_asm(target_addr as *mut u8, data)?;

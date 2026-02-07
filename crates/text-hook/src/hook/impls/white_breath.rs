@@ -1,11 +1,12 @@
 use translate_macros::{byte_slice, ffi_catch_unwind};
+use windows_sys::w;
 
 use crate::debug;
 
 #[ffi_catch_unwind]
 #[unsafe(no_mangle)]
 pub unsafe extern "system" fn patch_asm() {
-    let handle = crate::utils::win32::get_module_handle("system.unt").unwrap();
+    let handle = crate::utils::win32::get_module_handle(w!("system.unt")).unwrap();
 
     debug!("patch {handle:p}");
 

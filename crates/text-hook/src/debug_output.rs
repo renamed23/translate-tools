@@ -142,3 +142,13 @@ macro_rules! print_last_error_message {
         }
     }};
 }
+
+#[macro_export]
+macro_rules! w2s {
+    ($ptr:expr) => {
+        String::from_utf16_lossy($crate::utils::mem::slice_until_null($ptr, 4096))
+    };
+    ($ptr:expr, $max_len:expr) => {
+        String::from_utf16_lossy($crate::utils::mem::slice_until_null($ptr, $max_len))
+    };
+}

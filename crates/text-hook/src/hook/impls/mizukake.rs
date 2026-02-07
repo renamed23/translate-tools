@@ -9,7 +9,7 @@ pub struct MizukakeHook;
 
 impl CoreHook for MizukakeHook {
     fn on_process_attach(_hinst_dll: HMODULE) {
-        let handle = crate::utils::win32::get_module_handle("").unwrap();
+        let handle = crate::utils::win32::get_module_handle(core::ptr::null()).unwrap();
 
         debug!("patch {handle:p}");
 

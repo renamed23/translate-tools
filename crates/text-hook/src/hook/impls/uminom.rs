@@ -11,7 +11,7 @@ impl CoreHook for UminomHook {
     // 解压器实现，仅为了获取解包数据，不要在真补丁中使用
     #[cfg(feature = "patch_extracting")]
     fn on_process_attach(_hinst_dll: HMODULE) {
-        let handle = crate::utils::win32::get_module_handle("").unwrap();
+        let handle = crate::utils::win32::get_module_handle(core::ptr::null()).unwrap();
 
         crate::debug!("patch {handle:p}");
 

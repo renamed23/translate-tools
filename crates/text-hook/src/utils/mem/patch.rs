@@ -189,7 +189,7 @@ pub unsafe fn get_dos_and_nt_headers(
 
 /// 获取当前模块（可执行文件）的入口点地址（Entry Point）
 pub unsafe fn get_entry_point_addr() -> crate::Result<usize> {
-    let h_module = crate::utils::win32::get_module_handle("")? as usize;
+    let h_module = crate::utils::win32::get_module_handle(core::ptr::null())? as usize;
 
     unsafe {
         let (_, nt_headers) = get_dos_and_nt_headers(h_module)?;

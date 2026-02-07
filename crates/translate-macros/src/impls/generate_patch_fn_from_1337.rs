@@ -165,9 +165,9 @@ pub fn generate_patch_fn_from_1337(input: TokenStream) -> syn::Result<TokenStrea
     for (module, patches) in modules_patches {
         let is_main_module = module.to_lowercase().ends_with(".exe");
         let module_handle_expr = if is_main_module {
-            quote! { crate::utils::win32::get_module_handle("") }
+            quote! { crate::utils::win32::get_module_handle(core::ptr::null()) }
         } else {
-            quote! { crate::utils::win32::get_module_handle(#module) }
+            quote! { crate::utils::win32::get_module_handle(::windows_sys::w!(#module)) }
         };
 
         // 排序并合并连续地址

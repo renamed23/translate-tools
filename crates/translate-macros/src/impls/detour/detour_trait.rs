@@ -105,7 +105,7 @@ pub fn detour_trait(_attr: TokenStream, item: TokenStream) -> syn::Result<TokenS
                         ::once_cell::sync::Lazy::new(|| {
                             crate::debug!("initialize detour: {}!{}", #dll_lit, #symbol_lit);
                             let address = crate::utils::win32::get_module_symbol_addr(
-                                #dll_lit,
+                                ::windows_sys::w!(#dll_lit),
                                 ::windows_sys::s!(#symbol_lit)
                             ).expect(concat!("symbol not found: ", #symbol_lit));
                             let ori: #fn_ty_tokens = unsafe { ::core::mem::transmute(address) };

@@ -1,5 +1,6 @@
 use translate_macros::{DefaultHook, byte_slice, ffi_catch_unwind};
 use windows_sys::Win32::Foundation::HMODULE;
+use windows_sys::w;
 
 use crate::constant;
 use crate::hook::traits::CoreHook;
@@ -15,7 +16,7 @@ impl CoreHook for BrunsHook {
 }
 
 fn patch_v1() {
-    let handle = crate::utils::win32::get_module_handle("libscr.dll").unwrap();
+    let handle = crate::utils::win32::get_module_handle(w!("libscr.dll")).unwrap();
     let module_addr = handle as *mut u8;
 
     // 改路径常量字符，让游戏找不到位图字体文件，并跳过错误报告;
@@ -61,7 +62,7 @@ fn patch_v1() {
 }
 
 fn patch_v2() {
-    let handle = crate::utils::win32::get_module_handle("libscr.dll").unwrap();
+    let handle = crate::utils::win32::get_module_handle(w!("libscr.dll")).unwrap();
     let module_addr = handle as *mut u8;
 
     unsafe {
@@ -104,7 +105,7 @@ fn patch_v2() {
 }
 
 fn patch_nerbor() {
-    let handle = crate::utils::win32::get_module_handle("libscr.dll").unwrap();
+    let handle = crate::utils::win32::get_module_handle(w!("libscr.dll")).unwrap();
     let module_addr = handle as *mut u8;
 
     unsafe {
