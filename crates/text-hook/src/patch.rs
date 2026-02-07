@@ -173,7 +173,7 @@ pub unsafe extern "system" fn replace_script(ptr: *mut u8, len: usize) {
 /// 返回`true`表示修补或提取成功。
 ///
 /// 仅限RUST内部使用，若要用于外部代码，请使用`process_buffer_ffi`
-#[inline(always)]
+#[inline]
 pub fn process_buffer(ptr: *mut u8, len: usize) -> bool {
     unsafe {
         #[cfg(not(feature = "patch_extracting"))]
