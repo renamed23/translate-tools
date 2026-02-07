@@ -43,7 +43,7 @@ pub fn default_dll_main(
             crate::utils::panic::set_debug_panic_hook();
 
             #[cfg(all(feature = "text_patch", feature = "text_extracting"))]
-            crate::text_patch::read_extracted_items_from_json();
+            crate::text_patch::load_initial_extracted_items_from_json();
 
             #[cfg(feature = "emulate_locale")]
             crate::emulate_locale::set_japanese_locale();
@@ -73,7 +73,7 @@ pub fn default_dll_main(
         }
         PROCESS_DETACH => {
             #[cfg(all(feature = "text_patch", feature = "text_extracting"))]
-            crate::text_patch::write_extracted_items_to_json();
+            crate::text_patch::save_extracted_items_to_json();
 
             #[cfg(feature = "custom_font")]
             unsafe {

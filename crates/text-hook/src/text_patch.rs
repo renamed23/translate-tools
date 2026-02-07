@@ -19,7 +19,7 @@ pub fn add_item(item: Item) {
 
 /// 读取raw.json（如果有），加载之前提取的数据
 #[cfg(feature = "text_extracting")]
-pub fn read_extracted_items_from_json() {
+pub fn load_initial_extracted_items_from_json() {
     match Text::from_path("./raw.json") {
         Ok(extracted_items) => *EXTRACTED_ITEMS.lock().unwrap() = extracted_items,
         Err(e) => crate::debug!("Read raw.json fails with {e}"),
@@ -28,7 +28,7 @@ pub fn read_extracted_items_from_json() {
 
 /// 将提取的条目输出到json文件中
 #[cfg(feature = "text_extracting")]
-pub fn write_extracted_items_to_json() {
+pub fn save_extracted_items_to_json() {
     let mut text = EXTRACTED_ITEMS.lock().unwrap();
 
     text.dedup();
@@ -62,7 +62,7 @@ pub fn lookup_or_add_message(message: &str) -> Option<&'static str> {
     #[cfg(feature = "text_extracting")]
     {
         crate::text_patch::add_item(Item::new(message));
-        return None;
+        None
     }
 
     #[cfg(not(feature = "text_extracting"))]
@@ -76,6 +76,7 @@ pub fn lookup_or_add_message_ansi_to_u16_with_null(ansi_slice: &[u8]) -> Option<
         return None;
     }
 
+    // wide_char_to_utf8 保证输出合法 UTF-8
     let msg_text = unsafe {
         String::from_utf8_unchecked(crate::code_cvt::wide_char_to_utf8(&wide_text).to_vec())
     };
