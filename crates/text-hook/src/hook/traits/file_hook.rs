@@ -1,4 +1,4 @@
-use translate_macros::{detour, detour_trait};
+use translate_macros::detour_trait;
 use windows_sys::{
     Win32::{
         Foundation::HANDLE,

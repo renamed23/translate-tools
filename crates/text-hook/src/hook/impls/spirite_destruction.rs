@@ -1,3 +1,4 @@
+use translate_macros::DefaultHook;
 use windows_sys::Win32::Graphics::Gdi::{HDC, TextOutW};
 use windows_sys::core::{BOOL, PCSTR};
 
@@ -6,6 +7,8 @@ use crate::debug;
 use crate::hook::traits::text_hook::HOOK_TEXT_OUT_A;
 use crate::hook::traits::{CoreHook, TextHook};
 
+#[derive(DefaultHook)]
+#[exclude(TextHook)]
 pub struct SpiriteDestructionHook;
 
 impl CoreHook for SpiriteDestructionHook {

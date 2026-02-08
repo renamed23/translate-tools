@@ -60,36 +60,6 @@ pub fn byte_slice(input: TokenStream) -> TokenStream {
     }
 }
 
-/// 标记属性：`#[detour(...)]`
-///
-/// 将某个 trait 方法标记为“需要为其生成导出 wrapper 与 detour 静态”的元数据属性。
-/// 此属性本身为 no-op（不修改被标注项），仅作为元数据供 `#[detour_trait]` 读取与处理。
-///
-/// # 语法
-///
-/// ```rust
-/// #[detour(
-///     dll = "gdi32.dll",                              // 必需，目标动态库名（字符串字面量）
-///     symbol = "TextOutA",                            // 必需，目标导出符号名（字符串字面量）
-///     export = "text_out",                            // 可选，生成的 wrapper 导出名（字符串字面量），默认使用 trait 方法名
-///     fallback = "FALSE"                              // 可选，捕获 panic/unwind 时的回退值（字符串字面量，内部会解析为 Rust 表达式）
-///     calling_convention = "system"                   // 可选，调用约定（字符串字面量），默认 "system"
-/// )]
-/// unsafe fn text_out(hdc: HDC, x: c_int, y: c_int, lp: LPCSTR, c: c_int) -> BOOL;
-/// ```
-///
-/// # 字段说明
-///
-/// * `dll`：**必需**。目标模块名称（字符串字面量），用于运行时查找符号地址，例如 `"gdi32.dll"`。
-/// * `symbol`：**必需**。目标导出符号名（字符串字面量），例如 `"TextOutA"`。
-/// * `export`：可选。生成的 wrapper 导出名（字符串字面量）。若省略，宏将使用 trait 方法名作为导出名。
-/// * `fallback`：可选。字符串字面量，内容将被解析为 Rust 表达式作为 wrapper 在捕获 panic/unwind 时的返回值。
-///   建议显式提供 `fallback`；若不提供，宏默认用 `Default::default()`，但当返回类型不实现 `Default` 时会导致编译错误。
-#[proc_macro_attribute]
-pub fn detour(_attr: TokenStream, item: TokenStream) -> TokenStream {
-    item
-}
-
 /// 在 trait 上自动生成 detour：`#[detour_trait]`
 ///
 /// 应用于 trait 定义。该宏遍历 trait 中的每个方法，对于带有 `#[detour(...)]` 标记的 trait 方法，
@@ -543,20 +513,28 @@ pub fn generate_patch_data(input: TokenStream) -> TokenStream {
 ///     // - __file__: 文件名的下划线标识符 (如: my_module)
 ///     // - __file_str__: 文件名字符串字面量 (如: "my_module")
 ///     // - __file_pascal__: 文件名的大驼峰标识符 (如: MyModule)
-/// });
+/// }, { Optional, Exclude, Idents });
 /// ```
 ///
 /// # 文件过滤
 /// - 只处理 `.rs` 扩展名的文件
 /// - 自动跳过 `mod.rs` 和 `lib.rs` 文件
 /// - 忽略子目录和非文件项
+/// - 可选的排除列表：在模板后添加 `, { Ident1, Ident2 }` 格式，支持snake_case或PascalCase命名
 ///
 /// # 示例
 /// ```ignore
+/// // 基础用法
 /// expand_by_files!("src/models" => {
 ///     pub mod __file__;
 ///     pub use __file__::__file_pascal__;
 /// });
+///
+/// // 带排除列表（忽略 code_cvt_hook.rs 和 file_hook.rs）
+/// expand_by_files!("src/hook/traits" => {
+///     #[cfg(feature = __file_str__)]
+///     impl crate::hook::traits::__file_pascal__ for #name {}
+/// }, {CodeCvtHook, FileHook});
 /// ```
 #[proc_macro]
 pub fn expand_by_files(input: TokenStream) -> TokenStream {
@@ -761,14 +739,32 @@ pub fn generate_patch_fn_from_1337(input: TokenStream) -> TokenStream {
 
 /// 为结构体自动生成默认的钩子实现的过程宏
 ///
-/// 该Derive宏实际上生成如下代码
+/// 该Derive宏会扫描 `src/hook/traits` 目录下的所有 `.rs` 文件（除 `mod.rs` 和 `lib.rs` 外），
+/// 并为每个文件对应的 trait 生成实现代码。
+///
+/// # 生成的代码结构
 /// ```ignore
 /// ::translate_macros::expand_by_files!("src/hook/traits" => {
-///       #[cfg(feature = __file_str__)]
-///       impl crate::hook::traits::__file_pascal__ for #struct_name {}
+///     #[cfg(feature = __file_str__)]
+///     impl crate::hook::traits::__file_pascal__ for #struct_name {}
 /// });
 /// ```
-#[proc_macro_derive(DefaultHook)]
+/// # 辅助属性
+/// - `#[exclude(Ident1, Ident2, ...)]`：排除指定的 trait 文件，不为其生成实现
+/// - `Ident` 可以是 snake_case 或 PascalCase，宏会自动处理文件名和 trait 名称的转换
+///
+/// # 示例
+/// ```ignore
+/// // 基础用法：为所有 trait 生成实现
+/// #[derive(DefaultHook)]
+/// struct MyTranslator;
+///
+/// // 排除特定 trait：不生成 CodeCvtHook 和 FileHook 的实现
+/// #[derive(DefaultHook)]
+/// #[exclude(CodeCvtHook, FileHook)]
+/// struct MyTranslator;
+/// ```
+#[proc_macro_derive(DefaultHook, attributes(exclude))]
 pub fn derive_default_hook(input: TokenStream) -> TokenStream {
     match impls::derive_default_hook::derive_default_hook(input.into()) {
         Ok(ts) => ts.into(),

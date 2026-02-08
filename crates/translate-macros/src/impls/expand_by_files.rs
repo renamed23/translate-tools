@@ -1,8 +1,10 @@
 use convert_case::{Case, Casing};
 use proc_macro2::{Group, Ident, Literal, Span, TokenStream, TokenTree};
 use quote::{ToTokens, TokenStreamExt};
+use std::collections::HashSet;
 use std::fs;
 use syn::parse::{Parse, ParseStream};
+use syn::punctuated::Punctuated;
 use syn::{Block, LitStr, Token};
 
 use crate::utils::get_full_path_by_manifest;
@@ -10,6 +12,7 @@ use crate::utils::get_full_path_by_manifest;
 struct Args {
     path: LitStr,
     template: Block,
+    exclude: Vec<Ident>,
 }
 
 impl Parse for Args {
@@ -17,13 +20,36 @@ impl Parse for Args {
         let path: LitStr = input.parse()?;
         let _token: Token![=>] = input.parse()?;
         let template: Block = input.parse()?;
-        Ok(Args { path, template })
+
+        // 解析可选的排除列表: , { Ident, Ident, ... }
+        let exclude = if input.peek(Token![,]) {
+            let _comma: Token![,] = input.parse()?;
+            let content;
+            let _brace = syn::braced!(content in input);
+            let punctuated: Punctuated<_, _> = content.parse_terminated(Ident::parse, Token![,])?;
+            punctuated.into_iter().collect()
+        } else {
+            Vec::new()
+        };
+
+        Ok(Args {
+            path,
+            template,
+            exclude,
+        })
     }
 }
 
 pub fn expand_by_files(input: TokenStream) -> syn::Result<TokenStream> {
     let args = syn::parse2::<Args>(input)?;
     let full_path = get_full_path_by_manifest(args.path.value()).unwrap();
+
+    // 构建排除集合
+    let exclude: HashSet<String> = args
+        .exclude
+        .iter()
+        .map(|ident| ident.to_string().to_case(Case::Snake))
+        .collect();
 
     let mut template_ts = TokenStream::new();
     for stmt in args.template.stmts.iter() {
@@ -58,6 +84,11 @@ pub fn expand_by_files(input: TokenStream) -> syn::Result<TokenStream> {
             continue;
         }
 
+        // 检查是否在排除列表中
+        if exclude.contains(&file_stem) {
+            continue;
+        }
+
         let file_snake = file_stem.clone();
         let file_ident = Ident::new(&file_snake, Span::call_site());
         let file_lit = Literal::string(&file_snake);
@@ -89,9 +120,8 @@ struct Replacement {
 /// 递归遍历 tokenstream，遇到特定 Ident 时尝试替换
 fn replace_tokens(ts: TokenStream, r: Replacement) -> TokenStream {
     let mut out = TokenStream::new();
-    let iter = ts.into_iter().peekable();
 
-    for tt in iter {
+    for tt in ts {
         match tt {
             TokenTree::Ident(id) => {
                 let name = id.to_string();

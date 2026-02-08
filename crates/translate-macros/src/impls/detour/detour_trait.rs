@@ -6,11 +6,10 @@ use syn::{LitStr, TraitItemFn};
 use crate::impls::detour::{DetourAttr, generate_detour_ident, parse_detour_attrs};
 
 pub fn detour_trait(_attr: TokenStream, item: TokenStream) -> syn::Result<TokenStream> {
-    let input = syn::parse2::<ItemTrait>(item)?;
+    let mut input = syn::parse2::<ItemTrait>(item)?;
 
     // 保留原始 trait
     let mut generated = TokenStream::new();
-    generated.extend(quote! { #input });
 
     // 遍历 trait 的 item
     for titem in input.items.iter() {
@@ -131,5 +130,16 @@ pub fn detour_trait(_attr: TokenStream, item: TokenStream) -> syn::Result<TokenS
         }
     }
 
-    Ok(generated)
+    let mut final_generated = TokenStream::new();
+
+    for titem in input.items.iter_mut() {
+        if let TraitItem::Fn(func) = titem {
+            func.attrs.retain(|attr| !attr.path().is_ident("detour"));
+        }
+    }
+
+    final_generated.extend(quote! { #input });
+    final_generated.extend(generated);
+
+    Ok(final_generated)
 }

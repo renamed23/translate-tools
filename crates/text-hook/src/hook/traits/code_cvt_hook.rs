@@ -1,4 +1,4 @@
-use translate_macros::{detour, detour_trait};
+use translate_macros::detour_trait;
 use windows_sys::core::{BOOL, PCSTR, PCWSTR, PSTR, PWSTR};
 
 #[detour_trait]

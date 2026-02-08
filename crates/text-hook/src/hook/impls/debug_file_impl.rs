@@ -1,6 +1,7 @@
 use std::sync::RwLock;
 use std::{collections::HashMap, sync::LazyLock};
 
+use translate_macros::DefaultHook;
 use windows_sys::{
     Win32::{
         Foundation::{HANDLE, INVALID_HANDLE_VALUE, MAX_PATH, TRUE},
@@ -20,6 +21,10 @@ use crate::hook::traits::file_hook::{
 };
 use crate::{hook::traits::CoreHook, utils::mem::slice_until_null};
 
+#[derive(DefaultHook)]
+#[exclude(FileHook)]
+pub struct DebugFileImplHook;
+
 #[derive(Default)]
 struct DebugFileState {
     handles: HashMap<usize, String>,
@@ -28,8 +33,6 @@ struct DebugFileState {
 
 static DEBUG_FILE_STATE: LazyLock<RwLock<DebugFileState>> =
     LazyLock::new(|| RwLock::new(DebugFileState::default()));
-
-pub struct DebugFileImplHook;
 
 impl CoreHook for DebugFileImplHook {
     fn enable_hooks() {
