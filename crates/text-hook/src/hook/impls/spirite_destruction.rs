@@ -59,8 +59,8 @@ fn process_text(s: &str) -> TextVec<u16> {
 
     #[cfg(not(feature = "text_extracting"))]
     {
-        let name = name.and_then(crate::text_patch::lookup_name);
-        let message = crate::text_patch::lookup_message(msg).unwrap_or(msg);
+        let name = name.and_then(crate::text_patch::lookup);
+        let message = crate::text_patch::lookup(msg).unwrap_or(msg);
 
         if let Some(name) = name {
             format!("【{name}】{message}").encode_utf16().collect()

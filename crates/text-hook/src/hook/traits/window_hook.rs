@@ -206,8 +206,7 @@ pub trait WindowHook: Send + Sync + 'static {
                     debug!("Get menu text: {raw_text}");
                 }
 
-                let opt_trans_msg =
-                    crate::text_patch::lookup_or_add_message_ansi_to_u16_with_null(text_slice);
+                let opt_trans_msg = crate::text_patch::lookup_or_add_ansi_wide(text_slice);
 
                 #[cfg(not(feature = "text_extracting"))]
                 if let Some(trans_msg) = opt_trans_msg {
@@ -264,10 +263,8 @@ pub trait WindowHook: Send + Sync + 'static {
                 }
             }
 
-            let opt_wide_text =
-                crate::text_patch::lookup_or_add_message_ansi_to_u16_with_null(text_slice);
-            let opt_wide_caption =
-                crate::text_patch::lookup_or_add_message_ansi_to_u16_with_null(cap_slice);
+            let opt_wide_text = crate::text_patch::lookup_or_add_ansi_wide(text_slice);
+            let opt_wide_caption = crate::text_patch::lookup_or_add_ansi_wide(cap_slice);
 
             #[cfg(not(feature = "text_extracting"))]
             if opt_wide_text.is_some() || opt_wide_caption.is_some() {
@@ -313,8 +310,7 @@ pub trait WindowHook: Send + Sync + 'static {
                 debug!("Get SetDlgItemTextA text: {raw_text}");
             }
 
-            let opt_trans_msg =
-                crate::text_patch::lookup_or_add_message_ansi_to_u16_with_null(text_slice);
+            let opt_trans_msg = crate::text_patch::lookup_or_add_ansi_wide(text_slice);
 
             #[cfg(not(feature = "text_extracting"))]
             if let Some(trans_msg) = opt_trans_msg {
@@ -343,8 +339,7 @@ pub trait WindowHook: Send + Sync + 'static {
                 debug!("Get SetWindowTextA text: {raw_text}");
             }
 
-            let opt_trans_msg =
-                crate::text_patch::lookup_or_add_message_ansi_to_u16_with_null(text_slice);
+            let opt_trans_msg = crate::text_patch::lookup_or_add_ansi_wide(text_slice);
 
             #[cfg(not(feature = "text_extracting"))]
             if let Some(trans_msg) = opt_trans_msg {
@@ -372,8 +367,7 @@ pub trait WindowHook: Send + Sync + 'static {
                     debug!("Get SendMessageA (msg={msg:#x}) text: {raw_text}");
                 }
 
-                let opt_trans_msg =
-                    crate::text_patch::lookup_or_add_message_ansi_to_u16_with_null(text_slice);
+                let opt_trans_msg = crate::text_patch::lookup_or_add_ansi_wide(text_slice);
 
                 #[cfg(not(feature = "text_extracting"))]
                 if let Some(trans_msg) = opt_trans_msg {
@@ -411,9 +405,8 @@ pub trait WindowHook: Send + Sync + 'static {
                 debug!("PropertySheetA original caption (ANSI): {raw}");
             }
 
-            let opt_trans =
-                crate::text_patch::lookup_or_add_message_ansi_to_u16_with_null(caption_slice)
-                    .map(|s| crate::code_cvt::wide_char_to_multi_byte_with_null(&s, 0));
+            let opt_trans = crate::text_patch::lookup_or_add_ansi_wide(caption_slice)
+                .map(|s| crate::code_cvt::wide_char_to_multi_byte_with_null(&s, 0));
 
             #[cfg(not(feature = "text_extracting"))]
             if let Some(trans) = opt_trans {

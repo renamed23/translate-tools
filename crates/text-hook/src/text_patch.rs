@@ -43,22 +43,15 @@ mod text_patch_data {
     translate_macros::generated_text_patch_data!("assets/raw_text" => "assets/translated_text");
 }
 
-/// 获取与原名对应的译名
-#[cfg(not(feature = "text_extracting"))]
-#[allow(dead_code)]
-pub fn lookup_name(original_name: &str) -> Option<&'static str> {
-    text_patch_data::lookup_name(original_name)
-}
-
 /// 获取与原文对应的译文
 #[cfg(not(feature = "text_extracting"))]
 #[allow(dead_code)]
-pub fn lookup_message(original_message: &str) -> Option<&'static str> {
-    text_patch_data::lookup_message(original_message)
+pub fn lookup(original_message: &str) -> Option<&'static str> {
+    text_patch_data::lookup(original_message)
 }
 
-/// 处理消息文本，`text_extracting` 特性开启时添加提取条目，否则返回译文（如果有）
-pub fn lookup_or_add_message(message: &str) -> Option<&'static str> {
+/// 处理文本，`text_extracting` 特性开启时添加提取条目，否则返回译文（如果有）
+pub fn lookup_or_add(message: &str) -> Option<&'static str> {
     #[cfg(feature = "text_extracting")]
     {
         crate::text_patch::add_item(Item::new(message));
@@ -66,11 +59,11 @@ pub fn lookup_or_add_message(message: &str) -> Option<&'static str> {
     }
 
     #[cfg(not(feature = "text_extracting"))]
-    crate::text_patch::lookup_message(message)
+    crate::text_patch::lookup(message)
 }
 
 /// 接受ansi字符串，`text_extracting` 特性开启时添加提取条目，否则返回u16编码带NULL的译文（如果有）
-pub fn lookup_or_add_message_ansi_to_u16_with_null(ansi_slice: &[u8]) -> Option<TextVec<u16>> {
+pub fn lookup_or_add_ansi_wide(ansi_slice: &[u8]) -> Option<TextVec<u16>> {
     let wide_text = crate::code_cvt::ansi_to_wide_char(ansi_slice);
     if wide_text.contains(&0xFFFDu16) {
         return None;
@@ -81,6 +74,6 @@ pub fn lookup_or_add_message_ansi_to_u16_with_null(ansi_slice: &[u8]) -> Option<
         String::from_utf8_unchecked(crate::code_cvt::wide_char_to_utf8(&wide_text).to_vec())
     };
 
-    crate::text_patch::lookup_or_add_message(&msg_text)
+    crate::text_patch::lookup_or_add(&msg_text)
         .map(|trans_msg| crate::code_cvt::utf8_to_wide_char_with_null(trans_msg.as_bytes()))
 }

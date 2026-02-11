@@ -128,7 +128,7 @@ raw文件夹包含需要被替换的文件，translated文件夹包含对应的�
 ]
 ```
 
-raw文件夹包含如上结构的json文件，translated文件夹包含对应的翻译后的json文件，会将文本嵌入到DLL中，使用原文条目调用`lookup_name`和`lookup_message`可以获得相对应的译文条目。
+raw文件夹包含如上结构的json文件，translated文件夹包含对应的翻译后的json文件，会将文本嵌入到DLL中，使用原文条目调用`lookup`可以获得相对应的译文条目。
 
 需要开启`text_patch`功能，如果需要翻译exe的对话框以及其他exe的文本，则同时需要开启`window_hook`功能，可以使用`text_extracting`功能来从exe中提取出对话框的文本，提取的文本会输出到dll所在目录的`raw.json`中
 
