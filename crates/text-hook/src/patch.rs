@@ -82,7 +82,7 @@ pub unsafe fn try_extracting(ptr: *mut u8, len: usize) -> bool {
     {
         Some(d) => d,
         None => {
-            debug!("extract: failed to determine current exe directory");
+            debug!("Failed to determine current exe directory");
             return false;
         }
     };
@@ -90,7 +90,7 @@ pub unsafe fn try_extracting(ptr: *mut u8, len: usize) -> bool {
     let raw_dir = exe_dir.join("raw");
 
     if let Err(e) = std::fs::create_dir_all(&raw_dir) {
-        debug!("extract: failed to create raw dir {:?}: {:?}", raw_dir, e);
+        debug!("Failed to create raw dir {:?}: {:?}", raw_dir, e);
         return false;
     }
 
@@ -122,21 +122,18 @@ pub unsafe fn try_extracting(ptr: *mut u8, len: usize) -> bool {
                     if existing_bytes.len() == slice.len() {
                         let existing_hash = sha256_of_bytes(&existing_bytes);
                         if existing_hash == new_hash {
-                            debug!(
-                                "extract: identical file already exists, skipping write: {:?}",
-                                path
-                            );
+                            debug!("Identical file already exists, skipping write: {:?}", path);
                             return false;
                         }
                     }
                 }
                 Err(e) => {
-                    debug!("extract: failed to read existing file {:?}: {:?}", path, e);
+                    debug!("Failed to read existing file {:?}: {:?}", path, e);
                 }
             }
         }
     } else {
-        debug!("extract: failed to read raw dir {:?}", raw_dir);
+        debug!("Failed to read raw dir {:?}", raw_dir);
     }
 
     // --- 如果循环正常结束，说明没有找到任何重复的文件 ---
@@ -146,27 +143,14 @@ pub unsafe fn try_extracting(ptr: *mut u8, len: usize) -> bool {
 
     match std::fs::write(&out_path, slice) {
         Ok(_) => {
-            debug!(
-                "extract: wrote raw file {:?} (len={})",
-                out_path,
-                slice.len()
-            );
+            debug!("Wrote raw file {:?} (len={})", out_path, slice.len());
             true
         }
         Err(e) => {
-            debug!("extract: failed to write file {:?}: {:?}", out_path, e);
+            debug!("Failed to write file {:?}: {:?}", out_path, e);
             false
         }
     }
-}
-
-/// 相比于`process_buffer_ffi`，它会导出函数，可以直接通过外部汇编进行IAT调用。
-/// 如果直接在DLL内修补，那么不需要导出，直接使用`process_buffer_ffi`就可以了。
-#[cfg(feature = "export_patch_process_fn")]
-#[translate_macros::ffi_catch_unwind]
-#[unsafe(no_mangle)]
-pub unsafe extern "system" fn replace_script(ptr: *mut u8, len: usize) {
-    process_buffer(ptr, len);
 }
 
 /// 处理传入的缓冲区，进行修补或提取。
@@ -186,6 +170,7 @@ pub fn process_buffer(ptr: *mut u8, len: usize) -> bool {
 
 /// FFI版本的`process_buffer`
 #[translate_macros::ffi_catch_unwind]
+#[cfg_attr(feature = "export_patch_process_fn", unsafe(no_mangle))]
 pub unsafe extern "system" fn process_buffer_ffi(dst: *mut u8, len: usize) {
     process_buffer(dst, len);
 }
