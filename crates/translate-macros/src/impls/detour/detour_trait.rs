@@ -124,7 +124,7 @@ pub fn detour_trait(_attr: TokenStream, item: TokenStream) -> syn::Result<TokenS
                             ::windows_sys::s!(#symbol_lit)
                         ).expect(concat!("symbol not found: ", #symbol_lit));
                         crate::utils::mem::iat::IatHook::new(address, #export_ident as usize)
-                        
+
                     });
                 });
         }

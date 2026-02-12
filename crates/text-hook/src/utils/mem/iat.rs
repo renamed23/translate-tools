@@ -6,7 +6,7 @@ use windows_sys::Win32::System::SystemServices::IMAGE_IMPORT_DESCRIPTOR;
 
 use crate::utils::mem::patch::{get_dos_and_nt_headers, write_bytes};
 
-/// IAT 修补函数    
+/// IAT 修补函数
 ///
 /// # 参数
 /// - `target_module`: 目标模块基址 (HMODULE)

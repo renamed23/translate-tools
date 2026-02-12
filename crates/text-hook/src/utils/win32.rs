@@ -4,12 +4,14 @@ use windows_sys::{
         Foundation::HMODULE,
         Storage::FileSystem::{Wow64DisableWow64FsRedirection, Wow64RevertWow64FsRedirection},
         System::{
-            LibraryLoader::{GetModuleHandleW, GetProcAddress, LoadLibraryW}, SystemInformation::GetSystemDirectoryW,
+            LibraryLoader::{GetModuleHandleW, GetProcAddress, LoadLibraryW},
+            SystemInformation::GetSystemDirectoryW,
         },
         UI::WindowsAndMessaging::{
-        CB_ADDSTRING, CB_FINDSTRING, CB_FINDSTRINGEXACT, CB_GETLBTEXT, CB_INSERTSTRING, CB_SELECTSTRING, 
-        LB_ADDSTRING, LB_FINDSTRING, LB_FINDSTRINGEXACT, LB_GETTEXT, LB_INSERTSTRING, LB_SELECTSTRING
-    },
+            CB_ADDSTRING, CB_FINDSTRING, CB_FINDSTRINGEXACT, CB_GETLBTEXT, CB_INSERTSTRING,
+            CB_SELECTSTRING, LB_ADDSTRING, LB_FINDSTRING, LB_FINDSTRINGEXACT, LB_GETTEXT,
+            LB_INSERTSTRING, LB_SELECTSTRING,
+        },
     },
     core::{PCSTR, PCWSTR},
 };
@@ -18,13 +20,13 @@ use crate::{constant, print_last_error_message};
 
 /// 获取模块句柄的包装函数
 pub fn get_module_handle(module_name: PCWSTR) -> crate::Result<HMODULE> {
-    let handle = unsafe {GetModuleHandleW(module_name)};
+    let handle = unsafe { GetModuleHandleW(module_name) };
     if handle.is_null() {
         print_last_error_message!();
         crate::bail!("GetModuleHandleW for {:?} failed", module_name);
     } else {
         Ok(handle)
-    } 
+    }
 }
 
 /// 获取指定模块中单个符号的地址
@@ -55,7 +57,8 @@ pub fn get_module_symbol_addrs_from_handle(
     module: HMODULE,
     symbols: &[PCSTR],
 ) -> crate::Result<Vec<usize>> {
-    symbols.iter()
+    symbols
+        .iter()
         .map(|&sym| get_module_symbol_addr_from_handle(module, sym))
         .collect()
 }
@@ -146,18 +149,17 @@ where
     callback()
 }
 
-
 /// 判断消息是否需要文本转换/映射
 #[inline(always)]
 pub const fn needs_text_conversion(msg: u32) -> bool {
-    matches!(msg,
+    matches!(
+        msg,
         // ComboBox
-        CB_ADDSTRING | CB_INSERTSTRING | CB_FINDSTRING | CB_FINDSTRINGEXACT 
+        CB_ADDSTRING | CB_INSERTSTRING | CB_FINDSTRING | CB_FINDSTRINGEXACT
         | CB_SELECTSTRING | CB_GETLBTEXT |
-        
-        // ListBox  
-        LB_ADDSTRING | LB_INSERTSTRING | LB_FINDSTRING | LB_FINDSTRINGEXACT 
-        | LB_SELECTSTRING | LB_GETTEXT
 
+        // ListBox
+        LB_ADDSTRING | LB_INSERTSTRING | LB_FINDSTRING | LB_FINDSTRINGEXACT
+        | LB_SELECTSTRING | LB_GETTEXT
     )
 }

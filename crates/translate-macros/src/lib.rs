@@ -312,7 +312,7 @@ pub fn search_hook_impls(input: TokenStream) -> TokenStream {
 ///
 /// # 错误处理
 /// - 文件读取失败：编译时错误
-/// - JSON 解析失败：编译时错误  
+/// - JSON 解析失败：编译时错误
 /// - 缺少必需字段（type/value）：编译时错误
 /// - 类型解析失败：编译时错误
 ///

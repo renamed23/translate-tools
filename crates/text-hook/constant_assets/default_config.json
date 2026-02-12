@@ -1,57 +1,57 @@
 {
-    "FONT_FACE": {
-        "type": "&[u16]",
-        "value": "SimSun",
-        "encode_to_u16": true
-    },
-    "CHAR_SET": {
-        "type": "u8",
-        "value": 134
-    },
-    "ENUM_FONT_PROC_CHAR_SET": {
-        "type": "u8",
-        "optional": true
-    },
-    "ENUM_FONT_PROC_PITCH": {
-        "type": "u8",
-        "optional": true
-    },
-    "ENUM_FONT_PROC_OUT_PRECISION": {
-        "type": "u8",
-        "optional": true
-    },
-    "FONT_FILTER": {
-        "type": "&[&[u16]]",
-        "value": [
-            "",
-            "ＭＳ ゴシック",
-            "俵俽 僑僔僢僋",
-            "MS Gothic",
-            "俵俽僑僔僢僋",
-            "ＭＳゴシック"
-        ],
-        "encode_to_u16": true
-    },
-    "CHAR_FILTER": {
-        "type": "&[u16]",
-        "value": []
-    },
-    "TEXT_STACK_BUF_LEN": {
-        "type": "usize",
-        "value": 256
-    },
-    "HIJACKED_DLL_PATH": {
-        "type": "&str",
-        "value": ""
-    },
-    "WINDOW_TITLE": {
-        "type": "&[u16]",
-        "encode_to_u16": true
-    },
-    "REDIRECTION_SRC_PATH": {
-        "type": "&str"
-    },
-    "REDIRECTION_TARGET_PATH": {
-        "type": "&str"
-    }
+  "FONT_FACE": {
+    "type": "&[u16]",
+    "value": "SimSun",
+    "encode_to_u16": true
+  },
+  "CHAR_SET": {
+    "type": "u8",
+    "value": 134
+  },
+  "ENUM_FONT_PROC_CHAR_SET": {
+    "type": "u8",
+    "optional": true
+  },
+  "ENUM_FONT_PROC_PITCH": {
+    "type": "u8",
+    "optional": true
+  },
+  "ENUM_FONT_PROC_OUT_PRECISION": {
+    "type": "u8",
+    "optional": true
+  },
+  "FONT_FILTER": {
+    "type": "&[&[u16]]",
+    "value": [
+      "",
+      "ＭＳ ゴシック",
+      "俵俽 僑僔僢僋",
+      "MS Gothic",
+      "俵俽僑僔僢僋",
+      "ＭＳゴシック"
+    ],
+    "encode_to_u16": true
+  },
+  "CHAR_FILTER": {
+    "type": "&[u16]",
+    "value": []
+  },
+  "TEXT_STACK_BUF_LEN": {
+    "type": "usize",
+    "value": 256
+  },
+  "HIJACKED_DLL_PATH": {
+    "type": "&str",
+    "value": ""
+  },
+  "WINDOW_TITLE": {
+    "type": "&[u16]",
+    "encode_to_u16": true
+  },
+  "REDIRECTION_SRC_PATH": {
+    "type": "&str"
+  },
+  "REDIRECTION_TARGET_PATH": {
+    "type": "&str"
+  }
 }
