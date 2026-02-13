@@ -50,14 +50,19 @@ pub fn default_dll_main(
 
             #[cfg(feature = "custom_font")]
             unsafe {
-                if crate::custom_font::add_font().is_err() {
-                    crate::debug!("add_font failed");
+                if let Err(e) = crate::custom_font::add_font() {
+                    crate::debug!("add_font failed with {e:?}");
                 }
             }
 
+            #[cfg(feature = "resource_pack")]
+            if let Err(e) = crate::resource_pack::extract() {
+                crate::debug!("Extract resource pack failed with {e:?}");
+            }
+
             #[cfg(feature = "apply_1337_patch_on_attach")]
-            if crate::x64dbg_1337_patch::apply().is_err() {
-                crate::debug!("Apply 1337 patch failed");
+            if let Err(e) = crate::x64dbg_1337_patch::apply() {
+                crate::debug!("Apply 1337 patch failed with {e:?}");
             }
 
             #[cfg(not(feature = "delayed_attach"))]
@@ -77,9 +82,14 @@ pub fn default_dll_main(
 
             #[cfg(feature = "custom_font")]
             unsafe {
-                if crate::custom_font::remove_font().is_err() {
-                    crate::debug!("remove_font failed");
+                if let Err(e) = crate::custom_font::remove_font() {
+                    crate::debug!("remove_font failed with {e:?}");
                 }
+            }
+
+            #[cfg(feature = "resource_pack")]
+            if let Err(e) = crate::resource_pack::clean_up() {
+                crate::debug!("Clean up resource pack failed with {e:?}");
             }
 
             HookImplType::disable_hooks();

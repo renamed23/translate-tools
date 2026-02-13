@@ -33,6 +33,9 @@ pub(crate) mod dll_hijacking;
 #[cfg(feature = "emulate_locale")]
 pub(crate) mod emulate_locale;
 
+#[cfg(feature = "resource_pack")]
+pub(crate) mod resource_pack;
+
 #[allow(dead_code)]
 pub(crate) mod constant {
     pub const ANSI_CODE_PAGE: u32 = crate::mapping::ANSI_CODE_PAGE;

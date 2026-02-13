@@ -54,5 +54,6 @@ pub(crate) mod generate_hook_lists_from_json;
 pub(crate) mod generate_mapping_data;
 pub(crate) mod generate_patch_data;
 pub(crate) mod generate_patch_fn_from_1337;
+pub(crate) mod generate_resource_pack;
 pub(crate) mod generate_text_patch_data;
 pub(crate) mod search_hook_impls;

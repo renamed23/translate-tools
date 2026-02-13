@@ -76,16 +76,7 @@ pub unsafe fn try_extracting(ptr: *mut u8, len: usize) -> bool {
     let slice = unsafe { core::slice::from_raw_parts(ptr, len) };
     let new_hash = sha256_of_bytes(slice);
 
-    let exe_dir = match std::env::current_exe()
-        .ok()
-        .and_then(|p| p.parent().map(|p| p.to_path_buf()))
-    {
-        Some(d) => d,
-        None => {
-            debug!("Failed to determine current exe directory");
-            return false;
-        }
-    };
+    let exe_dir = crate::utils::get_executable_dir();
 
     let raw_dir = exe_dir.join("raw");
 

@@ -26,9 +26,9 @@ unsafe fn set_process_nls_tables(
     let (ansi_buf, oem_buf, lang_buf) = with_wow64_redirection_disabled(|| {
         let sysdir = crate::utils::win32::get_system_directory()?;
         Ok::<_, crate::Error>((
-            std::fs::read(format!("{}\\{}", sysdir, ansi_file))?,
-            std::fs::read(format!("{}\\{}", sysdir, oem_file))?,
-            std::fs::read(format!("{}\\{}", sysdir, lang_file))?,
+            std::fs::read(sysdir.join(ansi_file))?,
+            std::fs::read(sysdir.join(oem_file))?,
+            std::fs::read(sysdir.join(lang_file))?,
         ))
     })?;
 

@@ -53,5 +53,8 @@
   },
   "REDIRECTION_TARGET_PATH": {
     "type": "&str"
+  },
+  "RESOURCE_PACK_NAME": {
+    "type": "&str"
   }
 }

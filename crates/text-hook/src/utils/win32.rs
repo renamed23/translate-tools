@@ -1,4 +1,9 @@
 use scopeguard::defer;
+use std::{
+    ffi::OsString,
+    os::windows::ffi::{OsStrExt, OsStringExt as _},
+    path::{Path, PathBuf},
+};
 use windows_sys::{
     Win32::{
         Foundation::HMODULE,
@@ -64,7 +69,7 @@ pub fn get_module_symbol_addrs_from_handle(
 }
 
 /// 获取系统目录的路径，若失败返回Err
-pub fn get_system_directory() -> crate::Result<String> {
+pub fn get_system_directory() -> crate::Result<PathBuf> {
     let size = unsafe { GetSystemDirectoryW(core::ptr::null_mut(), 0) };
     if size == 0 {
         print_last_error_message!();
@@ -80,16 +85,20 @@ pub fn get_system_directory() -> crate::Result<String> {
     }
 
     buffer.truncate(actual_size as usize);
-    Ok(String::from_utf16(&buffer)?)
+    Ok(PathBuf::from(OsString::from_wide(&buffer)))
 }
 
 /// 根据路径加载指定DLL，若失败返回Err
-pub fn load_library(path: &str) -> crate::Result<HMODULE> {
-    let wide_path: Vec<u16> = path.encode_utf16().chain(core::iter::once(0)).collect();
+pub fn load_library(path: &Path) -> crate::Result<HMODULE> {
+    let wide_path: Vec<u16> = path
+        .as_os_str()
+        .encode_wide()
+        .chain(core::iter::once(0))
+        .collect();
     let handle = unsafe { LoadLibraryW(wide_path.as_ptr()) };
     if handle.is_null() {
         print_last_error_message!();
-        crate::bail!("LoadLibraryW failed for: {}", path);
+        crate::bail!("LoadLibraryW failed for: {}", path.to_string_lossy());
     }
     Ok(handle)
 }
@@ -109,10 +118,10 @@ pub fn load_library(path: &str) -> crate::Result<HMODULE> {
 pub fn load_hijacked_library(dll_name: &str) -> crate::Result<HMODULE> {
     if constant::HIJACKED_DLL_PATH.is_empty() {
         let system_dir = get_system_directory()?;
-        let full_path = format!("{system_dir}\\{dll_name}");
+        let full_path = system_dir.join(dll_name);
         load_library(&full_path)
     } else {
-        load_library(constant::HIJACKED_DLL_PATH)
+        load_library(Path::new(constant::HIJACKED_DLL_PATH))
     }
 }
 

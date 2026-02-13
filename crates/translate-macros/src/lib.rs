@@ -231,7 +231,7 @@ pub fn ffi_catch_unwind(attr: TokenStream, item: TokenStream) -> TokenStream {
 /// # 注意事项
 /// - 路径相对于 `CARGO_MANIFEST_DIR`（项目根目录）
 /// - 压缩级别固定为 0（快速压缩）
-/// - 需要运行时解压函数 `crate::patch::decompress_zstd` 的支持
+/// - 需要运行时 zstd 解压的支持
 /// - 生成的静态变量是 `LazyLock<Vec<u8>>` 类型，需要通过 `&*VAR` 访问数据
 /// - 目录路径必须包含且仅包含一个文件，否则编译失败
 #[proc_macro]
@@ -842,6 +842,14 @@ pub fn derive_default_hook(input: TokenStream) -> TokenStream {
 #[proc_macro]
 pub fn generate_hook_lists_from_json(input: TokenStream) -> TokenStream {
     match impls::generate_hook_lists_from_json::generate_hook_lists_from_json(input.into()) {
+        Ok(ts) => ts.into(),
+        Err(err) => err.into_compile_error().into(),
+    }
+}
+
+#[proc_macro]
+pub fn generate_resource_pack(input: TokenStream) -> TokenStream {
+    match impls::generate_resource_pack::generate_resource_pack(input.into()) {
         Ok(ts) => ts.into(),
         Err(err) => err.into_compile_error().into(),
     }

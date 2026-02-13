@@ -66,16 +66,22 @@ macro_rules! anyhow {
     };
 }
 
-impl From<std::io::Error> for Error {
-    fn from(e: std::io::Error) -> Self {
-        crate::debug!(raw "error: {e}");
-        Error
-    }
+macro_rules! impl_from_error {
+    ($($t:ty),* $(,)?) => {
+        $(
+            impl From<$t> for Error {
+                fn from(e: $t) -> Self {
+                    crate::debug!(raw "error: {e}");
+                    Error
+                }
+            }
+        )*
+    };
 }
 
-impl From<std::string::FromUtf16Error> for Error {
-    fn from(e: std::string::FromUtf16Error) -> Self {
-        crate::debug!(raw "error: {e}");
-        Error
-    }
+impl_from_error! {
+    std::io::Error,
+    std::str::Utf8Error,
+    std::string::FromUtf16Error,
+    std::array::TryFromSliceError,
 }

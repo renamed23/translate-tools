@@ -22,7 +22,7 @@ pub fn add_item(item: Item) {
 pub fn load_initial_extracted_items_from_json() {
     match Text::from_path("./raw.json") {
         Ok(extracted_items) => *EXTRACTED_ITEMS.lock().unwrap() = extracted_items,
-        Err(e) => crate::debug!("Read raw.json fails with {e}"),
+        Err(e) => crate::debug!("Read raw.json failed with {e}"),
     };
 }
 
@@ -34,7 +34,7 @@ pub fn save_extracted_items_to_json() {
     text.dedup();
 
     if let Err(e) = text.write_to_path("./raw.json") {
-        crate::debug!("Write raw.json fails with {e}");
+        crate::debug!("Write raw.json failed with {e}");
     }
 }
 

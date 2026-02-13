@@ -25,37 +25,60 @@ pub trait FileHook: Send + Sync + 'static {
         dw_flags_and_attributes: u32,
         h_template_file: HANDLE,
     ) -> HANDLE {
-        #[cfg(feature = "create_file_redirect")]
+        #[cfg(any(feature = "create_file_redirect", feature = "resource_pack"))]
         unsafe {
-            use crate::constant::{REDIRECTION_SRC_PATH, REDIRECTION_TARGET_PATH};
-
             let filename_bytes = crate::utils::mem::slice_until_null(lp_file_name, 4096);
-            let new_path;
 
-            // 检查文件名是否以 REDIRECTION_SRC_PATH 结尾
-            let file_name_ptr = if let Some(tail) = filename_bytes.get(
-                filename_bytes
-                    .len()
-                    .saturating_sub(REDIRECTION_SRC_PATH.len())..,
-            ) && tail.eq_ignore_ascii_case(REDIRECTION_SRC_PATH.as_bytes())
+            #[cfg(feature = "create_file_redirect")]
             {
-                crate::debug!(
-                    "'{REDIRECTION_SRC_PATH}' file reading hooked, replace to '{REDIRECTION_TARGET_PATH}'"
-                );
-                let mut new_path_vec =
-                    filename_bytes[..filename_bytes.len() - REDIRECTION_SRC_PATH.len()].to_vec();
-                new_path_vec.extend_from_slice(
-                    const_str::concat!(REDIRECTION_TARGET_PATH, "\0").as_bytes(),
-                );
-                new_path = Some(new_path_vec);
-                new_path.as_ref().unwrap().as_ptr()
-            } else {
-                lp_file_name
-            };
+                use crate::constant::{REDIRECTION_SRC_PATH, REDIRECTION_TARGET_PATH};
+
+                // 检查文件名是否以 REDIRECTION_SRC_PATH 结尾
+                if let Some(tail) = filename_bytes.get(
+                    filename_bytes
+                        .len()
+                        .saturating_sub(REDIRECTION_SRC_PATH.len())..,
+                ) && tail.eq_ignore_ascii_case(REDIRECTION_SRC_PATH.as_bytes())
+                {
+                    crate::debug!(
+                        "'{REDIRECTION_SRC_PATH}' file hooked, replace to '{REDIRECTION_TARGET_PATH}'"
+                    );
+                    let mut new_path = filename_bytes
+                        [..filename_bytes.len() - REDIRECTION_SRC_PATH.len()]
+                        .to_vec();
+                    new_path.extend_from_slice(
+                        const_str::concat!(REDIRECTION_TARGET_PATH, "\0").as_bytes(),
+                    );
+
+                    return crate::call!(
+                        HOOK_CREATE_FILE_A,
+                        new_path.as_ptr(),
+                        dw_desired_access,
+                        dw_share_mode,
+                        lp_security_attributes,
+                        dw_creation_disposition,
+                        dw_flags_and_attributes,
+                        h_template_file,
+                    );
+                }
+            }
+
+            #[cfg(feature = "resource_pack")]
+            if let Some(handle) = crate::hook::trait_impls::resource_pack_redirect::try_redirect(
+                &crate::code_cvt::multi_byte_to_wide_char(filename_bytes, 0),
+                dw_desired_access,
+                dw_share_mode,
+                lp_security_attributes,
+                dw_creation_disposition,
+                dw_flags_and_attributes,
+                h_template_file,
+            ) {
+                return handle;
+            }
 
             crate::call!(
                 HOOK_CREATE_FILE_A,
-                file_name_ptr,
+                lp_file_name,
                 dw_desired_access,
                 dw_share_mode,
                 lp_security_attributes,
@@ -65,7 +88,7 @@ pub trait FileHook: Send + Sync + 'static {
             )
         }
 
-        #[cfg(not(feature = "create_file_redirect"))]
+        #[cfg(not(any(feature = "create_file_redirect", feature = "resource_pack")))]
         unimplemented!();
     }
 
@@ -75,15 +98,42 @@ pub trait FileHook: Send + Sync + 'static {
         fallback = "windows_sys::Win32::Foundation::INVALID_HANDLE_VALUE"
     )]
     unsafe fn create_file_w(
-        _lp_file_name: PCWSTR,
-        _dw_desired_access: u32,
-        _dw_share_mode: u32,
-        _lp_security_attributes: *const SECURITY_ATTRIBUTES,
-        _dw_creation_disposition: u32,
-        _dw_flags_and_attributes: u32,
-        _h_template_file: HANDLE,
+        lp_file_name: PCWSTR,
+        dw_desired_access: u32,
+        dw_share_mode: u32,
+        lp_security_attributes: *const SECURITY_ATTRIBUTES,
+        dw_creation_disposition: u32,
+        dw_flags_and_attributes: u32,
+        h_template_file: HANDLE,
     ) -> HANDLE {
-        unimplemented!()
+        #[cfg(feature = "resource_pack")]
+        unsafe {
+            if let Some(handle) = crate::hook::trait_impls::resource_pack_redirect::try_redirect(
+                crate::utils::mem::slice_until_null(lp_file_name, 4096),
+                dw_desired_access,
+                dw_share_mode,
+                lp_security_attributes,
+                dw_creation_disposition,
+                dw_flags_and_attributes,
+                h_template_file,
+            ) {
+                return handle;
+            }
+
+            crate::call!(
+                HOOK_CREATE_FILE_W,
+                lp_file_name,
+                dw_desired_access,
+                dw_share_mode,
+                lp_security_attributes,
+                dw_creation_disposition,
+                dw_flags_and_attributes,
+                h_template_file,
+            )
+        }
+
+        #[cfg(not(feature = "resource_pack"))]
+        unimplemented!();
     }
 
     #[allow(unused_variables)]

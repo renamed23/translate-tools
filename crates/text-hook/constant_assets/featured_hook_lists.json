@@ -1,9 +1,13 @@
 {
-  "all(feature = \"file_hook\", feature = \"read_file_patch_impl\")": [
+  "feature = \"read_file_patch_impl\"": [
     "ReadFile"
   ],
-  "all(feature = \"file_hook\", feature = \"create_file_redirect\")": [
+  "feature = \"create_file_redirect\"": [
     "CreateFileA"
+  ],
+  "feature = \"resource_pack\"": [
+    "CreateFileA",
+    "CreateFileW"
   ],
   "feature = \"text_hook\"": [
     "CreateFontA",
@@ -29,7 +33,10 @@
     "EnumFontsA",
     "EnumFontsW"
   ],
-  "feature = \"window_hook\"": ["DefWindowProcA", "DefWindowProcW"],
+  "feature = \"window_hook\"": [
+    "DefWindowProcA",
+    "DefWindowProcW"
+  ],
   "all(feature = \"window_hook\", feature = \"text_patch\")": [
     "PropertySheetA",
     "ModifyMenuA",

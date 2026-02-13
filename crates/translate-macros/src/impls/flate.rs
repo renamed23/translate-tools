@@ -75,11 +75,10 @@ pub fn flate(input: TokenStream) -> syn::Result<TokenStream> {
     let bytes = LitByteStr::new(&compressed, Span::call_site());
     let bytes_tokens = quote! { #bytes };
     let file_len = file_bytes.len();
-    let runtime_fn_path = quote! { crate::utils::decompress_zstd };
 
     let expanded = quote! {
         #pub_token static #name_ident: ::std::sync::LazyLock<Vec<u8>> = ::std::sync::LazyLock::new(|| {
-            #runtime_fn_path(#bytes_tokens, #file_len).unwrap()
+            ::zstd::bulk::decompress(#bytes_tokens, #file_len).unwrap()
         });
     };
 
