@@ -61,13 +61,12 @@ fn to_windows_path(path: &Path) -> String {
 pub fn get_resource_path(path: &Path) -> crate::Result<Option<PathBuf>> {
     let exec_dir = crate::utils::get_executable_dir();
 
-    let cwd = std::env::current_dir()
-        .map_err(|e| crate::anyhow!("Get current work directory failed with : {e}"))?;
-
     let abs_path = if path.is_absolute() {
         path.to_path_buf()
     } else {
-        cwd.join(path)
+        std::env::current_dir()
+            .map_err(|e| crate::anyhow!("Get current work directory failed with : {e}"))?
+            .join(path)
     };
 
     let abs_path = path_clean::clean(&abs_path);
