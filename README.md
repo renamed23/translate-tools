@@ -58,7 +58,7 @@ cargo build --release --features default_impl
 
 `HIJACKED_DLL_PATH`用于指定被劫持的DLL的路径，若未指定，那么默认会在系统目录中寻找。需要开启`dll_hijacking`特性，并将需要劫持的DLL放在`assets/hijacked`目录里(仅限一个)，最终编译的DLL需要手动改名，然后放在游戏EXE所在目录即可完成劫持，此时就不再需要改游戏的导入表了。
 
-`RESOURCE_PACK_NAME`在开启`resource_pack`特性后有效，它代表解压到临时文件夹的资源文件夹的名字。
+`RESOURCE_PACK_NAME`在开启`resource_pack`特性后有效，它代表解压到资源包文件的名字。
 
 > 推荐使用修改导入表的方式注入DLL（比如使用`CFF Explorer`），因为可以精准影响到你想要影响的EXE，比如`chs`版本
 
