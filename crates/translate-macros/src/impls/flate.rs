@@ -78,7 +78,7 @@ pub fn flate(input: TokenStream) -> syn::Result<TokenStream> {
 
     let expanded = quote! {
         #pub_token static #name_ident: ::std::sync::LazyLock<Vec<u8>> = ::std::sync::LazyLock::new(|| {
-            ::zstd::bulk::decompress(#bytes_tokens, #file_len).unwrap()
+            crate::utils::decompress(#bytes_tokens, #file_len).unwrap()
         });
     };
 

@@ -75,12 +75,12 @@ pub fn generate_resource_pack(input: TokenStream) -> syn::Result<TokenStream> {
     const THRESHOLD: usize = 80 * 1024;
     let original_len = cat_data.len();
     let extract_body = if cat_data.len() > THRESHOLD {
-        let compressed = zstd::bulk::compress(&cat_data, 3)
+        let compressed = zstd::bulk::compress(&cat_data, 0)
             .map_err(|e| syn_err!(&parsed.resource_dir, "zstd压缩失败: {}", e))?;
         let data_lit = LitByteStr::new(&compressed, Span::call_site());
         quote! {
             let compressed: &[u8] = #data_lit;
-            let data = &zstd::bulk::decompress(compressed, #original_len)?;
+            let data = &crate::utils::decompress(compressed, #original_len)?;
         }
     } else {
         let data_lit = LitByteStr::new(&cat_data, Span::call_site());
@@ -115,7 +115,7 @@ pub fn generate_resource_pack(input: TokenStream) -> syn::Result<TokenStream> {
         pub(super) fn extract() -> crate::Result<()> {
             let temp_dir = get_temp_dir();
             if temp_dir.exists() {
-                return Ok(());
+                clean_up()?;
             }
 
             std::fs::create_dir_all(temp_dir)?;

@@ -31,3 +31,12 @@ pub fn get_executable_dir() -> &'static Path {
 
     &EXECUTABLE_DIR
 }
+
+/// 解压数据，`cap` 是解压后数据的预估大小
+pub fn decompress(compressed: &[u8], cap: usize) -> crate::Result<Vec<u8>> {
+    let mut data = Vec::with_capacity(cap);
+    if let Err(e) = ruzstd::decoding::FrameDecoder::new().decode_all_to_vec(compressed, &mut data) {
+        crate::bail!("Decompression failed: {e}");
+    }
+    Ok(data)
+}
