@@ -66,22 +66,9 @@ macro_rules! anyhow {
     };
 }
 
-macro_rules! impl_from_error {
-    ($($t:ty),* $(,)?) => {
-        $(
-            impl From<$t> for Error {
-                fn from(e: $t) -> Self {
-                    crate::debug!(raw "error: {e}");
-                    Error
-                }
-            }
-        )*
-    };
-}
-
-impl_from_error! {
-    std::io::Error,
-    std::str::Utf8Error,
-    std::string::FromUtf16Error,
-    std::array::TryFromSliceError,
+impl<E: std::error::Error> From<E> for Error {
+    fn from(e: E) -> Self {
+        crate::debug!(raw "error: {e}");
+        Error
+    }
 }
