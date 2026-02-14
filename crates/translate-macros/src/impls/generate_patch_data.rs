@@ -142,12 +142,12 @@ pub fn generate_patch_data(input: TokenStream) -> syn::Result<TokenStream> {
             .to_string_lossy()
             .replace('\\', "/")
             .to_string();
-        // 生成 translate_macros::flate! 调用文本（作为 token stream）
-        // 这里展开为语句： translate_macros::flate!( static PATCH_0001: [u8] from "/abs/path" );
+        // 生成 translate_macros::embed! 调用文本（作为 token stream）
+        // 这里展开为语句： translate_macros::embed!( static PATCH_0001: [u8] from "/abs/path" );
         let ident = Ident::new(&patch_name, Span::call_site());
         let path_lit = Literal::string(&rel);
         let tks = quote! {
-            ::translate_macros::flate!(
+            ::translate_macros::embed!(
                 static #ident: [u8] from #path_lit
             );
         };

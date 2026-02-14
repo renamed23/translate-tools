@@ -176,17 +176,21 @@ pub fn ffi_catch_unwind(attr: TokenStream, item: TokenStream) -> TokenStream {
     }
 }
 
-/// 将文件或目录中的单个文件在编译时压缩并嵌入为静态变量，运行时解压访问。
+/// 将文件或目录中的单个文件在编译时嵌入为静态变量或常量。
 ///
 /// # 语法
 /// ```ignore
-/// flate!([pub] static VARIABLE_NAME: [u8] from "path");
+/// embed!([pub] static VARIABLE_NAME: [u8] from "path");
+/// embed!([pub] const VARIABLE_NAME: [u8] from "path");
 /// ```
 ///
 /// # 参数说明
-/// - `[pub]`: 可选，如果提供则生成公有的静态变量
-/// - `VARIABLE_NAME`: 静态变量的标识符
-/// - `[u8]`: 类型标记（实际类型为 `LazyLock<Vec<u8>>`）
+/// - `[pub]`: 可选，如果提供则生成公有的变量
+/// - `static` 或 `const`: 指定嵌入模式
+///   - `static`: 编译时压缩，运行时通过 `LazyLock` 解压访问
+///   - `const`: 不压缩，直接嵌入原始字节
+/// - `VARIABLE_NAME`: 变量标识符
+/// - `[u8]`: 类型标记（`static` 实际类型为 `LazyLock<Vec<u8>>`，`const` 实际类型为 `&[u8]`）
 /// - `"path"`: 相对于 `CARGO_MANIFEST_DIR` 的文件路径或目录路径
 ///
 /// # 路径处理规则
@@ -196,46 +200,45 @@ pub fn ffi_catch_unwind(attr: TokenStream, item: TokenStream) -> TokenStream {
 ///   - 如果没有文件或多个文件，编译时报错
 ///
 /// # 返回值类型
-/// 生成的静态变量类型为 `LazyLock<Vec<u8>>`，在首次访问时自动解压数据。
-///
-/// # 特性
-/// - **编译时压缩**: 使用 zstd 算法（级别 0）在编译时压缩文件
-/// - **运行时解压**: 数据在首次访问时解压，避免启动时性能开销
-/// - **路径解析**: 支持文件和目录路径，相对于项目根目录（`CARGO_MANIFEST_DIR`）
-/// - **智能路径处理**: 自动处理目录中的单个文件
-/// - **错误处理**: 编译时检查路径存在性、文件可读性和目录文件数量
+/// - **`static` 模式**: `LazyLock<Vec<u8>>`，在首次访问时自动解压数据
+/// - **`const` 模式**: `&[u8]`，直接访问原始字节，无运行时开销
 ///
 /// # 示例
 /// ```
 /// // 在 crate root 或 mod 中
-/// use your_crate::flate;
+/// use your_crate::embed;
 ///
-/// // 嵌入单个文件
-/// flate!(static CONFIG_DATA: [u8] from "config/app.toml");
+/// // static 模式：编译时压缩，运行时解压
+/// embed!(static CONFIG_DATA: [u8] from "config/app.toml");
+///
+/// // const 模式：直接嵌入，无压缩
+/// embed!(const SMALL_ICON: [u8] from "assets/icon.png");
 ///
 /// // 嵌入目录中的单个文件（当目录中只有一个文件时）
-/// flate!(static ASSET_DATA: [u8] from "assets/single_file_dir");
+/// embed!(static ASSET_DATA: [u8] from "assets/single_file_dir");
 ///
 /// // 公有的嵌入资源
-/// flate!(pub static IMAGE_DATA: [u8] from "images/logo.png");
+/// embed!(pub static IMAGE_DATA: [u8] from "images/logo.png");
+/// embed!(pub const PUBLIC_KEY: [u8] from "keys/public.pem");
 ///
 /// // 使用时
 /// fn use_embedded_data() {
-///     let config = &*CONFIG_DATA; // 首次访问时解压
-///     let asset = &*ASSET_DATA;
-///     println!("Config size: {}, Asset size: {}", config.len(), asset.len());
+///     // static 模式：通过 &*VAR 访问，首次访问时解压
+///     let config = &*CONFIG_DATA;
+///     println!("Config size: {}", config.len());
+///
+///     // const 模式：直接访问
+///     let icon = SMALL_ICON;
+///     println!("Icon size: {}", icon.len());
 /// }
 /// ```
 ///
 /// # 注意事项
 /// - 路径相对于 `CARGO_MANIFEST_DIR`（项目根目录）
-/// - 压缩级别固定为 0（快速压缩）
-/// - 需要运行时 zstd 解压的支持
-/// - 生成的静态变量是 `LazyLock<Vec<u8>>` 类型，需要通过 `&*VAR` 访问数据
 /// - 目录路径必须包含且仅包含一个文件，否则编译失败
 #[proc_macro]
-pub fn flate(input: TokenStream) -> TokenStream {
-    match impls::flate::flate(input.into()) {
+pub fn embed(input: TokenStream) -> TokenStream {
+    match impls::embed::embed(input.into()) {
         Ok(ts) => ts.into(),
         Err(err) => err.into_compile_error().into(),
     }
@@ -459,7 +462,7 @@ pub fn generate_mapping_data(input: TokenStream) -> TokenStream {
 ///
 /// # 性能特点
 /// - 使用 PHF 实现 O(1) 时间复杂度的查找
-/// - 翻译文件数据在编译时进行压缩（flate压缩）
+/// - 翻译文件数据在编译时进行压缩
 /// - 运行时按需解压缩（LazyLock延迟加载）
 /// - 长度过滤器用于快速排除不匹配的文件
 ///

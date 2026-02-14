@@ -97,7 +97,7 @@ pub fn generate_resource_pack(input: TokenStream) -> syn::Result<TokenStream> {
 
     // 统一处理压缩逻辑
     let final_data = if is_compressed {
-        zstd::bulk::compress(&cat_data, 0)
+        zstd::bulk::compress(&cat_data, 3)
             .map_err(|e| syn_err!(&parsed.resource_dir, "zstd压缩失败: {}", e))?
     } else {
         cat_data
