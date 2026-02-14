@@ -5,7 +5,7 @@ use std::{collections::HashSet, path::PathBuf};
 use syn::parse::{Parse, ParseStream};
 use syn::{LitStr, Token};
 
-use crate::utils::get_full_path_by_manifest;
+use crate::impls::utils::get_full_path_by_manifest;
 
 struct PathsInput {
     raw: LitStr,
@@ -24,8 +24,8 @@ impl Parse for PathsInput {
 pub fn generate_patch_data(input: TokenStream) -> syn::Result<TokenStream> {
     let parsed = syn::parse2::<PathsInput>(input)?;
 
-    let raw_dir = get_full_path_by_manifest(parsed.raw.value()).unwrap();
-    let translated_dir = get_full_path_by_manifest(parsed.translated.value()).unwrap();
+    let raw_dir = get_full_path_by_manifest(parsed.raw.value())?;
+    let translated_dir = get_full_path_by_manifest(parsed.translated.value())?;
 
     let mut raw_files: Vec<PathBuf> = Vec::new();
     if raw_dir.exists() && raw_dir.is_dir() {

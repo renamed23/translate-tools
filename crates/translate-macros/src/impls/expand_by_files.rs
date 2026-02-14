@@ -7,7 +7,7 @@ use syn::parse::{Parse, ParseStream};
 use syn::punctuated::Punctuated;
 use syn::{Block, LitStr, Token};
 
-use crate::utils::get_full_path_by_manifest;
+use crate::impls::utils::get_full_path_by_manifest;
 
 struct Args {
     path: LitStr,
@@ -42,7 +42,7 @@ impl Parse for Args {
 
 pub fn expand_by_files(input: TokenStream) -> syn::Result<TokenStream> {
     let args = syn::parse2::<Args>(input)?;
-    let full_path = get_full_path_by_manifest(args.path.value()).unwrap();
+    let full_path = get_full_path_by_manifest(args.path.value())?;
 
     // 构建排除集合
     let exclude: HashSet<String> = args

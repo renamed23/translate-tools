@@ -7,7 +7,7 @@ use syn::{
     parse::{Parse, ParseStream},
 };
 
-use crate::{impls::detour::generate_detour_ident, utils::get_full_path_by_manifest};
+use crate::impls::{detour::generate_detour_ident, utils::get_full_path_by_manifest};
 
 struct PathsInput {
     featured: LitStr,
@@ -26,8 +26,8 @@ impl Parse for PathsInput {
 pub fn generate_hook_lists_from_json(input: TokenStream) -> syn::Result<TokenStream> {
     let parsed = syn::parse2::<PathsInput>(input)?;
 
-    let featured_path = get_full_path_by_manifest(parsed.featured.value()).unwrap();
-    let user_path = get_full_path_by_manifest(parsed.user.value()).unwrap();
+    let featured_path = get_full_path_by_manifest(parsed.featured.value())?;
+    let user_path = get_full_path_by_manifest(parsed.user.value())?;
 
     // 读取并解析特性化钩子列表json文件
     let featured_str = match std::fs::read_to_string(&featured_path) {

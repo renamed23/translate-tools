@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use syn::parse::{Parse, ParseStream};
 use syn::{Ident, LitByteStr, LitStr, Token};
 
-use crate::utils::get_full_path_by_manifest;
+use crate::impls::utils::get_full_path_by_manifest;
 
 /// 语法解析： [pub] static NAME: [u8] from "path"
 struct FlateInput {
@@ -87,7 +87,7 @@ pub fn flate(input: TokenStream) -> syn::Result<TokenStream> {
 
 /// 确定目标文件路径
 fn determine_target_file_path(rel_path: &str) -> anyhow::Result<PathBuf> {
-    let full_path = get_full_path_by_manifest(rel_path).unwrap();
+    let full_path = get_full_path_by_manifest(rel_path)?;
 
     if full_path.is_file() {
         return Ok(full_path);

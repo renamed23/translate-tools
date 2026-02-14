@@ -3,7 +3,7 @@ use quote::quote;
 use syn::parse::{Parse, ParseStream};
 use syn::{LitStr, Token};
 
-use crate::utils::get_full_path_by_manifest;
+use crate::impls::utils::get_full_path_by_manifest;
 
 struct PathsInput {
     raw: LitStr,

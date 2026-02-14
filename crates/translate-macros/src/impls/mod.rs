@@ -42,6 +42,8 @@ macro_rules! syn_err2 {
     };
 }
 
+pub(crate) mod utils;
+
 pub(crate) mod byte_slice;
 pub(crate) mod derive_default_hook;
 pub(crate) mod detour;

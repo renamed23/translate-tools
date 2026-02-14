@@ -7,7 +7,7 @@ use syn::{
     parse::{Parse, ParseStream},
 };
 
-use crate::utils::get_full_path_by_manifest;
+use crate::impls::utils::{get_full_path_by_manifest, read_config_json};
 
 struct PathsInput {
     default: LitStr,
@@ -27,32 +27,17 @@ pub fn generate_constants_from_json(input: TokenStream) -> syn::Result<TokenStre
     // 解析两个字符串字面量（默认配置, 覆盖配置）
     let parsed = syn::parse2::<PathsInput>(input)?;
 
-    let default_path = get_full_path_by_manifest(parsed.default.value()).unwrap();
-    let user_path = get_full_path_by_manifest(parsed.user.value()).unwrap();
+    let default_path = get_full_path_by_manifest(parsed.default.value())?;
+    let user_path = get_full_path_by_manifest(parsed.user.value())?;
 
     // 读取并解析默认配置文件
-    let default_str = match std::fs::read_to_string(&default_path) {
-        Ok(s) => s,
-        Err(e) => {
-            syn_bail2!("无法读取默认配置 {}: {}", default_path.display(), e);
-        }
-    };
-    let default_json: HashMap<String, JsonValue> = match serde_json::from_str(&default_str) {
-        Ok(j) => j,
-        Err(e) => {
-            syn_bail2!("解析默认配置 JSON 失败 ({}): {}", default_path.display(), e);
-        }
-    };
+    let default_json = read_config_json(&default_path)?;
 
     // 读取并解析用户配置（如果存在）
-    let user_json: HashMap<String, JsonValue> = match std::fs::read_to_string(&user_path) {
-        Ok(s) => match serde_json::from_str(&s) {
-            Ok(j) => j,
-            Err(e) => {
-                syn_bail2!("解析用户配置 JSON 失败 ({}): {}", user_path.display(), e);
-            }
-        },
-        Err(_) => HashMap::new(), // 文件不存在则当空覆盖
+    let user_json = if user_path.is_file() {
+        read_config_json(&user_path)?
+    } else {
+        HashMap::new()
     };
 
     let mut merged_json: HashMap<String, JsonValue> = HashMap::new();

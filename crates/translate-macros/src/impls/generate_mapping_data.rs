@@ -7,7 +7,7 @@ use syn::{
     parse::{Parse, ParseStream},
 };
 
-use crate::utils::get_full_path_by_manifest;
+use crate::impls::utils::get_full_path_by_manifest;
 
 struct PathInput {
     mapping: LitStr,
@@ -31,7 +31,7 @@ fn get_code_page_from_src_encoding(src_encoding: &str) -> syn::Result<u32> {
 pub fn generate_mapping_data(input: TokenStream) -> syn::Result<TokenStream> {
     let parsed = syn::parse2::<PathInput>(input)?;
 
-    let mapping_path = get_full_path_by_manifest(parsed.mapping.value()).unwrap();
+    let mapping_path = get_full_path_by_manifest(parsed.mapping.value())?;
 
     let mapping_str = std::fs::read_to_string(&mapping_path)
         .map_err(|e| syn_err2!("无法读取 {}: {}", mapping_path.display(), e))?;

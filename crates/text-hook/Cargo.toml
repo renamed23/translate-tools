@@ -16,12 +16,14 @@ debug_output = []
 # 调试输出映射文本
 debug_text_mapping = ["debug_output"]
 
-# 将资源包内嵌到DLL中
+# 扫描 assets/resource_pack 生成资源包
 # 在DLL attach时，会将资源包解压到临时目录中
 # 在DLL detach时，会将临时目录删除
 # 若exe所在目录的同名文件存在于临时目录中
 # 则重定向到临时目录中，否则直接转发
 resource_pack = ["file_hook"]
+# 内嵌资源包而不是外置
+resource_pack_embedding = ["resource_pack"]
 # 使用IAT HOOK，而不是Inline Hook
 # IAT HOOK 比 Inline Hook更轻量，但是后者更全面
 iat_hook = []

@@ -1,5 +1,4 @@
 pub(crate) mod impls;
-pub(crate) mod utils;
 
 use proc_macro::TokenStream;
 
@@ -847,6 +846,34 @@ pub fn generate_hook_lists_from_json(input: TokenStream) -> TokenStream {
     }
 }
 
+/// 生成资源包嵌入代码的过程宏。
+///
+/// 该宏在编译时将指定目录下的资源文件打包，并生成用于运行时提取和访问这些资源的代码。
+///
+/// # 语法
+///
+/// ```ignore
+/// generate_resource_pack!(resource_dir, config_path);
+/// generate_resource_pack!(resource_dir, config_path, output_path);
+/// ```
+///
+/// # 参数
+///
+/// - `resource_dir`: 资源文件所在的目录路径（相对于 `Cargo.toml` 的字符串字面量）。
+/// - `config_path`: JSON 配置文件路径（相对于 `Cargo.toml` 的字符串字面量），
+///   文件中必须包含 `RESOURCE_PACK_NAME` 字段用于指定资源包名称。
+/// - `output_path`（可选）: 若提供，资源包将输出为外部文件而非嵌入二进制；
+///   运行时将从该路径加载 `.pak` 文件。
+///
+/// # 生成的模块内容
+///
+/// 宏会生成一个包含以下内容的内部模块：
+///
+/// - `get_temp_dir()`: 返回资源提取的临时目录路径（`&'static Path`）。
+/// - `RESOURCE_PATHS`: 包含所有资源相对路径的 `phf::Set<&'static str>` 静态集合。
+/// - `is_resource(path: &str) -> bool`: 检查给定路径是否为资源包中的文件。
+/// - `extract() -> Result<()>`: 将资源提取到临时目录，自动处理压缩解压。
+/// - `clean_up() -> Result<()>`: 清理临时目录。
 #[proc_macro]
 pub fn generate_resource_pack(input: TokenStream) -> TokenStream {
     match impls::generate_resource_pack::generate_resource_pack(input.into()) {

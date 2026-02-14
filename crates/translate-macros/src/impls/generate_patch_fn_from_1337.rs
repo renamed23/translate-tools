@@ -7,7 +7,7 @@ use syn::{
     parse::{Parse, ParseStream},
 };
 
-use crate::utils::get_full_path_by_manifest;
+use crate::impls::utils::get_full_path_by_manifest;
 
 /// Macro 输入解析器：`"1337 Directory" => <pub> fn <ident>`
 struct Input {

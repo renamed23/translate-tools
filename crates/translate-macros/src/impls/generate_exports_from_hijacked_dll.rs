@@ -9,7 +9,7 @@ use syn::{
     parse::{Parse, ParseStream},
 };
 
-use crate::utils::get_full_path_by_manifest;
+use crate::impls::utils::get_full_path_by_manifest;
 
 struct PathsInput {
     hijacked_dll_dir: LitStr,
@@ -30,8 +30,8 @@ impl Parse for PathsInput {
 
 pub fn generated_exports_from_hijacked_dll(input: TokenStream) -> syn::Result<TokenStream> {
     let parsed = syn::parse2::<PathsInput>(input)?;
-    let hijacked_dll_dir = get_full_path_by_manifest(parsed.hijacked_dll_dir.value()).unwrap();
-    let def_output_path = get_full_path_by_manifest(parsed.def_output_path.value()).unwrap();
+    let hijacked_dll_dir = get_full_path_by_manifest(parsed.hijacked_dll_dir.value())?;
+    let def_output_path = get_full_path_by_manifest(parsed.def_output_path.value())?;
 
     let generated = match try_generate(&hijacked_dll_dir, &def_output_path) {
         Ok(tokens) => tokens,

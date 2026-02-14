@@ -1,10 +1,15 @@
 use std::path::{Path, PathBuf};
 
 mod pack {
+    #[cfg(not(feature = "resource_pack_embedding"))]
     translate_macros::generate_resource_pack!(
         "assets/resource_pack",
-        crate::constant::RESOURCE_PACK_NAME
+        "assets/config.json",
+        "assets/dist"
     );
+
+    #[cfg(feature = "resource_pack_embedding")]
+    translate_macros::generate_resource_pack!("assets/resource_pack", "assets/config.json");
 }
 
 /// 解压资源包到临时目录

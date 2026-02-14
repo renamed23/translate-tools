@@ -6,7 +6,7 @@ use syn::{
     parse::{Parse, ParseStream},
 };
 
-use crate::utils::get_full_path_by_manifest;
+use crate::impls::utils::get_full_path_by_manifest;
 
 /// Macro 输入解析器：`[pub] type <AliasIdent> , "relative/path"`
 struct SearchHookInput {
@@ -57,7 +57,7 @@ pub fn search_hook_impls(input: TokenStream) -> syn::Result<TokenStream> {
         quote! {}
     };
 
-    let full_path = get_full_path_by_manifest(input.path.value()).unwrap();
+    let full_path = get_full_path_by_manifest(input.path.value())?;
 
     let mut type_aliases = Vec::new();
 
