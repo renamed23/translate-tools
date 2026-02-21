@@ -1,4 +1,5 @@
 pub(crate) mod error_handling;
+pub(crate) mod hwbp;
 pub(crate) mod mem;
 pub(crate) mod nt;
 pub(crate) mod panic;

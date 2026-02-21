@@ -89,6 +89,10 @@ pub fn generate_trampoline_stub_32(
 /// 这个函数用于解析可能包含跳转指令的地址，通过跟随相对短跳转(0xEB)指令，
 /// 找到最终的跳转目标地址。这在inline hook中特别有用，
 /// 因为短跳转的字节长度太小会导致inline hook失败
+///
+/// # Safety
+/// - `addr` 必须指向当前进程中可读的有效指令内存。
+/// - 调用者必须保证沿跳转链访问的地址在解析期间始终有效。
 pub unsafe fn resolve_patchable_addr(mut addr: usize) -> crate::Result<usize> {
     // 防止无限循环
     const MAX_FOLLOW: usize = 8;
@@ -129,6 +133,10 @@ pub unsafe fn resolve_patchable_addr(mut addr: usize) -> crate::Result<usize> {
 /// # 错误
 ///
 /// 如果相对偏移量超出32位有符号整数范围（±2GB），则返回错误。
+///
+/// # Safety
+/// - `patch_address` 必须可写且至少有 5 字节可用空间。
+/// - `target_function` 必须是可执行有效地址，且调用者需保证跳转覆盖不会破坏指令边界。
 pub unsafe fn write_jmp_instruction(
     patch_address: *mut u8,
     target_function: *const u8,
@@ -163,6 +171,10 @@ use windows_sys::Win32::System::Diagnostics::Debug::IMAGE_NT_HEADERS32 as IMAGE_
 use windows_sys::Win32::System::Diagnostics::Debug::IMAGE_NT_HEADERS64 as IMAGE_NT_HEADERS;
 
 /// 获取目标模块的DOS头和NT头
+///
+/// # Safety
+/// - `module_base` 必须是有效 PE 映像基址，且 DOS/NT 头在当前进程中可读。
+/// - 返回的引用依赖于该映像生命周期，调用者必须保证模块不被卸载。
 pub unsafe fn get_dos_and_nt_headers(
     module_base: usize,
 ) -> crate::Result<(&'static IMAGE_DOS_HEADER, &'static IMAGE_NT_HEADERS)> {
@@ -188,6 +200,10 @@ pub unsafe fn get_dos_and_nt_headers(
 }
 
 /// 获取当前模块（可执行文件）的入口点地址（Entry Point）
+///
+/// # Safety
+/// - 调用者必须保证当前进程主模块为有效 PE 映像。
+/// - 返回地址仅在模块保持加载且未重映射时有效。
 pub unsafe fn get_entry_point_addr() -> crate::Result<usize> {
     let h_module = crate::utils::win32::get_module_handle(core::ptr::null())? as usize;
 

@@ -15,6 +15,10 @@ use crate::utils::mem::patch::{get_dos_and_nt_headers, write_bytes};
 ///
 /// # 返回值
 /// - `Result`: 成功返回 `Ok(())`，失败返回错误信息
+///
+/// # Safety
+/// - `target_module` 必须是当前进程中已加载模块的有效基址。
+/// - 调用者必须保证 `original_addr` 与 `hook_addr` 均为可执行函数地址，且替换期间不存在并发写入 IAT。
 pub unsafe fn patch_iat(
     target_module: HMODULE,
     original_addr: usize,
@@ -28,6 +32,10 @@ pub unsafe fn patch_iat(
 }
 
 /// 在导入表中遍历查找特定地址的指针位置
+///
+/// # Safety
+/// - `module` 必须指向有效 PE 模块基址，且其导入表结构完整可读。
+/// - 调用者必须保证遍历导入表期间该模块不会被卸载。
 pub unsafe fn find_iat_entry(module: HMODULE, target_ptr: usize) -> crate::Result<*mut usize> {
     unsafe {
         let base = module as usize;

@@ -32,6 +32,18 @@ fn delayed_attach() {
         crate::dll_hijacking::load_library();
     };
 
+    #[cfg(feature = "hwbp_from_constants")]
+    if let Ok(addr) = crate::utils::win32::get_module_handle(crate::constant::HWBP_MODULE) {
+        let target_addr = addr as usize + crate::constant::HWBP_RVA;
+
+        crate::veh::request_set_hw_breakpoint_on_current_thread(
+            target_addr,
+            crate::constant::HWBP_TYPE,
+            crate::constant::HWBP_LEN,
+            crate::constant::HWBP_REG,
+        );
+    }
+
     crate::hook::impls::HookImplType::enable_hooks();
     crate::hook::enable_hooks_from_lists();
     crate::hook::impls::HookImplType::on_delayed_attach();

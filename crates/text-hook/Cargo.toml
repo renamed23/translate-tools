@@ -16,6 +16,12 @@ debug_output = []
 # 调试输出映射文本
 debug_text_mapping = ["debug_output"]
 
+# 使用硬件断点中断目标位置(通过constants生成)，中断时应用x64dbg补丁文件
+apply_1337_patch_on_hwbp_hit = ["hwbp_from_constants", "x64dbg_1337_patch"]
+# 延迟加载，使用硬件断点中断目标位置(通过constants生成)
+hwbp_from_constants = ["veh", "delayed_attach"]
+# 启用 veh 处理程序，可用于捕获硬件断点
+veh = []
 # 扫描 assets/resource_pack 生成资源包
 # 在DLL attach时，会将资源包解压到临时目录中
 # 在DLL detach时，会将临时目录删除
@@ -142,6 +148,7 @@ complets = [
     "text_out_arg_c_is_bytes",
 ]
 natsu_natsu = ["export_default_dll_main", "enum_font_families", "text_hook"]
+love_bind = ["export_default_dll_main", "enum_font_families", "text_hook"]
 
 [dependencies]
 translate-macros.workspace = true
@@ -169,6 +176,7 @@ windows-sys = { version = "0.61", features = [
     "Win32_System_WindowsProgramming",
     "Win32_Storage_FileSystem",
     "Win32_UI_Controls",
+    "Win32_System_Kernel",
 ] }
 sha2 = "0.10"
 retour = "0.4.0-alpha.4"

@@ -16,14 +16,16 @@ pub fn get_font_data() -> &'static [u8] {
 
 static mut FONT_HANDLE: Option<HANDLE> = None;
 
-/// 将内嵌字体添加到系统中，返回字体句柄。
-/// 如果已经添加过，则返回之前的句柄。
-/// 如果添加失败，返回`Err`
-/// 注意该函数应该只在DLL attach的时候才调用
-pub unsafe fn add_font() -> crate::Result<usize> {
+/// 将内嵌字体添加到系统中
+///
+/// # Safety
+/// - 仅应在初始化阶段调用，且由调用者保证不会并发调用。
+/// - 调用者需保证本函数与 `remove_font` 的调用时序正确（先 add 后 remove）。
+pub unsafe fn add_font() -> crate::Result<()> {
     unsafe {
-        if let Some(handle) = FONT_HANDLE {
-            return Ok(handle as usize);
+        #[allow(clippy::redundant_pattern_matching)]
+        if matches!(FONT_HANDLE, Some(_)) {
+            return Ok(());
         }
 
         let font_data = get_font_data();
@@ -42,28 +44,29 @@ pub unsafe fn add_font() -> crate::Result<usize> {
             crate::bail!("AddFontMemResourceEx failed");
         } else {
             FONT_HANDLE = Some(handle);
-            Ok(handle as usize)
+            Ok(())
         }
     }
 }
 
 /// 从系统中移除已添加的内嵌字体。
-/// 如果尚未添加，返回`false`。
 /// 移除成功会清空内部句柄缓存。
 ///
-/// 注意该函数应该只在DLL detach时才调用
-pub unsafe fn remove_font() -> crate::Result<bool> {
+///
+/// # Safety
+/// - 仅应在清理阶段调用，且由调用者保证不会并发调用。
+/// - 调用前必须保证字体已通过 `add_font` 成功添加。
+pub unsafe fn remove_font() -> crate::Result<()> {
     unsafe {
         if let Some(handle) = FONT_HANDLE {
             FONT_HANDLE = None;
             if RemoveFontMemResourceEx(handle) != 0 {
-                Ok(true)
+                Ok(())
             } else {
                 crate::bail!("RemoveFontMemResourceEx failed");
             }
         } else {
-            // 未添加，无需移除
-            Ok(false)
+            crate::bail!("remove_font called but font is not added");
         }
     }
 }

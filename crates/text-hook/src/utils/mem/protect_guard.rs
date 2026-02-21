@@ -31,7 +31,7 @@ impl ProtectGuard {
     /// - `size`: 内存区域大小（字节）
     /// - `new_protect`: 新的保护标志（u32）
     ///
-    /// # 安全性
+    /// # Safety
     /// 调用者必须确保地址和大小有效
     pub unsafe fn new<T>(address: *mut T, size: usize, new_protect: u32) -> crate::Result<Self> {
         if size == 0 {
@@ -112,7 +112,7 @@ impl ProtectGuard {
 
     /// 安全地写入值到受保护的内存
     ///
-    /// # 安全性
+    /// # Safety
     /// 调用者必须确保写入的值类型正确且对齐
     pub unsafe fn write<U: Copy>(&self, value: U) {
         unsafe { self.write_offset(0, value) };
@@ -124,7 +124,7 @@ impl ProtectGuard {
     /// - `offset`: 字节偏移量
     /// - `value`: 要写入的值
     ///
-    /// # 安全性
+    /// # Safety
     /// 调用者必须确保偏移量在保护范围内，且类型正确对齐
     pub unsafe fn write_offset<U: Copy>(&self, offset: usize, value: U) {
         unsafe {
@@ -143,7 +143,7 @@ impl ProtectGuard {
 
     /// 从受保护的内存读取值
     ///
-    /// # 安全性
+    /// # Safety
     /// 调用者必须确保读取的类型正确且对齐
     pub unsafe fn read<U: Copy>(&self) -> U {
         unsafe { self.read_offset(0) }
@@ -154,7 +154,7 @@ impl ProtectGuard {
     /// # 参数
     /// - `offset`: 字节偏移量
     ///
-    /// # 安全性
+    /// # Safety
     /// 调用者必须确保偏移量在保护范围内，且类型正确对齐
     pub unsafe fn read_offset<U: Copy>(&self, offset: usize) -> U {
         unsafe {
@@ -173,7 +173,7 @@ impl ProtectGuard {
 
     /// 不对齐地写入值到受保护的内存
     ///
-    /// # 安全性
+    /// # Safety
     /// 调用者必须确保写入的值类型正确，且偏移量在保护范围内
     pub unsafe fn write_unaligned<U: Copy>(&self, value: U) {
         unsafe { self.write_offset_unaligned(0, value) };
@@ -185,7 +185,7 @@ impl ProtectGuard {
     /// - `offset`: 字节偏移量
     /// - `value`: 要写入的值
     ///
-    /// # 安全性
+    /// # Safety
     /// 调用者必须确保偏移量在保护范围内
     pub unsafe fn write_offset_unaligned<U: Copy>(&self, offset: usize, value: U) {
         unsafe {
@@ -200,7 +200,7 @@ impl ProtectGuard {
 
     /// 从受保护的内存不对齐地读取值
     ///
-    /// # 安全性
+    /// # Safety
     /// 调用者必须确保读取的类型正确，且偏移量在保护范围内
     pub unsafe fn read_unaligned<U: Copy>(&self) -> U {
         unsafe { self.read_offset_unaligned(0) }
@@ -211,7 +211,7 @@ impl ProtectGuard {
     /// # 参数
     /// - `offset`: 字节偏移量
     ///
-    /// # 安全性
+    /// # Safety
     /// 调用者必须确保偏移量在保护范围内
     pub unsafe fn read_offset_unaligned<U: Copy>(&self, offset: usize) -> U {
         unsafe {
@@ -226,7 +226,7 @@ impl ProtectGuard {
 
     /// 将受保护的内存区域转换为指定类型的切片引用
     ///
-    /// # 安全性
+    /// # Safety
     /// 调用者必须确保类型正确且对齐，且不会超出保护范围
     pub unsafe fn as_slice<U>(&self) -> &[U] {
         let elem = mem::size_of::<U>();
@@ -250,7 +250,7 @@ impl ProtectGuard {
 
     /// 将受保护的内存区域转换为指定类型的可变切片引用
     ///
-    /// # 安全性
+    /// # Safety
     /// 调用者必须确保类型正确且对齐，且不会超出保护范围
     pub unsafe fn as_mut_slice<U>(&mut self) -> &mut [U] {
         let elem = mem::size_of::<U>();
@@ -277,7 +277,7 @@ impl ProtectGuard {
     /// # 参数
     /// - `data`: 要写入的字节切片
     ///
-    /// # 安全性
+    /// # Safety
     /// 调用者必须确保切片长度不超过保护范围
     pub unsafe fn write_bytes(&self, data: &[u8]) {
         unsafe { self.write_bytes_ex(0, data, false) }
@@ -289,7 +289,7 @@ impl ProtectGuard {
     /// - `offset`: 字节偏移量
     /// - `data`: 要写入的字节切片
     ///
-    /// # 安全性
+    /// # Safety
     /// 调用者必须确保切片长度不超过保护范围
     pub unsafe fn write_bytes_offset(&self, offset: usize, data: &[u8]) {
         unsafe { self.write_bytes_ex(offset, data, false) }
@@ -300,7 +300,7 @@ impl ProtectGuard {
     /// # 参数
     /// - `data`: 要写入的字节切片
     ///
-    /// # 安全性
+    /// # Safety
     /// 调用者必须确保切片长度不超过保护范围
     pub unsafe fn write_asm_bytes(&self, data: &[u8]) {
         unsafe { self.write_bytes_ex(0, data, true) }
@@ -312,7 +312,7 @@ impl ProtectGuard {
     /// - `offset`: 字节偏移量
     /// - `data`: 要写入的字节切片
     ///
-    /// # 安全性
+    /// # Safety
     /// 调用者必须确保切片长度不超过保护范围
     pub unsafe fn write_asm_bytes_offset(&self, offset: usize, data: &[u8]) {
         unsafe { self.write_bytes_ex(offset, data, true) }
@@ -324,6 +324,10 @@ impl ProtectGuard {
     /// - `offset`: 字节偏移量
     /// - `data`: 要写入的字节切片
     /// - `asm`: 若为true，则在写入后会刷新指令缓存
+    ///
+    /// # Safety
+    /// - 调用者必须确保 `offset + data.len()` 不超过保护范围。
+    /// - 当 `asm` 为 `true` 时，调用者需保证写入目标为可执行代码并允许刷新指令缓存。
     pub unsafe fn write_bytes_ex(&self, offset: usize, data: &[u8], asm: bool) {
         if data.is_empty() {
             return;
@@ -350,7 +354,7 @@ impl ProtectGuard {
     /// # 返回值
     /// 实际读取的字节数
     ///
-    /// # 安全性
+    /// # Safety
     /// 调用者必须确保缓冲区有效
     pub unsafe fn read_bytes(&self, buffer: &mut [u8]) -> usize {
         unsafe { self.read_bytes_offset(0, buffer) }
@@ -365,7 +369,7 @@ impl ProtectGuard {
     /// # 返回值
     /// 实际读取的字节数
     ///
-    /// # 安全性
+    /// # Safety
     /// 调用者必须确保偏移量和缓冲区有效
     pub unsafe fn read_bytes_offset(&self, offset: usize, buffer: &mut [u8]) -> usize {
         if buffer.is_empty() {

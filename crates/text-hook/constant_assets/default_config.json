@@ -56,5 +56,28 @@
   },
   "RESOURCE_PACK_NAME": {
     "type": "&str"
+  },
+  "HWBP_REG": {
+    "type": "crate::utils::hwbp::HwReg",
+    "value": "crate::utils::hwbp::HwReg::Dr3",
+    "expr": true
+  },
+  "HWBP_TYPE": {
+    "type": "crate::utils::hwbp::HwBreakpointType",
+    "value": "crate::utils::hwbp::HwBreakpointType::Execute",
+    "expr": true
+  },
+  "HWBP_LEN": {
+    "type": "crate::utils::hwbp::HwBreakpointLen",
+    "value": "crate::utils::hwbp::HwBreakpointLen::Byte1",
+    "expr": true
+  },
+  "HWBP_MODULE": {
+    "type": "*const u16",
+    "value": "::core::ptr::null()",
+    "expr": true
+  },
+  "HWBP_RVA": {
+    "type": "usize"
   }
 }

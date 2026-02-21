@@ -45,14 +45,17 @@ pub fn default_dll_main(
             #[cfg(all(feature = "text_patch", feature = "text_extracting"))]
             crate::text_patch::load_initial_extracted_items_from_json();
 
+            #[cfg(feature = "veh")]
+            if let Err(e) = unsafe { crate::veh::install_veh_handler(true) } {
+                crate::debug!("Install VEH handler failed with {e:?}");
+            }
+
             #[cfg(feature = "emulate_locale")]
             crate::emulate_locale::set_japanese_locale();
 
             #[cfg(feature = "custom_font")]
-            unsafe {
-                if let Err(e) = crate::custom_font::add_font() {
-                    crate::debug!("add_font failed with {e:?}");
-                }
+            if let Err(e) = unsafe { crate::custom_font::add_font() } {
+                crate::debug!("add_font failed with {e:?}");
             }
 
             #[cfg(feature = "resource_pack")]
@@ -80,11 +83,14 @@ pub fn default_dll_main(
             #[cfg(all(feature = "text_patch", feature = "text_extracting"))]
             crate::text_patch::save_extracted_items_to_json();
 
+            #[cfg(feature = "veh")]
+            if let Err(e) = unsafe { crate::veh::uninstall_veh_handler() } {
+                crate::debug!("Uninstall VEH handler failed with {e:?}");
+            }
+
             #[cfg(feature = "custom_font")]
-            unsafe {
-                if let Err(e) = crate::custom_font::remove_font() {
-                    crate::debug!("remove_font failed with {e:?}");
-                }
+            if let Err(e) = unsafe { crate::custom_font::remove_font() } {
+                crate::debug!("remove_font failed with {e:?}");
             }
 
             #[cfg(feature = "resource_pack")]

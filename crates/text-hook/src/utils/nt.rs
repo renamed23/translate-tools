@@ -11,6 +11,10 @@ use crate::print_last_error_message;
 ///
 /// - `Ok(*mut PEB)` - 成功获取 PEB 基地址，返回指向 PEB 结构的可变指针(保证不为null)
 /// - `Err` - 查询失败
+///
+/// # Safety
+/// - 调用者必须保证当前进程环境允许调用 `NtQueryInformationProcess`。
+/// - 返回的 PEB 指针仅在进程生命周期内有效，且调用者需自行保证后续解引用安全。
 pub unsafe fn get_current_peb() -> crate::Result<*mut PEB> {
     let mut pbi: PROCESS_BASIC_INFORMATION = unsafe { core::mem::zeroed() };
     let status = unsafe {

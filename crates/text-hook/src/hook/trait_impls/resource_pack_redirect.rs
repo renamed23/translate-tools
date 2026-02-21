@@ -3,7 +3,8 @@ use windows_sys::Win32::{Foundation::HANDLE, Security::SECURITY_ATTRIBUTES};
 
 use crate::hook::traits::file_hook::HOOK_CREATE_FILE_W;
 
-pub unsafe fn try_redirect(
+/// 尝试将传入文件路径重定向到资源包中的替代文件。
+pub fn try_redirect(
     u16_filename: &[u16],
     dw_desired_access: u32,
     dw_share_mode: u32,

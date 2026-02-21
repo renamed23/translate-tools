@@ -38,6 +38,10 @@ pub fn get_filename(src: &[u8]) -> Option<&str> {
 
 /// 尝试匹配传入数据，若为目标数据，将会覆盖对应的补丁数据。
 /// 返回`true`表示修补成功
+///
+/// # Safety
+/// - `ptr` 必须指向长度至少为 `len` 的可写有效内存。
+/// - 调用者需保证该内存在本次调用期间不被并发读写。
 #[cfg(not(feature = "patch_extracting"))]
 pub unsafe fn try_patching(ptr: *mut u8, len: usize) -> bool {
     if !crate::utils::mem::quick_memory_check_win32(ptr, len) {
@@ -66,6 +70,10 @@ pub unsafe fn try_patching(ptr: *mut u8, len: usize) -> bool {
 
 /// 尝试提取传入数据，若为新数据，将会写入 raw 目录。
 /// 返回`true`表示提取成功
+///
+/// # Safety
+/// - `ptr` 必须指向长度至少为 `len` 的可读有效内存。
+/// - 调用者需保证该内存在本次调用期间保持有效且不被并发修改。
 #[allow(dead_code, unused_variables)]
 #[cfg(feature = "patch_extracting")]
 pub unsafe fn try_extracting(ptr: *mut u8, len: usize) -> bool {
@@ -160,6 +168,10 @@ pub fn process_buffer(ptr: *mut u8, len: usize) -> bool {
 }
 
 /// FFI版本的`process_buffer`
+///
+/// # Safety
+/// - `dst` 必须指向长度至少为 `len` 的有效缓冲区。
+/// - 调用者需保证跨 FFI 传入的指针在调用期间可访问且满足别名规则。
 #[translate_macros::ffi_catch_unwind]
 #[cfg_attr(feature = "export_patch_process_fn", unsafe(no_mangle))]
 pub unsafe extern "system" fn process_buffer_ffi(dst: *mut u8, len: usize) {

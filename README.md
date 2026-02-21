@@ -41,6 +41,11 @@ cargo build --release --features default_impl
   "REDIRECTION_SRC_PATH": "DATA2.TCD",
   "REDIRECTION_TARGET_PATH": "DATA_chs.TCD",
   "RESOURCE_PACK_NAME": "text_hook_resource_pack_MOZU_chs",
+  "HWBP_REG": "crate::utils::hwbp::HwReg::Dr2",
+  "HWBP_TYPE": "crate::utils::hwbp::HwBreakpointType::Execute",
+  "HWBP_LEN": "crate::utils::hwbp::HwBreakpointLen::Byte1",
+  "HWBP_MODULE": "::core::ptr::null()",
+  "HWBP_RVA": 4000000,
 }
 ```
 
@@ -59,6 +64,15 @@ cargo build --release --features default_impl
 `HIJACKED_DLL_PATH`用于指定被劫持的DLL的路径，若未指定，那么默认会在系统目录中寻找。需要开启`dll_hijacking`特性，并将需要劫持的DLL放在`assets/hijacked`目录里(仅限一个)，最终编译的DLL需要手动改名，然后放在游戏EXE所在目录即可完成劫持，此时就不再需要改游戏的导入表了。
 
 `RESOURCE_PACK_NAME`在开启`resource_pack`特性后有效，它代表解压到资源包文件的名字。
+
+开启`apply_1337_patch_on_hwbp_hit`或者`hwbp_from_constants`特性时候，使用如下值
+- `HWBP_REG`: 硬件断点的寄存器
+- `HWBP_TYPE`: 硬件断点的类型（写/访问/执行）
+- `HWBP_LEN`: 硬件断点的长度(1，2，4，8)
+- `HWBP_MODULE`：硬件断点的模块，也可以是`::windows_sys::w!("sc.dll")`
+- `HWBP_RVA`: 硬件断点的相对虚拟地址（相对于模块）
+
+
 
 > 推荐使用修改导入表的方式注入DLL（比如使用`CFF Explorer`），因为可以精准影响到你想要影响的EXE，比如`chs`版本
 
@@ -149,3 +163,5 @@ DLL会`inline hook`入口点，然后加载被劫持的DLL，并获取导出函�
 ### x64dbg_1337_patch
 
 该目录应该包含由x64dbg生成的补丁文件，在开启`apply_1337_patch_on_attach`特性后，会在DLL attach的时候进行修补，或者可以只开启`x64dbg_1337_patch`并由自己选择修补时机。
+
+开启`apply_1337_patch_on_hwbp_hit`特性后，会在硬件断点命中时进行修补。

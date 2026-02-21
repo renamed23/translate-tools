@@ -2,6 +2,8 @@
 
 pub use utils::error_handling::{Error, Result};
 
+pub(crate) mod feature_conflicts;
+
 pub(crate) mod debug_output;
 pub(crate) mod hook;
 
@@ -35,6 +37,9 @@ pub(crate) mod emulate_locale;
 
 #[cfg(feature = "resource_pack")]
 pub(crate) mod resource_pack;
+
+#[cfg(feature = "veh")]
+pub(crate) mod veh;
 
 #[allow(dead_code)]
 pub(crate) mod constant {

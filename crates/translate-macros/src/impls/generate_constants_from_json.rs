@@ -62,7 +62,6 @@ pub fn generate_constants_from_json(input: TokenStream) -> syn::Result<TokenStre
             merged_json.insert(key.clone(), user_entry.clone());
         }
     }
-
     // 为每个键生成 const
     let mut const_tokens = Vec::new();
     for (key, entry) in &merged_json {
@@ -76,18 +75,20 @@ pub fn generate_constants_from_json(input: TokenStream) -> syn::Result<TokenStre
             .and_then(|b| b.as_bool())
             .unwrap_or(false);
 
-        // 新增 optional 标记
         let optional = entry
             .get("optional")
             .and_then(|b| b.as_bool())
             .unwrap_or(false);
 
-        // 这里不再直接取 value；把 Option<&JsonValue> 传入转换函数以便处理 optional
+        let expr = entry.get("expr").and_then(|b| b.as_bool()).unwrap_or(false);
+
         let value_opt = entry.get("value");
 
-        match json_item_to_const_tokens(key, type_str, value_opt, encode_to_u16, optional) {
+        match json_item_to_const_tokens(key, type_str, value_opt, encode_to_u16, optional, expr) {
             Ok(token) => const_tokens.push(token),
-            Err(e) => syn_bail2!("解析 {key} (type '{type_str}') 失败，错误信息为: {e}"),
+            Err(e) => {
+                syn_bail2!("解析 {key} (type '{type_str}') 失败，错误信息为: {e}")
+            }
         };
     }
 
@@ -99,11 +100,20 @@ pub fn generate_constants_from_json(input: TokenStream) -> syn::Result<TokenStre
 }
 
 /// 将 JSON 值转换为对应的 TokenStream（支持基本类型和数组）
-fn value_to_tokens(v: &JsonValue, encode_to_u16: bool) -> syn::Result<TokenStream> {
-    fn primitive_to_tokens(v: &JsonValue, encode_to_u16: bool) -> syn::Result<TokenStream> {
+fn value_to_tokens(v: &JsonValue, encode_to_u16: bool, expr: bool) -> syn::Result<TokenStream> {
+    fn primitive_to_tokens(
+        v: &JsonValue,
+        encode_to_u16: bool,
+        expr: bool,
+    ) -> syn::Result<TokenStream> {
         match v {
             JsonValue::String(s) => {
-                if encode_to_u16 {
+                if expr {
+                    let parsed = syn::parse_str::<TokenStream>(s).map_err(|e| {
+                        syn::Error::new_spanned(Literal::string(s), format!("表达式解析失败: {e}"))
+                    })?;
+                    Ok(parsed)
+                } else if encode_to_u16 {
                     let utf16: Vec<u16> = s.encode_utf16().collect();
                     let elems = utf16.iter().map(|n| quote! { #n as u16 });
                     Ok(quote! { &[ #(#elems),* ] })
@@ -113,7 +123,6 @@ fn value_to_tokens(v: &JsonValue, encode_to_u16: bool) -> syn::Result<TokenStrea
                 }
             }
             JsonValue::Number(n) => {
-                // 保守地把数字用其字符串表示插入（让 Rust 自行解析字面量）
                 let s = n.to_string();
                 let lit = syn::parse_str::<TokenStream>(&s)?;
                 Ok(lit)
@@ -135,12 +144,12 @@ fn value_to_tokens(v: &JsonValue, encode_to_u16: bool) -> syn::Result<TokenStrea
     if let Some(arr) = v.as_array() {
         let mut elems_tokens = Vec::new();
         for el in arr {
-            let el_toks = primitive_to_tokens(el, encode_to_u16)?;
+            let el_toks = primitive_to_tokens(el, encode_to_u16, expr)?;
             elems_tokens.push(el_toks);
         }
         Ok(quote! { &[ #(#elems_tokens),* ] })
     } else {
-        primitive_to_tokens(v, encode_to_u16)
+        primitive_to_tokens(v, encode_to_u16, expr)
     }
 }
 
@@ -151,6 +160,7 @@ fn json_item_to_const_tokens(
     v_opt: Option<&JsonValue>,
     encode_to_u16: bool,
     optional: bool,
+    expr: bool,
 ) -> syn::Result<TokenStream> {
     // 生成一个合法的 Rust 标识符（不改变大小写，只做简单替换）
     let ident_name = key
@@ -173,13 +183,12 @@ fn json_item_to_const_tokens(
             if !optional {
                 return Ok(quote! {});
             }
-
             quote! { None }
         }
         Some(v) => {
-            let inner = value_to_tokens(v, encode_to_u16)?;
+            let inner = value_to_tokens(v, encode_to_u16, expr)?;
             if optional {
-                quote! { Some( #inner ) }
+                quote! { Some(#inner) }
             } else {
                 quote! { #inner }
             }
