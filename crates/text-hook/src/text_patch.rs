@@ -6,8 +6,6 @@ use std::sync::LazyLock;
 #[cfg(feature = "text_extracting")]
 use translate_utils::text::{Item, Text};
 
-use crate::code_cvt::TextVec;
-
 #[cfg(feature = "text_extracting")]
 static EXTRACTED_ITEMS: LazyLock<Mutex<Text>> = LazyLock::new(|| Mutex::new(Text::new()));
 
@@ -46,34 +44,19 @@ mod text_patch_data {
 /// 获取与原文对应的译文
 #[cfg(not(feature = "text_extracting"))]
 #[allow(dead_code)]
-pub fn lookup(original_message: &str) -> Option<&'static str> {
+pub fn lookup(original_message: &str) -> crate::Result<&'static str> {
     text_patch_data::lookup(original_message)
+        .ok_or_else(|| crate::anyhow!("Lookup failed for message: {original_message}"))
 }
 
 /// 处理文本，`text_extracting` 特性开启时添加提取条目，否则返回译文（如果有）
-pub fn lookup_or_add(message: &str) -> Option<&'static str> {
+pub fn lookup_or_add_item(message: &str) -> crate::Result<&'static str> {
     #[cfg(feature = "text_extracting")]
     {
         crate::text_patch::add_item(Item::new(message));
-        None
+        crate::bail!("Added item for message: {message}");
     }
 
     #[cfg(not(feature = "text_extracting"))]
     crate::text_patch::lookup(message)
-}
-
-/// 接受ansi字符串，`text_extracting` 特性开启时添加提取条目，否则返回u16编码带NULL的译文（如果有）
-pub fn lookup_or_add_ansi_wide(ansi_slice: &[u8]) -> Option<TextVec<u16>> {
-    let wide_text = crate::code_cvt::ansi_to_wide_char(ansi_slice);
-    if wide_text.contains(&0xFFFDu16) {
-        return None;
-    }
-
-    // wide_char_to_utf8 保证输出合法 UTF-8
-    let msg_text = unsafe {
-        String::from_utf8_unchecked(crate::code_cvt::wide_char_to_utf8(&wide_text).to_vec())
-    };
-
-    crate::text_patch::lookup_or_add(&msg_text)
-        .map(|trans_msg| crate::code_cvt::utf8_to_wide_char_with_null(trans_msg.as_bytes()))
 }

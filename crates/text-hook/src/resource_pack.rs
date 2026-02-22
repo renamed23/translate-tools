@@ -1,5 +1,7 @@
 use std::path::{Path, PathBuf};
 
+use crate::utils::exts::slice_ext::WideSliceExt;
+
 mod pack {
     #[cfg(not(feature = "resource_pack_embedding"))]
     translate_macros::generate_resource_pack!(
@@ -64,7 +66,9 @@ pub fn get_resource_path(path: &Path) -> crate::Result<Option<PathBuf>> {
     let abs_path = if path.is_absolute() {
         path.to_path_buf()
     } else {
-        crate::utils::win32::get_current_dir()?.join(path)
+        crate::utils::win32::get_current_dir(false)?
+            .to_path_buf()
+            .join(path)
     };
 
     let abs_path = path_clean::clean(&abs_path);

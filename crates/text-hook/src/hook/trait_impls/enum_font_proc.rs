@@ -8,6 +8,9 @@ use crate::{
     constant::ENUM_FONT_PROC_PITCH, debug,
 };
 
+#[cfg(feature = "debug_output")]
+use crate::utils::exts::slice_ext::{ByteSliceExt, WideSliceExt};
+
 pub struct EnumFontInfo {
     original_proc_a: FONTENUMPROCA,
     original_proc_w: FONTENUMPROCW,
@@ -73,10 +76,7 @@ pub unsafe extern "system" fn enum_fonts_proc_a(
 
             debug!(
                 "Enuming font '{}'...",
-                String::from_utf16_lossy(&crate::code_cvt::multi_byte_to_wide_char(
-                    facename_slice,
-                    0
-                ))
+                facename_slice.to_wide(0).to_string_lossy()
             );
         }
 
@@ -123,10 +123,7 @@ pub unsafe extern "system" fn enum_fonts_proc_w(
                 modified_lf.lfFaceName.len(),
             );
 
-            debug!(
-                "Enuming font '{}'...",
-                String::from_utf16_lossy(facename_slice)
-            );
+            debug!("Enuming font '{}'...", facename_slice.to_string_lossy());
         }
 
         original_proc(&modified_lf, lptm, font_type, info.original_lparam)

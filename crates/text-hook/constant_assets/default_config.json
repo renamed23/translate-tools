@@ -56,13 +56,10 @@
     "type": "bool",
     "value": false
   },
-  "TEXT_STACK_BUF_LEN": {
-    "type": "usize",
-    "value": 256
-  },
   "HIJACKED_DLL_PATH": {
-    "type": "&str",
-    "value": ""
+    "type": "&[u16]",
+    "value": "",
+    "encode_to_u16": true
   },
   "WINDOW_TITLE": {
     "type": "&[u16]",

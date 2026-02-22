@@ -2,10 +2,10 @@ use translate_macros::DefaultHook;
 use windows_sys::Win32::Graphics::Gdi::{HDC, TextOutW};
 use windows_sys::core::{BOOL, PCSTR};
 
-use crate::code_cvt::TextVec;
 use crate::debug;
 use crate::hook::traits::text_hook::HOOK_TEXT_OUT_A;
 use crate::hook::traits::{CoreHook, TextHook};
+use crate::utils::exts::slice_ext::{ByteSliceExt, WideSliceExt};
 
 #[derive(DefaultHook)]
 #[exclude(TextHook)]
@@ -26,22 +26,18 @@ impl TextHook for SpiriteDestructionHook {
         unsafe {
             let input_slice = crate::utils::mem::slice_from_raw_parts(lp_string, c as usize);
 
-            let buf = crate::code_cvt::wide_char_to_utf8(
-                &crate::code_cvt::multi_byte_to_wide_char(input_slice, 936),
-            );
-
-            let s = str::from_utf8_unchecked(&buf);
+            let s = input_slice.to_wide(936).to_string_lossy();
 
             debug!("Get text: {s}");
 
-            let u16_buf = process_text(s);
+            let u16_buf = process_text(&s);
 
             TextOutW(hdc, x, y, u16_buf.as_ptr(), u16_buf.len() as i32)
         }
     }
 }
 
-fn process_text(s: &str) -> TextVec<u16> {
+fn process_text(s: &str) -> Vec<u16> {
     let (name, msg) = split_name_and_message(s);
 
     #[cfg(feature = "text_extracting")]
@@ -59,7 +55,7 @@ fn process_text(s: &str) -> TextVec<u16> {
 
     #[cfg(not(feature = "text_extracting"))]
     {
-        let name = name.and_then(crate::text_patch::lookup);
+        let name = name.and_then(|n| crate::text_patch::lookup(n).ok());
         let message = crate::text_patch::lookup(msg).unwrap_or(msg);
 
         if let Some(name) = name {

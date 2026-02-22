@@ -1,14 +1,11 @@
 use scopeguard::defer;
-use std::{
-    ffi::{OsStr, OsString},
-    os::windows::ffi::{OsStrExt, OsStringExt as _},
-    path::{Path, PathBuf},
-};
+use std::mem::MaybeUninit;
 use windows_sys::{
     Win32::{
-        Foundation::HMODULE,
+        Foundation::{ERROR_INSUFFICIENT_BUFFER, GetLastError, HMODULE, SetLastError},
         Storage::FileSystem::{Wow64DisableWow64FsRedirection, Wow64RevertWow64FsRedirection},
         System::{
+            Environment::GetCurrentDirectoryW,
             LibraryLoader::{GetModuleFileNameW, GetModuleHandleW, GetProcAddress, LoadLibraryW},
             SystemInformation::GetSystemDirectoryW,
         },
@@ -21,13 +18,10 @@ use windows_sys::{
     core::{PCSTR, PCWSTR},
 };
 
-use crate::{constant, print_last_error_message};
-
-/// 将 `OsStr` 编码为 UTF-16 且追加 `\0`
-#[inline]
-pub fn os_str_to_wide_null(s: &OsStr) -> Vec<u16> {
-    s.encode_wide().chain(core::iter::once(0)).collect()
-}
+use crate::{
+    constant, print_last_error_message,
+    utils::exts::{path_ext::PathExt, slice_ext::WideSliceExt},
+};
 
 /// 获取模块句柄的包装函数
 pub fn get_module_handle(module_name: PCWSTR) -> crate::Result<HMODULE> {
@@ -75,53 +69,34 @@ pub fn get_module_symbol_addrs_from_handle(
 }
 
 /// 获取系统目录的路径，若失败返回Err
-pub fn get_system_directory() -> crate::Result<PathBuf> {
-    let size = unsafe { GetSystemDirectoryW(core::ptr::null_mut(), 0) };
-    if size == 0 {
-        print_last_error_message!();
-        crate::bail!("Failed to get buffer size");
-    }
-
-    let mut buffer = vec![0u16; size as usize];
-    let actual_size = unsafe { GetSystemDirectoryW(buffer.as_mut_ptr(), size) };
-
-    if actual_size == 0 || actual_size >= size {
-        print_last_error_message!();
-        crate::bail!("Failed to get system directory");
-    }
-
-    buffer.truncate(actual_size as usize);
-    Ok(PathBuf::from(OsString::from_wide(&buffer)))
+pub fn get_system_directory(add_null: bool) -> crate::Result<Vec<u16>> {
+    fetch_win32_string(add_null, |ptr, size| unsafe {
+        GetSystemDirectoryW(ptr, size)
+    })
 }
 
 /// 根据路径加载指定DLL，若失败返回Err
-pub fn load_library(path: &Path) -> crate::Result<HMODULE> {
-    let wide_path = os_str_to_wide_null(path.as_os_str());
-    let handle = unsafe { LoadLibraryW(wide_path.as_ptr()) };
+pub fn load_library(path: PCWSTR) -> crate::Result<HMODULE> {
+    let handle = unsafe { LoadLibraryW(path) };
     if handle.is_null() {
         print_last_error_message!();
-        crate::bail!("LoadLibraryW failed for: {}", path.to_string_lossy());
+        crate::bail!("LoadLibraryW failed for: {path:?}");
     }
     Ok(handle)
 }
 
 /// 获取模块文件路径
-pub fn get_module_file_name(module: HMODULE) -> crate::Result<PathBuf> {
-    let mut buffer = vec![0u16; 32768];
-    let len = unsafe { GetModuleFileNameW(module, buffer.as_mut_ptr(), buffer.len() as u32) };
-
-    if len == 0 {
-        print_last_error_message!();
-        crate::bail!("GetModuleFileNameW failed");
-    }
-
-    buffer.truncate(len as usize);
-    Ok(PathBuf::from(OsString::from_wide(&buffer)))
+pub fn get_module_file_name(module: HMODULE, add_null: bool) -> crate::Result<Vec<u16>> {
+    fetch_win32_string(add_null, |ptr, size| unsafe {
+        GetModuleFileNameW(module, ptr, size)
+    })
 }
 
 /// 获取当前工作目录
-pub fn get_current_dir() -> crate::Result<PathBuf> {
-    std::env::current_dir().map_err(|e| crate::anyhow!("Get current directory failed: {e}"))
+pub fn get_current_dir(add_null: bool) -> crate::Result<Vec<u16>> {
+    fetch_win32_string(add_null, |ptr, size| unsafe {
+        GetCurrentDirectoryW(size, ptr)
+    })
 }
 
 /// 加载被劫持的DLL库
@@ -129,20 +104,14 @@ pub fn get_current_dir() -> crate::Result<PathBuf> {
 /// 此函数用于加载DLL，支持两种模式：
 /// - 如果 `constant::HIJACKED_DLL_PATH` 为空字符串，则从系统目录加载指定的DLL
 /// - 如果 `constant::HIJACKED_DLL_PATH` 不为空，则直接从该路径加载DLL
-///
-/// # 参数
-/// * `dll_name` - 要加载的DLL文件名（例如："kernel32.dll"）
-///
-/// # 返回值
-/// * `Result<HMODULE>` - 成功时返回DLL模块句柄，失败时返回Err
 #[allow(clippy::const_is_empty)]
 pub fn load_hijacked_library(dll_name: &str) -> crate::Result<HMODULE> {
     if constant::HIJACKED_DLL_PATH.is_empty() {
-        let system_dir = get_system_directory()?;
+        let system_dir = get_system_directory(false)?.to_path_buf();
         let full_path = system_dir.join(dll_name);
-        load_library(&full_path)
+        load_library(full_path.to_wide_null().as_ptr())
     } else {
-        load_library(Path::new(constant::HIJACKED_DLL_PATH))
+        load_library(constant::HIJACKED_DLL_PATH.with_null().as_ptr())
     }
 }
 
@@ -192,4 +161,84 @@ pub const fn needs_text_conversion(msg: u32) -> bool {
         LB_ADDSTRING | LB_INSERTSTRING | LB_FINDSTRING | LB_FINDSTRINGEXACT
         | LB_SELECTSTRING | LB_GETTEXT
     )
+}
+
+/// 通用工具：处理 Win32 字符串获取逻辑
+pub fn fetch_win32_string<T, F>(add_null: bool, mut f: F) -> crate::Result<Vec<T>>
+where
+    T: Default + Copy,
+    F: FnMut(*mut T, u32) -> u32,
+{
+    // 小栈缓冲，避免小字符串直接分配堆
+    const STACK_CAP: usize = 512;
+
+    // 只对 u8 / u16 有意义，但保持泛型
+    let mut stack_buf: [MaybeUninit<T>; STACK_CAP] = unsafe { MaybeUninit::uninit().assume_init() };
+
+    let mut heap_buf: Vec<MaybeUninit<T>> = Vec::new();
+
+    unsafe {
+        let mut n = STACK_CAP;
+
+        loop {
+            let buf: &mut [MaybeUninit<T>] = if n <= STACK_CAP {
+                &mut stack_buf[..n]
+            } else {
+                if heap_buf.capacity() < n {
+                    heap_buf.reserve(n - heap_buf.len());
+                }
+
+                // 使用 capacity，避免反复 realloc
+                n = heap_buf.capacity().min(u32::MAX as usize);
+
+                heap_buf.set_len(n);
+                &mut heap_buf[..n]
+            };
+
+            // 清理 last error，避免读到历史值
+            SetLastError(0);
+
+            let k = match f(buf.as_mut_ptr() as *mut T, n as u32) {
+                0 => {
+                    let err = GetLastError();
+                    if err == 0 {
+                        0usize
+                    } else {
+                        crate::print_last_error_message!(ec err);
+                        crate::bail!("Win32 string fetch failed with error code: {}", err);
+                    }
+                }
+                v => v as usize,
+            };
+
+            let err = GetLastError();
+
+            if k == n && err == ERROR_INSUFFICIENT_BUFFER {
+                // 某些 API 返回 n 并设置错误
+                n = n.saturating_mul(2).min(u32::MAX as usize);
+                continue;
+            } else if k > n {
+                // 某些 API 返回所需长度
+                n = k;
+                continue;
+            } else if k == n {
+                // 理论上不可达（成功时 k 不含 null）
+                unreachable!();
+            } else {
+                // 成功，前 k 项已初始化
+                let reserve = if add_null { 1 } else { 0 };
+                // 预先分配好 k + reserve 的容量
+                let mut result = Vec::with_capacity(k + reserve);
+
+                let ptr = buf.as_ptr().cast::<T>();
+                result.extend_from_slice(core::slice::from_raw_parts(ptr, k));
+
+                if add_null {
+                    result.push(T::default());
+                }
+
+                return Ok(result);
+            }
+        }
+    }
 }

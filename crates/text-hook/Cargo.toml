@@ -96,7 +96,6 @@ debug_file_impl = ["debug_output", "export_default_dll_main", "file_hook"]
 default_impl = ["export_default_dll_main"]
 
 # 针对特定游戏的impl-------------------------------------------
-sukisuki = ["default_impl", "text_hook"]
 seraph = ["export_default_dll_main"]
 lucky_crosse = ["default_impl", "export_patch_process_fn", "text_hook"]
 cosmos = ["default_impl", "export_patch_process_fn", "text_hook"]
@@ -177,11 +176,11 @@ windows-sys = { version = "0.61", features = [
     "Win32_Storage_FileSystem",
     "Win32_UI_Controls",
     "Win32_System_Kernel",
+    "Win32_System_Environment",
 ] }
 sha2 = "0.10"
 retour = "0.4.0-alpha.4"
 phf = { version = "0.13", features = ["macros"] }
-smallvec = "1"
 ntapi = "0.4"
 scopeguard = "1"
 const-str = "1"

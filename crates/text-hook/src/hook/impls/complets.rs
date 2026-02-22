@@ -7,6 +7,7 @@ use windows_sys::core::PCSTR;
 
 use crate::constant::ARG_REG_PATH;
 use crate::hook::traits::CoreHook;
+use crate::utils::exts::slice_ext::ByteSliceExt;
 use crate::{debug, print_last_error_message};
 
 #[derive(DefaultHook)]
@@ -40,8 +41,7 @@ unsafe extern "system" fn reg_open_key_ex_a(
 ) -> WIN32_ERROR {
     unsafe {
         if hkey == HKEY_LOCAL_MACHINE && !lpsubkey.is_null() {
-            let subkey =
-                String::from_utf8_lossy(crate::utils::mem::slice_until_null(lpsubkey, 1024));
+            let subkey = crate::utils::mem::slice_until_null(lpsubkey, 1024).to_string_lossy();
 
             debug!("get subkey : {subkey}");
 
@@ -88,8 +88,7 @@ unsafe extern "system" fn reg_create_key_ex_a(
 ) -> WIN32_ERROR {
     unsafe {
         if hkey == HKEY_LOCAL_MACHINE && !lpsubkey.is_null() {
-            let subkey =
-                String::from_utf8_lossy(crate::utils::mem::slice_until_null(lpsubkey, 1024));
+            let subkey = crate::utils::mem::slice_until_null(lpsubkey, 1024).to_string_lossy();
 
             debug!("get subkey : {subkey}");
 

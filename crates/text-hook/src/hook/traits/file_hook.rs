@@ -27,6 +27,9 @@ pub trait FileHook: Send + Sync + 'static {
     ) -> HANDLE {
         #[cfg(any(feature = "create_file_redirect", feature = "resource_pack"))]
         unsafe {
+            #[cfg(feature = "resource_pack")]
+            use crate::utils::exts::slice_ext::ByteSliceExt;
+
             let filename_bytes = crate::utils::mem::slice_until_null(lp_file_name, 4096);
 
             #[cfg(feature = "create_file_redirect")]
@@ -64,8 +67,8 @@ pub trait FileHook: Send + Sync + 'static {
             }
 
             #[cfg(feature = "resource_pack")]
-            if let Some(handle) = crate::hook::trait_impls::resource_pack_redirect::try_redirect(
-                &crate::code_cvt::multi_byte_to_wide_char(filename_bytes, 0),
+            if let Some(handle) = try_redirect(
+                &filename_bytes.to_wide(0),
                 dw_desired_access,
                 dw_share_mode,
                 lp_security_attributes,
@@ -108,7 +111,7 @@ pub trait FileHook: Send + Sync + 'static {
     ) -> HANDLE {
         #[cfg(feature = "resource_pack")]
         unsafe {
-            if let Some(handle) = crate::hook::trait_impls::resource_pack_redirect::try_redirect(
+            if let Some(handle) = try_redirect(
                 crate::utils::mem::slice_until_null(lp_file_name, 4096),
                 dw_desired_access,
                 dw_share_mode,
@@ -253,4 +256,53 @@ pub trait FileHook: Send + Sync + 'static {
     unsafe fn find_close(_h_find_file: HANDLE) -> BOOL {
         unimplemented!();
     }
+}
+
+/// 尝试将传入文件路径重定向到资源包中的替代文件。
+#[cfg(feature = "resource_pack")]
+fn try_redirect(
+    u16_filename: &[u16],
+    dw_desired_access: u32,
+    dw_share_mode: u32,
+    lp_security_attributes: *const SECURITY_ATTRIBUTES,
+    dw_creation_disposition: u32,
+    dw_flags_and_attributes: u32,
+    h_template_file: HANDLE,
+) -> Option<HANDLE> {
+    use crate::utils::exts::{path_ext::PathExt, slice_ext::WideSliceExt};
+
+    let orig_path = u16_filename.to_path_buf();
+    match crate::resource_pack::get_resource_path(&orig_path) {
+        Ok(Some(path)) => {
+            crate::debug!(
+                "Resource pack hooked file: {}, replace to {}",
+                orig_path.to_string_lossy(),
+                path.to_string_lossy()
+            );
+
+            let handle = unsafe {
+                crate::call!(
+                    HOOK_CREATE_FILE_W,
+                    path.to_wide_null().as_ptr(),
+                    dw_desired_access,
+                    dw_share_mode,
+                    lp_security_attributes,
+                    dw_creation_disposition,
+                    dw_flags_and_attributes,
+                    h_template_file,
+                )
+            };
+
+            return Some(handle);
+        }
+        Err(e) => {
+            crate::debug!(
+                "Failed to get resource path for {}: {e:?}",
+                orig_path.to_string_lossy()
+            );
+        }
+        _ => (),
+    }
+
+    None
 }

@@ -10,8 +10,6 @@ pub(crate) mod hook;
 #[allow(dead_code)]
 pub(crate) mod code_cvt;
 #[allow(dead_code)]
-pub(crate) mod mapping;
-#[allow(dead_code)]
 pub(crate) mod utils;
 
 #[cfg(feature = "x64dbg_1337_patch")]
@@ -43,7 +41,7 @@ pub(crate) mod veh;
 
 #[allow(dead_code)]
 pub(crate) mod constant {
-    pub const ANSI_CODE_PAGE: u32 = crate::mapping::ANSI_CODE_PAGE;
+    pub const ANSI_CODE_PAGE: u32 = crate::code_cvt::ANSI_CODE_PAGE;
 
     translate_macros::generate_constants_from_json!(
         "constant_assets/default_config.json",

@@ -54,17 +54,18 @@ unsafe extern "system" fn trampoline() {
 #[translate_macros::ffi_catch_unwind]
 pub unsafe extern "system" fn extract_script(ptr: *mut u8, len: usize, filename: PCSTR) {
     unsafe {
+        use crate::utils::exts::slice_ext::{ByteSliceExt, WideSliceExt};
         use std::io::Write;
         use windows_sys::Win32::Foundation::MAX_PATH;
 
         let filename =
-            String::from_utf8_lossy(crate::utils::mem::slice_until_null(filename, MAX_PATH as _));
+            crate::utils::mem::slice_until_null(filename, MAX_PATH as _).to_string_lossy();
         if crate::patch::try_extracting(ptr, len) {
             let new_filename = format!("{filename}.isf");
 
             // 读取cwd的`raw/filenames.txt`，如果没有就创建，然后在末尾添加`{new_filename}\n`
-            if let Ok(current_dir) = crate::utils::win32::get_current_dir()() {
-                let raw_dir = current_dir.join("raw");
+            if let Ok(current_dir) = crate::utils::win32::get_current_dir(false) {
+                let raw_dir = current_dir.to_path_buf().join("raw");
 
                 // 创建raw目录（如果不存在）
                 if let Err(e) = std::fs::create_dir_all(&raw_dir) {

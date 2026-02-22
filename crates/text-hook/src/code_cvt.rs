@@ -1,6 +1,4 @@
-use core::ptr;
-use smallvec::SmallVec;
-use windows_sys::Win32::Globalization::{CP_UTF8, MultiByteToWideChar, WideCharToMultiByte};
+use windows_sys::Win32::Globalization::{MultiByteToWideChar, WideCharToMultiByte};
 use windows_sys::Win32::Graphics::Gdi::{
     ANSI_CHARSET, ARABIC_CHARSET, BALTIC_CHARSET, CHINESEBIG5_CHARSET, EASTEUROPE_CHARSET,
     GB2312_CHARSET, GREEK_CHARSET, HANGUL_CHARSET, HEBREW_CHARSET, RUSSIAN_CHARSET,
@@ -8,79 +6,65 @@ use windows_sys::Win32::Graphics::Gdi::{
 };
 use windows_sys::Win32::UI::WindowsAndMessaging::CharNextExA;
 
-use crate::constant::{ANSI_CODE_PAGE, CHAR_SET, TEXT_STACK_BUF_LEN};
-use crate::print_last_error_message;
+use crate::constant::{CHAR_FILTER, CHAR_SET};
 
-/// 用于处理文本缓冲区的Vec
-pub type TextVec<T> = SmallVec<[T; TEXT_STACK_BUF_LEN]>;
+mod mapping_data {
+    translate_macros::generate_mapping_data!("assets/mapping.json");
+}
+
+/// 重导出的`ANSI_CODE_PAGE`，请使用`constant::ANSI_CODE_PAGE`而不是这个
+pub const ANSI_CODE_PAGE: u32 = mapping_data::ANSI_CODE_PAGE;
+
+/// 对含有替身字符的u16序列应用映射，将替身字符转换为正常字符
+/// 仅支持BMP序列
+pub fn mapping_impl(input_slice: &[u16], add_null: bool) -> Vec<u16> {
+    let capacity = if add_null {
+        input_slice.len() + 1
+    } else {
+        input_slice.len()
+    };
+
+    let mut buf: Vec<u16> = Vec::with_capacity(capacity);
+
+    for &ch in input_slice {
+        let mapped_ch = mapping_data::PHF_MAP.get(&ch).copied().unwrap_or(ch);
+
+        if !CHAR_FILTER.contains(&mapped_ch) {
+            buf.push(mapped_ch);
+        }
+    }
+
+    if add_null {
+        buf.push(0);
+    }
+
+    buf
+}
 
 /// 将字节切片转换为宽字符字符串
 ///
 /// # 参数
 /// - `bytes`: 输入的字节切片（不以0结尾）
 /// - `code_page`: 代码页，如 CP_ACP、CP_UTF8 等
+/// - `add_null`: 是否在结果末尾添加0结尾符
 ///
 /// # 返回
-/// - 返回宽字符 TextVec（不以0结尾）
-#[inline(always)]
-pub fn multi_byte_to_wide_char(bytes: &[u8], code_page: u32) -> TextVec<u16> {
-    if bytes.is_empty() {
-        return TextVec::new();
-    }
-
-    unsafe {
-        // 计算所需的宽字符缓冲区大小
-        let wide_size = MultiByteToWideChar(
+/// - 返回宽字符 Vec
+pub fn multi_byte_to_wide_char_impl(
+    bytes: &[u8],
+    code_page: u32,
+    add_null: bool,
+) -> crate::Result<Vec<u16>> {
+    crate::utils::win32::fetch_win32_string(add_null, |ptr, size| unsafe {
+        MultiByteToWideChar(
             code_page,
             0,
             bytes.as_ptr(),
             bytes.len() as i32,
-            ptr::null_mut(),
-            0,
-        );
-
-        if wide_size == 0 {
-            print_last_error_message!();
-            return TextVec::new();
-        }
-
-        // 分配宽字符缓冲区
-        let mut wide_buffer = TextVec::<u16>::with_capacity(wide_size as usize);
-        let wide_ptr = wide_buffer.as_mut_ptr();
-
-        // 执行实际转换
-        let result = MultiByteToWideChar(
-            code_page,
-            0,
-            bytes.as_ptr(),
-            bytes.len() as i32,
-            wide_ptr,
-            wide_size,
-        );
-
-        if result == 0 {
-            print_last_error_message!();
-            TextVec::new()
-        } else {
-            wide_buffer.set_len(wide_size as usize);
-            wide_buffer
-        }
-    }
-}
-
-/// 将字节切片转换为宽字符字符串（以null结尾）
-///
-/// # 参数
-/// - `bytes`: 输入的字节切片（不以0结尾）
-/// - `code_page`: 代码页，如 CP_ACP、CP_UTF8 等
-///
-/// # 返回
-/// - 返回宽字符 TextVec（以0结尾）
-#[inline(always)]
-pub fn multi_byte_to_wide_char_with_null(bytes: &[u8], code_page: u32) -> TextVec<u16> {
-    let mut result = multi_byte_to_wide_char(bytes, code_page);
-    result.push(0x0);
-    result
+            ptr,
+            size as i32,
+        ) as u32
+    })
 }
 
 /// 将宽字符切片转换为指定代码页的字节向量
@@ -88,135 +72,30 @@ pub fn multi_byte_to_wide_char_with_null(bytes: &[u8], code_page: u32) -> TextVe
 /// # 参数
 /// - `wide_str`: 输入的宽字符切片（不以0结尾）
 /// - `code_page`: 代码页，如 CP_ACP、CP_UTF8 等
+/// - `add_null`: 是否在结果末尾添加0结尾符
 ///
 /// # 返回
-/// - 返回字节 TextVec（不以0结尾）
-#[inline(always)]
-pub fn wide_char_to_multi_byte(wide_str: &[u16], code_page: u32) -> TextVec<u8> {
-    if wide_str.is_empty() {
-        return TextVec::new();
-    }
-
-    unsafe {
-        // 计算所需的字节缓冲区大小
-        let multi_byte_size = WideCharToMultiByte(
+/// - 返回字节 Vec
+pub fn wide_char_to_multi_byte_impl(
+    wide_str: &[u16],
+    code_page: u32,
+    add_null: bool,
+) -> crate::Result<Vec<u8>> {
+    crate::utils::win32::fetch_win32_string(add_null, |ptr, size| unsafe {
+        WideCharToMultiByte(
             code_page,
             0,
             wide_str.as_ptr(),
             wide_str.len() as i32,
-            ptr::null_mut(),
-            0,
-            ptr::null(),
-            ptr::null_mut(),
-        );
-
-        if multi_byte_size == 0 {
-            print_last_error_message!();
-            return TextVec::new();
-        }
-
-        // 分配字节缓冲区
-        let mut multi_byte_buffer = TextVec::<u8>::with_capacity(multi_byte_size as usize);
-        let multi_byte_ptr = multi_byte_buffer.as_mut_ptr();
-
-        // 执行实际转换
-        let result = WideCharToMultiByte(
-            code_page,
-            0,
-            wide_str.as_ptr(),
-            wide_str.len() as i32,
-            multi_byte_ptr,
-            multi_byte_size,
-            ptr::null(),
-            ptr::null_mut(),
-        );
-
-        if result == 0 {
-            print_last_error_message!();
-            TextVec::new()
-        } else {
-            // 设置 TextVec 长度
-            multi_byte_buffer.set_len(multi_byte_size as usize);
-            multi_byte_buffer
-        }
-    }
-}
-
-/// 将宽字符切片转换为指定代码页的字节向量（以null结尾）
-///
-/// # 参数
-/// - `wide_str`: 输入的宽字符切片（不以0结尾）
-/// - `code_page`: 代码页，如 CP_ACP、CP_UTF8 等
-///
-/// # 返回
-/// - 返回字节向量（以0结尾）
-#[inline(always)]
-pub fn wide_char_to_multi_byte_with_null(wide_str: &[u16], code_page: u32) -> TextVec<u8> {
-    let mut result = wide_char_to_multi_byte(wide_str, code_page);
-    result.push(0x0);
-    result
-}
-
-/// 便捷函数：将UTF-8字节切片转换为宽字符字符串
-#[inline(always)]
-pub fn utf8_to_wide_char(bytes: &[u8]) -> TextVec<u16> {
-    multi_byte_to_wide_char(bytes, CP_UTF8)
-}
-
-/// 便捷函数：将ANSI字节切片转换为宽字符字符串
-#[inline(always)]
-pub fn ansi_to_wide_char(bytes: &[u8]) -> TextVec<u16> {
-    multi_byte_to_wide_char(bytes, ANSI_CODE_PAGE)
-}
-
-/// 便捷函数：将宽字符切片转换为UTF-8字节向量
-#[inline(always)]
-pub fn wide_char_to_utf8(wide_str: &[u16]) -> TextVec<u8> {
-    wide_char_to_multi_byte(wide_str, CP_UTF8)
-}
-
-/// 便捷函数：将宽字符切片转换为ANSI字节向量
-#[inline(always)]
-pub fn wide_char_to_ansi(wide_str: &[u16]) -> TextVec<u8> {
-    wide_char_to_multi_byte(wide_str, ANSI_CODE_PAGE)
-}
-
-/// 便捷函数：将UTF-8字节切片转换为宽字符字符串（以null结尾）
-#[inline(always)]
-pub fn utf8_to_wide_char_with_null(bytes: &[u8]) -> TextVec<u16> {
-    multi_byte_to_wide_char_with_null(bytes, CP_UTF8)
-}
-
-/// 便捷函数：将ANSI字节切片转换为宽字符字符串（以null结尾）
-#[inline(always)]
-pub fn ansi_to_wide_char_with_null(bytes: &[u8]) -> TextVec<u16> {
-    multi_byte_to_wide_char_with_null(bytes, ANSI_CODE_PAGE)
-}
-
-/// 便捷函数：将宽字符切片转换为UTF-8字节向量（以null结尾）
-#[inline(always)]
-pub fn wide_char_to_utf8_with_null(wide_str: &[u16]) -> TextVec<u8> {
-    wide_char_to_multi_byte_with_null(wide_str, CP_UTF8)
-}
-
-/// 便捷函数：将宽字符切片转换为ANSI字节向量（以null结尾）
-#[inline(always)]
-pub fn wide_char_to_ansi_with_null(wide_str: &[u16]) -> TextVec<u8> {
-    wide_char_to_multi_byte_with_null(wide_str, ANSI_CODE_PAGE)
-}
-
-/// 将 u16 切片转换为带有结尾 NULL 的新 TextVec<u16>
-#[inline(always)]
-pub fn u16_with_null(u16_slice: &[u16]) -> TextVec<u16> {
-    u16_slice
-        .iter()
-        .copied()
-        .chain(core::iter::once(0u16))
-        .collect()
+            ptr,
+            size as i32,
+            core::ptr::null(),
+            core::ptr::null_mut(),
+        ) as u32
+    })
 }
 
 /// 根据CharSet获取对应的代码页
-#[inline(always)]
 pub const fn get_cp_by_char_set() -> u32 {
     match CHAR_SET {
         // 东亚语言（中日韩）
@@ -246,7 +125,6 @@ pub const fn get_cp_by_char_set() -> u32 {
 }
 
 /// 根据字符数和代码页计算传入字符串的字节长度
-#[inline(always)]
 pub fn byte_len(ptr: *const u8, chars: usize, code_page: u16) -> usize {
     let mut cur = ptr;
     let mut byte_len = 0usize;
@@ -263,10 +141,4 @@ pub fn byte_len(ptr: *const u8, chars: usize, code_page: u16) -> usize {
     }
 
     byte_len
-}
-
-/// 根据字符数计算传入ANSI字符串的字节长度
-#[inline(always)]
-pub fn ansi_byte_len(ptr: *const u8, chars: usize) -> usize {
-    byte_len(ptr, chars, ANSI_CODE_PAGE as u16)
 }

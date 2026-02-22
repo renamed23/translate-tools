@@ -1,4 +1,5 @@
 pub(crate) mod error_handling;
+pub(crate) mod exts;
 pub(crate) mod hwbp;
 pub(crate) mod mem;
 pub(crate) mod nt;
@@ -10,6 +11,8 @@ use std::{
     path::{Path, PathBuf},
     sync::LazyLock,
 };
+
+use crate::utils::exts::slice_ext::WideSliceExt;
 
 /// 返回输入字节的sha256哈希值
 pub fn sha256_of_bytes(data: &[u8]) -> [u8; 32] {
@@ -24,9 +27,9 @@ pub fn sha256_of_bytes(data: &[u8]) -> [u8; 32] {
 /// 获取可执行文件所在目录的路径，若失败将会 panic
 pub fn get_executable_dir() -> &'static Path {
     static EXECUTABLE_DIR: LazyLock<PathBuf> = LazyLock::new(|| {
-        crate::utils::win32::get_module_file_name(core::ptr::null_mut())
+        crate::utils::win32::get_module_file_name(core::ptr::null_mut(), false)
             .ok()
-            .and_then(|p| p.parent().map(|p| p.to_path_buf()))
+            .and_then(|p| p.to_path_buf().parent().map(|p| p.to_path_buf()))
             .expect("Failed to get executable directory")
     });
 

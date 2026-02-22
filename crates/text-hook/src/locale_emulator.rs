@@ -1,9 +1,9 @@
 use core::ffi::c_void;
-use std::path::Path;
 
 use windows_sys::Win32::Foundation::{ERROR_SUCCESS, SYSTEMTIME};
 use windows_sys::Win32::Globalization::GetACP;
 use windows_sys::Win32::Graphics::Gdi::LF_FACESIZE;
+use windows_sys::Win32::System::Environment::GetCommandLineW;
 use windows_sys::Win32::System::Registry::{
     HKEY, HKEY_LOCAL_MACHINE, KEY_READ, REG_BINARY, REG_SZ, RegCloseKey, RegOpenKeyExW,
     RegQueryValueExW,
@@ -11,9 +11,11 @@ use windows_sys::Win32::System::Registry::{
 use windows_sys::Win32::System::Threading::{
     ExitProcess, INFINITE, PROCESS_INFORMATION, STARTUPINFOW, WaitForSingleObject,
 };
+use windows_sys::core::PCWSTR;
+use windows_sys::{s, w};
 
 use crate::debug;
-use crate::utils::win32;
+use crate::utils::exts::slice_ext::ByteSliceExt;
 
 #[repr(C)]
 #[derive(Clone, Copy, Default)]
@@ -127,14 +129,9 @@ type LeCreateProcessFn = unsafe extern "system" fn(
     token: isize,
 ) -> u32;
 
-#[inline]
-fn to_wide_null(s: &str) -> Vec<u16> {
-    s.encode_utf16().chain(core::iter::once(0)).collect()
-}
-
 fn query_reg_value_into<T: Copy>(
     hkey: HKEY,
-    value_name: &[u16],
+    value_name: PCWSTR,
     expected_type: u32,
 ) -> crate::Result<T> {
     let mut value: T = unsafe { core::mem::zeroed() };
@@ -144,7 +141,7 @@ fn query_reg_value_into<T: Copy>(
     let ret = unsafe {
         RegQueryValueExW(
             hkey,
-            value_name.as_ptr(),
+            value_name,
             core::ptr::null_mut(),
             &mut data_type,
             &mut value as *mut T as *mut u8,
@@ -173,7 +170,7 @@ fn load_timezone_info(
     leb: &mut LocaleEmulatorEnvironmentBlock,
 ) -> crate::Result<()> {
     let key = format!("SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Time Zones\\{timezone}");
-    let key_w = to_wide_null(&key);
+    let key_w = key.as_bytes().to_wide_null_utf8();
 
     let mut hkey: HKEY = core::ptr::null_mut();
     let open_ret =
@@ -186,9 +183,9 @@ fn load_timezone_info(
         RegCloseKey(hkey);
     });
 
-    let std_name: [u16; 32] = query_reg_value_into(hkey, &to_wide_null("Std"), REG_SZ)?;
-    let dlt_name: [u16; 32] = query_reg_value_into(hkey, &to_wide_null("Dlt"), REG_SZ)?;
-    let tzi: RegTziFormat = query_reg_value_into(hkey, &to_wide_null("TZI"), REG_BINARY)?;
+    let std_name: [u16; 32] = query_reg_value_into(hkey, w!("Std"), REG_SZ)?;
+    let dlt_name: [u16; 32] = query_reg_value_into(hkey, w!("Dlt"), REG_SZ)?;
+    let tzi: RegTziFormat = query_reg_value_into(hkey, w!("TZI"), REG_BINARY)?;
 
     leb.timezone.standard_name = std_name;
     leb.timezone.daylight_name = dlt_name;
@@ -200,17 +197,6 @@ fn load_timezone_info(
     leb.timezone.daylight_start = TimeFields::from_system_time(tzi.daylight_date);
 
     Ok(())
-}
-
-fn get_current_command_line() -> Vec<u16> {
-    let mut cmd = std::env::args_os()
-        .map(|s| s.to_string_lossy().into_owned())
-        .collect::<Vec<_>>()
-        .join(" ")
-        .encode_utf16()
-        .collect::<Vec<_>>();
-    cmd.push(0);
-    cmd
 }
 
 unsafe fn relaunch(process_info: *mut MlProcessInformation) -> crate::Result<()> {
@@ -226,21 +212,17 @@ unsafe fn relaunch(process_info: *mut MlProcessInformation) -> crate::Result<()>
         debug!("Failed to load timezone info: {_e:?}");
     }
 
-    let exe_path = crate::utils::win32::os_str_to_wide_null(
-        crate::utils::win32::get_module_file_name(core::ptr::null_mut())?.as_os_str(),
-    );
-    let current_directory = crate::utils::win32::os_str_to_wide_null(
-        crate::utils::win32::get_current_dir()?.as_os_str(),
-    );
-    let command_line = get_current_command_line();
+    let exe_path = crate::utils::win32::get_module_file_name(core::ptr::null_mut(), true)?;
+    let current_directory = crate::utils::win32::get_current_dir(true)?;
 
-    let loader = win32::load_library(Path::new("LoaderDll.dll"))?;
+    let loader = crate::utils::win32::load_library(w!("LoaderDll.dll"))?;
 
     let proc =
-        win32::get_module_symbol_addr_from_handle(loader, windows_sys::s!("LeCreateProcess"))?;
+        crate::utils::win32::get_module_symbol_addr_from_handle(loader, s!("LeCreateProcess"))?;
     let le_create_process: LeCreateProcessFn = unsafe { core::mem::transmute(proc) };
 
     let mut startup_info: STARTUPINFOW = unsafe { core::mem::zeroed() };
+    startup_info.cb = core::mem::size_of::<STARTUPINFOW>() as u32;
     let mut local_process_info = MlProcessInformation::default();
     let target_process_info = if process_info.is_null() {
         &mut local_process_info
@@ -252,7 +234,7 @@ unsafe fn relaunch(process_info: *mut MlProcessInformation) -> crate::Result<()>
         le_create_process(
             &mut leb,
             exe_path.as_ptr(),
-            command_line.as_ptr(),
+            GetCommandLineW(),
             current_directory.as_ptr(),
             0,
             &mut startup_info,
@@ -271,6 +253,31 @@ unsafe fn relaunch(process_info: *mut MlProcessInformation) -> crate::Result<()>
     Ok(())
 }
 
+/// 使用 Locale Emulator (LE) 环境重新启动当前进程。
+///
+/// ### 工作原理
+/// 1. **检测环境**：首先调用 `GetACP()` 获取当前进程的 ANSI 代码页。
+///    - 如果当前代码页已符合 `EMULATE_LOCALE_CODEPAGE` 的预期，则直接返回 `Ok(())`。
+/// 2. **构造环境**：从注册表中加载目标时区的详细信息（`TZI`），并填充 `LocaleEmulatorEnvironmentBlock` (LEB)。
+/// 3. **创建子进程**：通过加载 `LoaderDll.dll` 并调用其导出的 `LeCreateProcess` 函数，以挂起状态启动当前程序副本。
+/// 4. **注入与 Hook**：LE 引擎会向新进程注入模拟环境，使其在后续执行中认为自己运行在设定的区域、语言和时区下。
+/// 5. **接力退出**：新进程启动成功后，当前进程会根据配置决定是否等待子进程结束，随后调用 `ExitProcess(0)` 自行终止。
+///
+/// ### 关键细节说明
+/// - **原始命令行**：使用 `GetCommandLineW()` 直接传递当前进程的原始 UTF-16 命令行字符串，
+///   确保了参数在传递过程中不会因为不当的字符串处理（如错误的空格转义）而发生信息丢失。
+/// - **结构体校验**：内部显式初始化了 `STARTUPINFOW.cb`，以符合 Win32 API 对结构体大小校验的要求。
+/// - **时区同步**：会自动同步 `standard_bias` 等关键时区参数，确保模拟环境的时间行为与真实区域一致。
+///
+/// ### 注意事项
+/// - 必须确保程序运行目录下存在 `LoaderDll.dll`。
+/// - 此操作会导致当前进程终止，请确保在调用前已保存所有必要状态。
+///
+/// # Errors
+/// 如果发生以下情况，将返回 `Err`：
+/// - 无法读取系统注册表中的时区信息。
+/// - `LoaderDll.dll` 加载失败或找不到 `LeCreateProcess` 符号。
+/// - 创建新进程失败。
 pub fn relaunch_with_locale_emulator() -> crate::Result<()> {
     let current_cp = unsafe { GetACP() };
 

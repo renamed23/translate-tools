@@ -12,13 +12,13 @@ use windows_sys::{
     core::{BOOL, PCSTR, PCWSTR},
 };
 
-use crate::code_cvt::multi_byte_to_wide_char;
 use crate::debug;
 use crate::hook::traits::file_hook::{
     FileHook, HOOK_CLOSE_HANDLE, HOOK_CREATE_FILE_A, HOOK_CREATE_FILE_W, HOOK_FIND_CLOSE,
     HOOK_FIND_FIRST_FILE_A, HOOK_FIND_FIRST_FILE_W, HOOK_FIND_NEXT_FILE_A, HOOK_FIND_NEXT_FILE_W,
     HOOK_READ_FILE,
 };
+use crate::utils::exts::slice_ext::{ByteSliceExt, WideSliceExt};
 use crate::{hook::traits::CoreHook, utils::mem::slice_until_null};
 
 #[derive(DefaultHook)]
@@ -76,9 +76,9 @@ impl FileHook for DebugFileImplHook {
     ) -> HANDLE {
         let file_name = if !lp_file_name.is_null() {
             let ansi_bytes = unsafe { slice_until_null(lp_file_name, MAX_PATH as _) };
-            String::from_utf16_lossy(&multi_byte_to_wide_char(ansi_bytes, 0))
+            ansi_bytes.to_wide(0).to_string_lossy()
         } else {
-            String::from("(null)")
+            "(null)".to_string()
         };
 
         debug!(raw "CreateFileA called: {}", file_name);
@@ -119,9 +119,9 @@ impl FileHook for DebugFileImplHook {
         // 使用工具函数安全地获取宽字符串
         let file_name = if !lp_file_name.is_null() {
             let wide_str = unsafe { slice_until_null(lp_file_name, MAX_PATH as _) };
-            String::from_utf16_lossy(wide_str)
+            wide_str.to_string_lossy()
         } else {
-            String::from("(null)")
+            "(null)".to_string()
         };
 
         debug!(raw "CreateFileW called: {}", file_name);
@@ -219,9 +219,9 @@ impl FileHook for DebugFileImplHook {
     ) -> HANDLE {
         let search_pattern = if !lp_file_name.is_null() {
             let ansi_bytes = unsafe { slice_until_null(lp_file_name, MAX_PATH as _) };
-            String::from_utf16_lossy(&multi_byte_to_wide_char(ansi_bytes, 0))
+            ansi_bytes.to_wide(0).to_string_lossy()
         } else {
-            String::from("(null)")
+            "(null)".to_string()
         };
 
         debug!(raw "FindFirstFileA called with pattern: {}", search_pattern);
@@ -245,8 +245,7 @@ impl FileHook for DebugFileImplHook {
                         find_data.cFileName.len(),
                     )
                 };
-                let file_name =
-                    String::from_utf16_lossy(&multi_byte_to_wide_char(file_name_bytes, 0));
+                let file_name = file_name_bytes.to_wide(0).to_string_lossy();
 
                 debug!(raw "FindFirstFileA found first file: {}", file_name);
             }
@@ -262,9 +261,9 @@ impl FileHook for DebugFileImplHook {
         // 使用工具函数安全地获取宽字符串
         let search_pattern = if !lp_file_name.is_null() {
             let wide_str = unsafe { slice_until_null(lp_file_name, MAX_PATH as _) };
-            String::from_utf16_lossy(wide_str)
+            wide_str.to_string_lossy()
         } else {
-            String::from("(null)")
+            "(null)".to_string()
         };
 
         debug!(raw "FindFirstFileW called with pattern: {}", search_pattern);
@@ -285,7 +284,7 @@ impl FileHook for DebugFileImplHook {
                 let file_name_wide = unsafe {
                     slice_until_null(find_data.cFileName.as_ptr(), find_data.cFileName.len())
                 };
-                let file_name = String::from_utf16_lossy(file_name_wide);
+                let file_name = file_name_wide.to_string_lossy();
 
                 debug!(raw "FindFirstFileW found first file: {}", file_name);
             }
@@ -321,7 +320,7 @@ impl FileHook for DebugFileImplHook {
                     find_data.cFileName.len(),
                 )
             };
-            let file_name = String::from_utf16_lossy(&multi_byte_to_wide_char(file_name_bytes, 0));
+            let file_name = file_name_bytes.to_wide(0).to_string_lossy();
 
             debug!(raw "FindNextFileA found file: {}", file_name);
         }
@@ -353,7 +352,7 @@ impl FileHook for DebugFileImplHook {
             let file_name_wide = unsafe {
                 slice_until_null(find_data.cFileName.as_ptr(), find_data.cFileName.len())
             };
-            let file_name = String::from_utf16_lossy(file_name_wide);
+            let file_name = file_name_wide.to_string_lossy();
 
             debug!(raw "FindNextFileW found file: {}", file_name);
         }

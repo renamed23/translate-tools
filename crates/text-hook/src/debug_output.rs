@@ -13,6 +13,8 @@ pub(crate) mod debug_impl {
         },
     };
 
+    use crate::utils::exts::slice_ext::WideSliceExt;
+
     static CONSOLE_INIT: Once = Once::new();
 
     pub fn debug(args: core::fmt::Arguments) {
@@ -69,7 +71,7 @@ pub(crate) mod debug_impl {
             if result > 0 {
                 let len = result as usize;
                 let wide_slice = &buffer[..len];
-                String::from_utf16(wide_slice).ok()
+                wide_slice.to_string().ok()
             } else {
                 None
             }
@@ -141,14 +143,4 @@ macro_rules! print_last_error_message {
             }
         }
     }};
-}
-
-#[macro_export]
-macro_rules! w2s {
-    ($ptr:expr) => {
-        String::from_utf16_lossy($crate::utils::mem::slice_until_null($ptr, 4096))
-    };
-    ($ptr:expr, $max_len:expr) => {
-        String::from_utf16_lossy($crate::utils::mem::slice_until_null($ptr, $max_len))
-    };
 }

@@ -10,10 +10,10 @@ use windows_sys::{
     core::{BOOL, PCSTR, PCWSTR},
 };
 
-use crate::debug;
+use crate::constant::{CHAR_SET, FONT_FACE, FONT_FILTER};
 use crate::{
-    code_cvt::TextVec,
-    constant::{CHAR_SET, FONT_FACE, FONT_FILTER},
+    debug,
+    utils::exts::slice_ext::{ByteSliceExt, WideSliceExt},
 };
 
 #[cfg(feature = "enum_font_families")]
@@ -30,20 +30,15 @@ pub trait TextHook: Send + Sync + 'static {
     )]
     unsafe fn text_out_a(hdc: HDC, x: i32, y: i32, lp_string: PCSTR, c: i32) -> BOOL {
         unsafe {
-            #[cfg(not(feature = "text_out_arg_c_is_bytes"))]
-            let byte_len = crate::code_cvt::ansi_byte_len(lp_string, c as usize);
-            #[cfg(feature = "text_out_arg_c_is_bytes")]
-            let byte_len = c as usize;
+            let byte_len = get_byte_len(lp_string, c as usize);
 
             let input_slice = crate::utils::mem::slice_from_raw_parts(lp_string, byte_len);
-
-            // 进行映射处理
-            let buf = crate::mapping::map_chars(input_slice);
+            let buf = input_slice.to_wide_ansi().mapping();
 
             #[cfg(feature = "debug_text_mapping")]
             debug!(
                 "draw text '{}' at ({x}, {y}), input: {input_slice:?}",
-                String::from_utf16_lossy(&buf)
+                buf.to_string_lossy()
             );
 
             crate::call!(HOOK_TEXT_OUT_W, hdc, x, y, buf.as_ptr(), buf.len() as i32)
@@ -57,16 +52,12 @@ pub trait TextHook: Send + Sync + 'static {
     )]
     unsafe fn text_out_w(hdc: HDC, x: i32, y: i32, lp_string: PCWSTR, c: i32) -> BOOL {
         unsafe {
-            // 假定文本均在BMP
             let input_slice = crate::utils::mem::slice_from_raw_parts(lp_string, c as usize);
 
-            let buf = crate::mapping::map_wide_chars(input_slice);
+            let buf = input_slice.mapping();
 
             #[cfg(feature = "debug_text_mapping")]
-            debug!(
-                "draw text '{}' at ({x}, {y})",
-                String::from_utf16_lossy(&buf)
-            );
+            debug!("draw text '{}' at ({x}, {y})", buf.to_string_lossy());
 
             crate::call!(HOOK_TEXT_OUT_W, hdc, x, y, buf.as_ptr(), buf.len() as i32)
         }
@@ -88,19 +79,15 @@ pub trait TextHook: Send + Sync + 'static {
         _lp_dx: *const i32,
     ) -> BOOL {
         unsafe {
-            #[cfg(not(feature = "text_out_arg_c_is_bytes"))]
-            let byte_len = crate::code_cvt::ansi_byte_len(lp_string, c as usize);
-            #[cfg(feature = "text_out_arg_c_is_bytes")]
-            let byte_len = c as usize;
+            let byte_len = get_byte_len(lp_string, c as usize);
 
             let input_slice = crate::utils::mem::slice_from_raw_parts(lp_string, byte_len);
-
-            let buf = crate::mapping::map_chars(input_slice);
+            let buf = input_slice.to_wide_ansi().mapping();
 
             #[cfg(feature = "debug_text_mapping")]
             debug!(
                 "ExtTextOutA '{}' at ({x}, {y}), opt={options:#x}",
-                String::from_utf16_lossy(&buf)
+                buf.to_string_lossy()
             );
 
             crate::call!(
@@ -135,12 +122,12 @@ pub trait TextHook: Send + Sync + 'static {
         unsafe {
             let input_slice = crate::utils::mem::slice_from_raw_parts(lp_string, c as usize);
 
-            let buf = crate::mapping::map_wide_chars(input_slice);
+            let buf = input_slice.mapping();
 
             #[cfg(feature = "debug_text_mapping")]
             debug!(
                 "ExtTextOutW '{}' at ({x}, {y}), opt={options:#x}",
-                String::from_utf16_lossy(&buf)
+                buf.to_string_lossy()
             );
 
             crate::call!(
@@ -169,20 +156,13 @@ pub trait TextHook: Send + Sync + 'static {
         lp_size: *mut SIZE,
     ) -> BOOL {
         unsafe {
-            #[cfg(not(feature = "text_out_arg_c_is_bytes"))]
-            let byte_len = crate::code_cvt::ansi_byte_len(lp_string, c as usize);
-            #[cfg(feature = "text_out_arg_c_is_bytes")]
-            let byte_len = c as usize;
+            let byte_len = get_byte_len(lp_string, c as usize);
 
             let input_slice = crate::utils::mem::slice_from_raw_parts(lp_string, byte_len);
-
-            let buf = crate::mapping::map_chars(input_slice);
+            let buf = input_slice.to_wide_ansi().mapping();
 
             #[cfg(feature = "debug_text_mapping")]
-            debug!(
-                "result: {}, input: {input_slice:?}",
-                String::from_utf16_lossy(&buf)
-            );
+            debug!("result: {}, input: {input_slice:?}", buf.to_string_lossy());
 
             crate::call!(
                 HOOK_GET_TEXT_EXTENT_POINT_32_W,
@@ -208,10 +188,10 @@ pub trait TextHook: Send + Sync + 'static {
         unsafe {
             let input_slice = crate::utils::mem::slice_from_raw_parts(lp_string, c as usize);
 
-            let buf = crate::mapping::map_wide_chars(input_slice);
+            let buf = input_slice.mapping();
 
             #[cfg(feature = "debug_text_mapping")]
-            debug!("result: {}", String::from_utf16_lossy(&buf));
+            debug!("result: {}", buf.to_string_lossy());
 
             crate::call!(
                 HOOK_GET_TEXT_EXTENT_POINT_32_W,
@@ -242,13 +222,10 @@ pub trait TextHook: Send + Sync + 'static {
             &[b1, b2][..]
         };
 
-        let buf = crate::mapping::map_chars(input_slice);
+        let buf = input_slice.to_wide_ansi().mapping();
 
         #[cfg(feature = "debug_text_mapping")]
-        debug!(
-            "result: {}, input: {input_slice:?}",
-            String::from_utf16_lossy(&buf)
-        );
+        debug!("result: {}, input: {input_slice:?}", buf.to_string_lossy());
 
         // 直接使用第一个UTF-16字符（假设都在BMP内，不需要代理对）
         if let Some(&wchar) = buf.first() {
@@ -280,10 +257,10 @@ pub trait TextHook: Send + Sync + 'static {
         lpmat2: *const MAT2,
     ) -> u32 {
         // 假设都在BMP内，所以直接`u_char as u16`
-        let buf = crate::mapping::map_wide_chars(&[u_char as u16]);
+        let buf = [u_char as u16].mapping();
 
         #[cfg(feature = "debug_text_mapping")]
-        debug!("result: {}", String::from_utf16_lossy(&buf));
+        debug!("result: {}", buf.to_string_lossy());
 
         // 直接使用第一个UTF-16字符（假设都在BMP内，不需要代理对）
         if let Some(&wchar) = buf.first() {
@@ -325,15 +302,11 @@ pub trait TextHook: Send + Sync + 'static {
         i_pitch_and_family: u32,
         psz_face_name: PCSTR,
     ) -> HFONT {
-        let face_u16 = {
-            let bytes = unsafe {
-                crate::utils::mem::slice_until_null(psz_face_name, (LF_FACESIZE - 1) as usize)
-            };
-
-            crate::code_cvt::multi_byte_to_wide_char_with_null(bytes, 0)
-        };
-
         unsafe {
+            let face_u16 =
+                crate::utils::mem::slice_until_null(psz_face_name, (LF_FACESIZE - 1) as usize)
+                    .to_wide_null(0);
+
             Self::create_font_w(
                 c_height,
                 c_width,
@@ -379,22 +352,19 @@ pub trait TextHook: Send + Sync + 'static {
             crate::utils::mem::slice_until_null(psz_face_name, (LF_FACESIZE - 1) as usize)
         };
 
-        debug!(
-            "Requested font name: {}",
-            String::from_utf16_lossy(u16_slice)
-        );
+        debug!("Requested font name: {}", u16_slice.to_string_lossy());
 
-        let mut buf: Option<TextVec<u16>>;
+        let mut buf: Option<Vec<u16>>;
 
         #[cfg(not(feature = "enum_font_families"))]
         if !FONT_FILTER.contains(&u16_slice) {
-            buf = Some(crate::code_cvt::u16_with_null(FONT_FACE));
+            buf = Some(FONT_FACE.with_null());
             u16_slice = buf.as_ref().unwrap().as_slice();
         }
 
         #[cfg(feature = "enum_font_families")]
         if FONT_FILTER.contains(&u16_slice) {
-            buf = Some(crate::code_cvt::u16_with_null(FONT_FACE));
+            buf = Some(FONT_FACE.with_null());
             u16_slice = buf.as_ref().unwrap().as_slice();
         }
 
@@ -451,7 +421,7 @@ pub trait TextHook: Send + Sync + 'static {
                 )
             };
 
-            crate::code_cvt::multi_byte_to_wide_char_with_null(bytes, 0)
+            bytes.to_wide_null(0)
         };
 
         logfontw.lfFaceName[..face_u16.len()].copy_from_slice(face_u16.as_slice());
@@ -476,21 +446,18 @@ pub trait TextHook: Send + Sync + 'static {
             )
         };
 
-        debug!(
-            "Requested font name: {}",
-            String::from_utf16_lossy(u16_slice)
-        );
+        debug!("Requested font name: {}", u16_slice.to_string_lossy());
 
         // `FONT_FACE` 长度确保不超过 LF_FACESIZE - 1，可以直接复制
         #[cfg(not(feature = "enum_font_families"))]
         if !FONT_FILTER.contains(&u16_slice) {
-            let face_u16 = crate::code_cvt::u16_with_null(FONT_FACE);
+            let face_u16 = FONT_FACE.with_null();
             logfontw.lfFaceName[..face_u16.len()].copy_from_slice(face_u16.as_slice());
         }
 
         #[cfg(feature = "enum_font_families")]
         if FONT_FILTER.contains(&u16_slice) {
-            let face_u16 = crate::code_cvt::u16_with_null(FONT_FACE);
+            let face_u16 = FONT_FACE.with_null();
             logfontw.lfFaceName[..face_u16.len()].copy_from_slice(face_u16.as_slice());
         }
 
@@ -657,5 +624,20 @@ pub trait TextHook: Send + Sync + 'static {
                 &info as *const _ as LPARAM
             )
         }
+    }
+}
+
+/// 根据字符数计算传入ANSI字符串的字节长度
+#[inline(always)]
+fn get_byte_len(ptr: *const u8, chars: usize) -> usize {
+    #[cfg(not(feature = "text_out_arg_c_is_bytes"))]
+    {
+        use crate::{code_cvt::byte_len, constant::ANSI_CODE_PAGE};
+        byte_len(ptr, chars, ANSI_CODE_PAGE as u16)
+    }
+
+    #[cfg(feature = "text_out_arg_c_is_bytes")]
+    {
+        chars
     }
 }

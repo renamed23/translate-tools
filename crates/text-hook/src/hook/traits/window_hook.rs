@@ -7,7 +7,10 @@ use windows_sys::Win32::{
 };
 use windows_sys::core::BOOL;
 
-use crate::debug;
+use crate::{
+    debug,
+    utils::exts::slice_ext::{ByteSliceExt, WideSliceExt},
+};
 
 #[detour_trait]
 pub trait WindowHook: Send + Sync + 'static {
@@ -39,24 +42,23 @@ pub trait WindowHook: Send + Sync + 'static {
                 );
 
                 let class_bytes = crate::utils::mem::slice_until_null((*params_a).lpszClass, 512);
-                let class_name = crate::code_cvt::ansi_to_wide_char_with_null(class_bytes);
+                let class_name = class_bytes.to_wide_null_ansi();
 
                 let title_slice = crate::utils::mem::slice_until_null((*params_a).lpszName, 512);
 
                 #[cfg(feature = "override_window_title")]
-                let window_title = crate::code_cvt::u16_with_null(crate::constant::WINDOW_TITLE);
+                let window_title = crate::constant::WINDOW_TITLE.with_null();
 
                 #[cfg(not(feature = "override_window_title"))]
-                let window_title = crate::mapping::map_chars_with_null(title_slice);
+                let window_title = title_slice.to_wide_ansi().mapping_null();
 
                 params_w.lpszClass = class_name.as_ptr();
                 params_w.lpszName = window_title.as_ptr();
 
                 #[cfg(feature = "debug_output")]
                 {
-                    let raw_class = String::from_utf16_lossy(&class_name);
-                    let raw_title =
-                        String::from_utf16_lossy(&crate::code_cvt::ansi_to_wide_char(title_slice));
+                    let raw_class = class_name.to_string_lossy();
+                    let raw_title = title_slice.to_wide_ansi().to_string_lossy();
                     debug!("Get raw class: {raw_class}, raw window title: {raw_title}");
                 }
 
@@ -77,17 +79,14 @@ pub trait WindowHook: Send + Sync + 'static {
                 let text_slice = crate::utils::mem::slice_until_null(text_ptr, 512);
 
                 #[cfg(feature = "override_window_title")]
-                let text = crate::code_cvt::u16_with_null(crate::constant::WINDOW_TITLE);
+                let text = crate::constant::WINDOW_TITLE.with_null();
 
                 #[cfg(not(feature = "override_window_title"))]
-                let text = crate::mapping::map_chars_with_null(text_slice);
+                let text = text_slice.to_wide_ansi().mapping_null();
 
                 #[cfg(feature = "debug_output")]
                 {
-                    let raw_text = {
-                        let u16_bytes = crate::code_cvt::ansi_to_wide_char(text_slice);
-                        String::from_utf16_lossy(&u16_bytes)
-                    };
+                    let raw_text = text_slice.to_wide_ansi().to_string_lossy();
                     debug!("Get raw window text: {raw_text}");
                 }
 
@@ -124,10 +123,10 @@ pub trait WindowHook: Send + Sync + 'static {
                     let raw_class = {
                         let class_slice =
                             crate::utils::mem::slice_until_null((*params_w).lpszClass, 512);
-                        String::from_utf16_lossy(class_slice)
+                        class_slice.to_string_lossy()
                     };
 
-                    let raw_title = String::from_utf16_lossy(title_slice);
+                    let raw_title = title_slice.to_string_lossy();
 
                     debug!("Get raw class: {raw_class}, raw window title: {raw_title}");
                 }
@@ -135,10 +134,10 @@ pub trait WindowHook: Send + Sync + 'static {
                 let mut modified_params: CREATESTRUCTW = core::ptr::read(params_w);
 
                 #[cfg(feature = "override_window_title")]
-                let window_title = crate::code_cvt::u16_with_null(crate::constant::WINDOW_TITLE);
+                let window_title = crate::constant::WINDOW_TITLE.with_null();
 
                 #[cfg(not(feature = "override_window_title"))]
-                let window_title = crate::mapping::map_wide_chars_with_null(title_slice);
+                let window_title = title_slice.mapping_null();
 
                 modified_params.lpszName = window_title.as_ptr();
 
@@ -160,15 +159,15 @@ pub trait WindowHook: Send + Sync + 'static {
 
                 #[cfg(feature = "debug_output")]
                 {
-                    let raw_text = { String::from_utf16_lossy(text_slice) };
+                    let raw_text = text_slice.to_string_lossy();
                     debug!("Get raw window text: {raw_text}");
                 }
 
                 #[cfg(feature = "override_window_title")]
-                let text = crate::code_cvt::u16_with_null(crate::constant::WINDOW_TITLE);
+                let text = crate::constant::WINDOW_TITLE.with_null();
 
                 #[cfg(not(feature = "override_window_title"))]
-                let text = crate::mapping::map_wide_chars_with_null(text_slice);
+                let text = text_slice.mapping_null();
 
                 crate::call!(
                     HOOK_DEF_WINDOW_PROC_W,
@@ -200,16 +199,14 @@ pub trait WindowHook: Send + Sync + 'static {
 
                 #[cfg(feature = "debug_output")]
                 {
-                    let raw_text = {
-                        String::from_utf16_lossy(&crate::code_cvt::ansi_to_wide_char(text_slice))
-                    };
+                    let raw_text = text_slice.to_wide_ansi().to_string_lossy();
                     debug!("Get menu text: {raw_text}");
                 }
 
-                let opt_trans_msg = crate::text_patch::lookup_or_add_ansi_wide(text_slice);
+                let opt_trans_msg = text_slice.to_wide_ansi().lookup_or_add_item_null();
 
                 #[cfg(not(feature = "text_extracting"))]
-                if let Some(trans_msg) = opt_trans_msg {
+                if let Ok(trans_msg) = opt_trans_msg {
                     return ModifyMenuW(
                         h_menu,
                         u_position,
@@ -252,26 +249,23 @@ pub trait WindowHook: Send + Sync + 'static {
             #[cfg(feature = "debug_output")]
             {
                 if !text_slice.is_empty() {
-                    let s =
-                        String::from_utf16_lossy(&crate::code_cvt::ansi_to_wide_char(text_slice));
+                    let s = text_slice.to_wide_ansi().to_string_lossy();
                     debug!("Get message box text: {s}");
                 }
                 if !cap_slice.is_empty() {
-                    let s =
-                        String::from_utf16_lossy(&crate::code_cvt::ansi_to_wide_char(cap_slice));
+                    let s = cap_slice.to_wide_ansi().to_string_lossy();
                     debug!("Get message box caption: {s}");
                 }
             }
 
-            let opt_wide_text = crate::text_patch::lookup_or_add_ansi_wide(text_slice);
-            let opt_wide_caption = crate::text_patch::lookup_or_add_ansi_wide(cap_slice);
+            let opt_wide_text = text_slice.to_wide_ansi().lookup_or_add_item_null();
+            let opt_wide_caption = cap_slice.to_wide_ansi().lookup_or_add_item_null();
 
             #[cfg(not(feature = "text_extracting"))]
-            if opt_wide_text.is_some() || opt_wide_caption.is_some() {
-                let wide_text = opt_wide_text
-                    .unwrap_or_else(|| crate::code_cvt::ansi_to_wide_char_with_null(text_slice));
-                let wide_caption = opt_wide_caption
-                    .unwrap_or_else(|| crate::code_cvt::ansi_to_wide_char_with_null(cap_slice));
+            if opt_wide_text.is_ok() || opt_wide_caption.is_ok() {
+                let wide_text = opt_wide_text.unwrap_or_else(|_| text_slice.to_wide_null_ansi());
+                let wide_caption =
+                    opt_wide_caption.unwrap_or_else(|_| cap_slice.to_wide_null_ansi());
 
                 let wide_text_ptr = if wide_text.len() == 1 {
                     core::ptr::null()
@@ -305,15 +299,14 @@ pub trait WindowHook: Send + Sync + 'static {
 
             #[cfg(feature = "debug_output")]
             {
-                let raw_text =
-                    String::from_utf16_lossy(&crate::code_cvt::ansi_to_wide_char(text_slice));
+                let raw_text = text_slice.to_wide_ansi().to_string_lossy();
                 debug!("Get SetDlgItemTextA text: {raw_text}");
             }
 
-            let opt_trans_msg = crate::text_patch::lookup_or_add_ansi_wide(text_slice);
+            let opt_trans_msg = text_slice.to_wide_ansi().lookup_or_add_item_null();
 
             #[cfg(not(feature = "text_extracting"))]
-            if let Some(trans_msg) = opt_trans_msg {
+            if let Ok(trans_msg) = opt_trans_msg {
                 use windows_sys::Win32::UI::WindowsAndMessaging::SetDlgItemTextW;
                 return SetDlgItemTextW(h_dlg, n_id_dlg_item, trans_msg.as_ptr());
             }
@@ -334,15 +327,14 @@ pub trait WindowHook: Send + Sync + 'static {
 
             #[cfg(feature = "debug_output")]
             {
-                let raw_text =
-                    String::from_utf16_lossy(&crate::code_cvt::ansi_to_wide_char(text_slice));
+                let raw_text = text_slice.to_wide_ansi().to_string_lossy();
                 debug!("Get SetWindowTextA text: {raw_text}");
             }
 
-            let opt_trans_msg = crate::text_patch::lookup_or_add_ansi_wide(text_slice);
+            let opt_trans_msg = text_slice.to_wide_ansi().lookup_or_add_item_null();
 
             #[cfg(not(feature = "text_extracting"))]
-            if let Some(trans_msg) = opt_trans_msg {
+            if let Ok(trans_msg) = opt_trans_msg {
                 use windows_sys::Win32::UI::WindowsAndMessaging::SetWindowTextW;
                 return SetWindowTextW(h_wnd, trans_msg.as_ptr());
             }
@@ -362,15 +354,14 @@ pub trait WindowHook: Send + Sync + 'static {
 
                 #[cfg(feature = "debug_output")]
                 {
-                    let raw_text =
-                        String::from_utf16_lossy(&crate::code_cvt::ansi_to_wide_char(text_slice));
+                    let raw_text = text_slice.to_wide_ansi().to_string_lossy();
                     debug!("Get SendMessageA (msg={msg:#x}) text: {raw_text}");
                 }
 
-                let opt_trans_msg = crate::text_patch::lookup_or_add_ansi_wide(text_slice);
+                let opt_trans_msg = text_slice.to_wide_ansi().lookup_or_add_item_null();
 
                 #[cfg(not(feature = "text_extracting"))]
-                if let Some(trans_msg) = opt_trans_msg {
+                if let Ok(trans_msg) = opt_trans_msg {
                     return SendMessageW(h_wnd, msg, w_param, trans_msg.as_ptr() as LPARAM);
                 }
             }
@@ -400,16 +391,17 @@ pub trait WindowHook: Send + Sync + 'static {
 
             #[cfg(feature = "debug_output")]
             {
-                let raw =
-                    String::from_utf16_lossy(&crate::code_cvt::ansi_to_wide_char(caption_slice));
+                let raw = caption_slice.to_wide_ansi().to_string_lossy();
                 debug!("PropertySheetA original caption (ANSI): {raw}");
             }
 
-            let opt_trans = crate::text_patch::lookup_or_add_ansi_wide(caption_slice)
-                .map(|s| crate::code_cvt::wide_char_to_multi_byte_with_null(&s, 0));
+            let opt_trans = caption_slice
+                .to_wide_ansi()
+                .lookup_or_add_item()
+                .map(|s| s.to_multi_byte_null(0));
 
             #[cfg(not(feature = "text_extracting"))]
-            if let Some(trans) = opt_trans {
+            if let Ok(trans) = opt_trans {
                 let dw_size = header.dwSize as usize;
 
                 let mut new_buf = Box::<[u8]>::new_uninit_slice(dw_size);

@@ -5,7 +5,12 @@ use windows_sys::{
     core::{PCSTR, PSTR},
 };
 
-use crate::{constant::ARG_NAME, debug, hook::traits::CoreHook, utils::mem::slice_until_null};
+use crate::{
+    constant::ARG_NAME,
+    debug,
+    hook::traits::CoreHook,
+    utils::{exts::slice_ext::ByteSliceExt, mem::slice_until_null},
+};
 
 // 之前版本的ARG_NAME为"LUSTS"
 
@@ -49,7 +54,7 @@ fn query_game_ini_int(section: &str, key: &str) -> Option<i32> {
 }
 
 unsafe fn matched_ini(file_name: PCSTR) -> bool {
-    let file = unsafe { String::from_utf8_lossy(slice_until_null(file_name, MAX_PATH as _)) };
+    let file = unsafe { slice_until_null(file_name, MAX_PATH as _) }.to_string_lossy();
 
     Path::new(file.as_ref())
         .file_name()
@@ -59,13 +64,13 @@ unsafe fn matched_ini(file_name: PCSTR) -> bool {
 
 unsafe fn to_string(app_name: PCSTR, key_name: PCSTR) -> (String, String) {
     let section = if !app_name.is_null() {
-        String::from_utf8_lossy(unsafe { slice_until_null(app_name, MAX_PATH as _) })
+        unsafe { slice_until_null(app_name, MAX_PATH as _) }.to_string_lossy()
     } else {
         Cow::Borrowed("")
     };
 
     let key = if !key_name.is_null() {
-        String::from_utf8_lossy(unsafe { slice_until_null(key_name, MAX_PATH as _) })
+        unsafe { slice_until_null(key_name, MAX_PATH as _) }.to_string_lossy()
     } else {
         Cow::Borrowed("")
     };
