@@ -32,8 +32,8 @@ pub(crate) mod delayed_attach;
 #[cfg(feature = "dll_hijacking")]
 pub(crate) mod dll_hijacking;
 
-#[cfg(feature = "emulate_locale")]
-pub(crate) mod emulate_locale;
+#[cfg(feature = "locale_emulator")]
+pub(crate) mod locale_emulator;
 
 #[cfg(feature = "resource_pack")]
 pub(crate) mod resource_pack;

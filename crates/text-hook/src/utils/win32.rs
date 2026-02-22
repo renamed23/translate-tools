@@ -1,6 +1,6 @@
 use scopeguard::defer;
 use std::{
-    ffi::OsString,
+    ffi::{OsStr, OsString},
     os::windows::ffi::{OsStrExt, OsStringExt as _},
     path::{Path, PathBuf},
 };
@@ -9,7 +9,7 @@ use windows_sys::{
         Foundation::HMODULE,
         Storage::FileSystem::{Wow64DisableWow64FsRedirection, Wow64RevertWow64FsRedirection},
         System::{
-            LibraryLoader::{GetModuleHandleW, GetProcAddress, LoadLibraryW},
+            LibraryLoader::{GetModuleFileNameW, GetModuleHandleW, GetProcAddress, LoadLibraryW},
             SystemInformation::GetSystemDirectoryW,
         },
         UI::WindowsAndMessaging::{
@@ -22,6 +22,12 @@ use windows_sys::{
 };
 
 use crate::{constant, print_last_error_message};
+
+/// 将 `OsStr` 编码为 UTF-16 且追加 `\0`
+#[inline]
+pub fn os_str_to_wide_null(s: &OsStr) -> Vec<u16> {
+    s.encode_wide().chain(core::iter::once(0)).collect()
+}
 
 /// 获取模块句柄的包装函数
 pub fn get_module_handle(module_name: PCWSTR) -> crate::Result<HMODULE> {
@@ -90,17 +96,32 @@ pub fn get_system_directory() -> crate::Result<PathBuf> {
 
 /// 根据路径加载指定DLL，若失败返回Err
 pub fn load_library(path: &Path) -> crate::Result<HMODULE> {
-    let wide_path: Vec<u16> = path
-        .as_os_str()
-        .encode_wide()
-        .chain(core::iter::once(0))
-        .collect();
+    let wide_path = os_str_to_wide_null(path.as_os_str());
     let handle = unsafe { LoadLibraryW(wide_path.as_ptr()) };
     if handle.is_null() {
         print_last_error_message!();
         crate::bail!("LoadLibraryW failed for: {}", path.to_string_lossy());
     }
     Ok(handle)
+}
+
+/// 获取模块文件路径
+pub fn get_module_file_name(module: HMODULE) -> crate::Result<PathBuf> {
+    let mut buffer = vec![0u16; 32768];
+    let len = unsafe { GetModuleFileNameW(module, buffer.as_mut_ptr(), buffer.len() as u32) };
+
+    if len == 0 {
+        print_last_error_message!();
+        crate::bail!("GetModuleFileNameW failed");
+    }
+
+    buffer.truncate(len as usize);
+    Ok(PathBuf::from(OsString::from_wide(&buffer)))
+}
+
+/// 获取当前工作目录
+pub fn get_current_dir() -> crate::Result<PathBuf> {
+    std::env::current_dir().map_err(|e| crate::anyhow!("Get current directory failed: {e}"))
 }
 
 /// 加载被劫持的DLL库

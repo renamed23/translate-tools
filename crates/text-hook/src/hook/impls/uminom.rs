@@ -63,7 +63,7 @@ pub unsafe extern "system" fn extract_script(ptr: *mut u8, len: usize, filename:
             let new_filename = format!("{filename}.isf");
 
             // 读取cwd的`raw/filenames.txt`，如果没有就创建，然后在末尾添加`{new_filename}\n`
-            if let Ok(current_dir) = std::env::current_dir() {
+            if let Ok(current_dir) = crate::utils::win32::get_current_dir()() {
                 let raw_dir = current_dir.join("raw");
 
                 // 创建raw目录（如果不存在）

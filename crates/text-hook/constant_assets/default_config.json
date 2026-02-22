@@ -36,6 +36,26 @@
     "type": "&[u16]",
     "value": []
   },
+  "EMULATE_LOCALE_CODEPAGE": {
+    "type": "u32",
+    "value": 932
+  },
+  "EMULATE_LOCALE_LOCALE": {
+    "type": "u32",
+    "value": 1041
+  },
+  "EMULATE_LOCALE_CHARSET": {
+    "type": "u32",
+    "value": 128
+  },
+  "EMULATE_LOCALE_TIMEZONE": {
+    "type": "&str",
+    "value": "Tokyo Standard Time"
+  },
+  "EMULATE_LOCALE_WAIT_FOR_EXIT": {
+    "type": "bool",
+    "value": false
+  },
   "TEXT_STACK_BUF_LEN": {
     "type": "usize",
     "value": 256

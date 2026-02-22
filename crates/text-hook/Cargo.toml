@@ -64,8 +64,8 @@ custom_font = []
 export_default_dll_main = []
 # 使用`assets/config.json`的`WINDOW_TITLE`字段覆写游戏主窗口标题
 override_window_title = ["window_hook"]
-# 模拟日语环境(目前支持很有限)
-emulate_locale = []
+# 模拟日语环境，基于locale_emulator
+locale_emulator = []
 # 启用延迟加载，对于某些特性是必要的
 delayed_attach = []
 # 根据`assets/hijacked`中的PE文件(仅限一个)生成对应的导出函数，
@@ -116,7 +116,7 @@ bruns = [
 bokudvd = [
     "default_impl",
     "custom_font",
-    "emulate_locale",
+    "locale_emulator",
     "override_window_title",
     "text_hook",
 ]

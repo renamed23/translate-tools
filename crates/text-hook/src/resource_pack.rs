@@ -64,9 +64,7 @@ pub fn get_resource_path(path: &Path) -> crate::Result<Option<PathBuf>> {
     let abs_path = if path.is_absolute() {
         path.to_path_buf()
     } else {
-        std::env::current_dir()
-            .map_err(|e| crate::anyhow!("Get current work directory failed with : {e}"))?
-            .join(path)
+        crate::utils::win32::get_current_dir()?.join(path)
     };
 
     let abs_path = path_clean::clean(&abs_path);

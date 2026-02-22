@@ -50,8 +50,10 @@ pub fn default_dll_main(
                 crate::debug!("Install VEH handler failed with {e:?}");
             }
 
-            #[cfg(feature = "emulate_locale")]
-            crate::emulate_locale::set_japanese_locale();
+            #[cfg(feature = "locale_emulator")]
+            if let Err(e) = crate::locale_emulator::relaunch_with_locale_emulator() {
+                crate::debug!("Relaunch with Locale Emulator failed with {e:?}");
+            }
 
             #[cfg(feature = "custom_font")]
             if let Err(e) = unsafe { crate::custom_font::add_font() } {
