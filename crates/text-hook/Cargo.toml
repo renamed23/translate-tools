@@ -179,7 +179,7 @@ windows-sys = { version = "0.61", features = [
     "Win32_System_Environment",
 ] }
 sha2 = "0.10"
-retour = "0.4.0-alpha.4"
+retour = { git = "https://github.com/renamed23/retour-rs", branch = "self-use" }
 phf = { version = "0.13", features = ["macros"] }
 ntapi = "0.4"
 scopeguard = "1"
@@ -191,5 +191,4 @@ ruzstd = "0.8"
 anyhow.workspace = true
 
 [lints.clippy]
-missing_safety_doc = "allow"
 too_many_arguments = "allow"
