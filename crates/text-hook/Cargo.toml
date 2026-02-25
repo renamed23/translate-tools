@@ -49,12 +49,12 @@ text_patch = []
 text_extracting = ["text_patch"]
 # 截获并替换patch数据
 patch = []
+# 提取补丁而不是替换补丁
+patch_extracting = ["patch"]
 # 截获ReadFile来实现patch
 read_file_patch_impl = ["patch", "file_hook"]
 # 导出patch的处理函数，可以用于外部汇编进行IAT调用
 export_patch_process_fn = ["patch"]
-# 提取补丁而不是替换补丁
-patch_extracting = ["patch"]
 # 当该feature开启时，create_font系列函数不再固定字体
 enum_font_families = []
 # 嵌入`assets/font`的自定义字体，会使用`AddFontMemResourceEx`让GDI识别
@@ -96,49 +96,14 @@ debug_file_impl = ["debug_output", "export_default_dll_main", "file_hook"]
 default_impl = ["export_default_dll_main"]
 
 # 针对特定游戏的impl-------------------------------------------
-seraph = ["export_default_dll_main"]
-lucky_crosse = ["default_impl", "export_patch_process_fn", "text_hook"]
-cosmos = ["default_impl", "export_patch_process_fn", "text_hook"]
-# 非C社的c4
-c4 = ["patch", "default_impl", "enum_font_families", "text_hook"]
-bittersweet_fools = ["enum_font_families", "default_impl", "text_hook"]
-white_breath = ["default_impl", "patch", "text_hook"]
-mikan = ["default_impl", "read_file_patch_impl", "text_hook"]
-# 提取脚本需要`patch_extracting`
-uminom = ["export_default_dll_main", "text_hook", "window_hook"]
 bruns = [
     "export_default_dll_main",
     "text_hook",
     "override_window_title",
     "patch",
 ]
-bokudvd = [
-    "default_impl",
-    "custom_font",
-    "locale_emulator",
-    "override_window_title",
-    "text_hook",
-]
-mizukake = [
-    "patch",
-    "export_default_dll_main",
-    "text_hook",
-    "dll_hijacking",
-    "no_text_mapping",
-]
-spirite_destruction = [
-    "export_default_dll_main",
-    "text_hook",
-    "text_patch",
-    "no_text_mapping",
-]
-rainmemory = [
-    "patch",
-    "export_default_dll_main",
-    "text_hook",
-    "dll_hijacking",
-    "no_text_mapping",
-]
+# 非C社的c4
+c4 = ["patch", "default_impl", "enum_font_families", "text_hook"]
 complets = [
     "export_default_dll_main",
     "text_hook",
@@ -146,8 +111,31 @@ complets = [
     "enum_font_families",
     "text_out_arg_c_is_bytes",
 ]
-natsu_natsu = ["export_default_dll_main", "enum_font_families", "text_hook"]
 love_bind = ["export_default_dll_main", "enum_font_families", "text_hook"]
+mizukake = [
+    "patch",
+    "export_default_dll_main",
+    "text_hook",
+    "dll_hijacking",
+    "no_text_mapping",
+]
+natsu_natsu = ["export_default_dll_main", "enum_font_families", "text_hook"]
+rainmemory = [
+    "patch",
+    "export_default_dll_main",
+    "text_hook",
+    "dll_hijacking",
+    "no_text_mapping",
+]
+seraph = ["export_default_dll_main"]
+spirite_destruction = [
+    "export_default_dll_main",
+    "text_hook",
+    "text_patch",
+    "no_text_mapping",
+]
+# 提取脚本需要`patch_extracting`
+uminom = ["export_default_dll_main", "text_hook", "window_hook"]
 
 [dependencies]
 translate-macros.workspace = true

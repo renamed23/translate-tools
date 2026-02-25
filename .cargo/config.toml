@@ -1,0 +1,6 @@
+[alias]
+xtask = "run --release --package xtask --bin xtask --"
+build-text-hook = "build --package text-hook --release --target i686-pc-windows-msvc"
+build-text-hook64 = "build --package text-hook --release --target x86_64-pc-windows-msvc"
+check-text-hook = "check --package text-hook --release --target i686-pc-windows-msvc"
+check-text-hook64 = "check --package text-hook --release --target x86_64-pc-windows-msvc"

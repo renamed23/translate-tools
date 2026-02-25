@@ -1,0 +1,6 @@
+{
+  "enable": [],
+  "disable": [
+    "PropertySheetA"
+  ]
+}

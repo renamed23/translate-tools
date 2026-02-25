@@ -5,8 +5,7 @@
 ### 编译text-hook
 
 ```ps
-cd crates/text-hook
-cargo build --release --features default_impl
+cargo build-text-hook --features default_impl
 ```
 
 编译的DLL在`target/i686-pc-windows-msvc/release`
@@ -17,7 +16,7 @@ cargo build --release --features default_impl
 
 ## crates/text-hook/assets
 
-下面介绍assets每个文件的作用和用法
+下面介绍assets每个文件的作用和用法（具体可以参考一下`xtask/test_assets`）
 
 ### config.json
 

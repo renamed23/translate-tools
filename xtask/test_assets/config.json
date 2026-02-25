@@ -1,0 +1,49 @@
+{
+  "FONT_FACE": "SimHei",
+  "CHAR_SET": 134,
+  "FONT_FILTER": [
+    "ＭＳ ゴシック",
+    "俵俽 僑僔僢僋",
+    "MS Gothic",
+    "",
+    "俵俽僑僔僢僋",
+    "ＭＳゴシック"
+  ],
+  "CHAR_FILTER": [
+    64
+  ],
+  "ENUM_FONT_PROC_CHAR_SET": 128,
+  "ENUM_FONT_PROC_PITCH": 1,
+  "ENUM_FONT_PROC_OUT_PRECISION": 3,
+  "WINDOW_TITLE": "游戏窗口",
+  "ARG_GAME_TYPE": {
+    "value": "some_game_type",
+    "type": "&str"
+  },
+  "ARG_REG_PATH": {
+    "value": "some_reg_path",
+    "type": "&str"
+  },
+  "ARG_PATCH_TYPE": {
+    "value": "some_patch_type",
+    "type": "&str"
+  },
+  "ARG_NAME": {
+    "value": "some_name",
+    "type": "&str"
+  },
+  "HIJACKED_DLL_PATH": "some_path/your_dll.dll",
+  "REDIRECTION_SRC_PATH": "B.FL4",
+  "REDIRECTION_TARGET_PATH": "FLOWERS_CHS.FL4",
+  "RESOURCE_PACK_NAME": "MOZU_chs",
+  "HWBP_REG": "crate::utils::hwbp::HwReg::Dr2",
+  "HWBP_TYPE": "crate::utils::hwbp::HwBreakpointType::Execute",
+  "HWBP_LEN": "crate::utils::hwbp::HwBreakpointLen::Byte1",
+  "HWBP_MODULE": "::core::ptr::null()",
+  "HWBP_RVA": 40000,
+  "EMULATE_LOCALE_CODEPAGE": 932,
+  "EMULATE_LOCALE_LOCALE": 1041,
+  "EMULATE_LOCALE_CHARSET": 128,
+  "EMULATE_LOCALE_TIMEZONE": "Tokyo Standard Time",
+  "EMULATE_LOCALE_WAIT_FOR_EXIT": false
+}

@@ -1,0 +1,25 @@
+name: xtask-check
+
+on:
+  push:
+    branches:
+      - "**"
+  workflow_dispatch:
+
+jobs:
+  check-text-hook-matrix:
+    runs-on: windows-latest
+    steps:
+      - name: 检出仓库
+        uses: actions/checkout@v4
+
+      - name: 安装 Rust 工具链
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: i686-pc-windows-msvc,x86_64-pc-windows-msvc
+
+      - name: Rust 构建缓存
+        uses: Swatinem/rust-cache@v2
+
+      - name: 运行 xtask check
+        run: cargo xtask check
