@@ -2,8 +2,12 @@ name: xtask-check
 
 on:
   push:
-    branches:
-      - "**"
+    paths:
+      - "crates/text_hook/**"
+      - "crates/translate-macros/**"
+      - "xtask/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
   workflow_dispatch:
 
 jobs:
