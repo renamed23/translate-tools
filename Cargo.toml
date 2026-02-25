@@ -2,6 +2,9 @@
 members = ["crates/*", "xtask"]
 resolver = "3"
 
+[workspace.package]
+license = "MIT"
+
 [workspace.dependencies]
 anyhow = "1.0"
 encoding_rs = "0.8"

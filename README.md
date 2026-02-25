@@ -1,5 +1,6 @@
 # TRANSLATE-TOOLS
 
+[![MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/renamed23/translate-tool/blob/main/LICENSE)
 [![xtask-check](https://github.com/renamed23/translate-tools/actions/workflows/xtask-check.yml/badge.svg)](https://github.com/renamed23/translate-tools/actions/workflows/xtask-check.yml)
 
 ## 编译方式
