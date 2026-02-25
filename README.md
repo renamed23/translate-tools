@@ -1,5 +1,7 @@
 # TRANSLATE-TOOLS
 
+[![xtask-check](https://github.com/renamed23/translate-tools/actions/workflows/xtask-check.yml/badge.svg)](https://github.com/renamed23/translate-tools/actions/workflows/xtask-check.yml)
+
 ## 编译方式
 
 ### 编译text-hook

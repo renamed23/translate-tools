@@ -230,6 +230,7 @@ fn build_scenarios() -> Vec<Scenario> {
         "seraph",
         "spirite_destruction",
         "uminom",
+        "white_breath",
     ];
 
     for imp in game_impls {
@@ -241,7 +242,7 @@ fn build_scenarios() -> Vec<Scenario> {
     }
 
     // 非 default_impl 的特例补测
-    for imp in ["bruns", "c4", "mizukake", "rainmemory"] {
+    for imp in ["bruns", "c4", "mizukake", "rainmemory", "white_breath"] {
         scenarios.push(Scenario {
             name: format!("{imp}/patch_extracting"),
             features: feature_set(all_functional_impl_base(), &[imp, "patch_extracting"], &[]),
@@ -345,7 +346,7 @@ fn feature_set(base: &[&str], add: &[&str], remove: &[&str]) -> Vec<String> {
 
 #[derive(Debug)]
 struct AssetsBackup {
-    backup_dir: PathBuf,
+    backup_dir: Option<PathBuf>,
 }
 
 fn backup_and_replace_assets() -> anyhow::Result<AssetsBackup> {
@@ -355,22 +356,31 @@ fn backup_and_replace_assets() -> anyhow::Result<AssetsBackup> {
     if !source.exists() {
         bail!("未找到测试资产目录: {}", source.display());
     }
-    if !target.exists() {
-        bail!("未找到目标资产目录: {}", target.display());
-    }
+    let backup_dir = if target.exists() {
+        if !target.is_dir() {
+            bail!("目标路径不是目录: {}", target.display());
+        }
 
-    let backup_dir = std::env::temp_dir().join(format!(
-        "translate-tools-xtask-assets-backup-{}-{}",
-        std::process::id(),
-        now_millis()?
-    ));
+        let backup_dir = std::env::temp_dir().join(format!(
+            "translate-tools-xtask-assets-backup-{}-{}",
+            std::process::id(),
+            now_millis()?
+        ));
 
-    println!(
-        "正在备份 assets: {} -> {}",
-        target.display(),
-        backup_dir.display()
-    );
-    copy_dir_contents(target, &backup_dir)?;
+        println!(
+            "正在备份 assets: {} -> {}",
+            target.display(),
+            backup_dir.display()
+        );
+        copy_dir_contents(target, &backup_dir)?;
+        Some(backup_dir)
+    } else {
+        println!(
+            "目标 assets 不存在，将在检查后恢复为“不存在”状态: {}",
+            target.display()
+        );
+        None
+    };
 
     println!(
         "正在覆盖 assets: {} -> {}",
@@ -386,15 +396,23 @@ fn backup_and_replace_assets() -> anyhow::Result<AssetsBackup> {
 fn restore_assets(backup: AssetsBackup) -> anyhow::Result<()> {
     let target = Path::new(TARGET_ASSETS_DIR);
 
-    println!(
-        "正在恢复 assets: {} -> {}",
-        backup.backup_dir.display(),
-        target.display()
-    );
+    match backup.backup_dir {
+        Some(backup_dir) => {
+            println!(
+                "正在恢复 assets: {} -> {}",
+                backup_dir.display(),
+                target.display()
+            );
 
-    remove_dir_if_exists(target)?;
-    copy_dir_contents(&backup.backup_dir, target)?;
-    remove_dir_if_exists(&backup.backup_dir)?;
+            remove_dir_if_exists(target)?;
+            copy_dir_contents(&backup_dir, target)?;
+            remove_dir_if_exists(&backup_dir)?;
+        }
+        None => {
+            println!("正在恢复 assets 为不存在状态: {}", target.display());
+            remove_dir_if_exists(target)?;
+        }
+    }
 
     Ok(())
 }
