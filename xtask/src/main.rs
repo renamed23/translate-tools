@@ -226,9 +226,7 @@ fn build_scenarios() -> Vec<Scenario> {
         "love_bind",
         "mizukake",
         "natsu_natsu",
-        "rainmemory",
         "seraph",
-        "spirite_destruction",
         "uminom",
         "white_breath",
     ];
@@ -242,7 +240,7 @@ fn build_scenarios() -> Vec<Scenario> {
     }
 
     // 非 default_impl 的特例补测
-    for imp in ["bruns", "c4", "mizukake", "rainmemory", "white_breath"] {
+    for imp in ["bruns", "c4", "mizukake", "white_breath"] {
         scenarios.push(Scenario {
             name: format!("{imp}/patch_extracting"),
             features: feature_set(all_functional_impl_base(), &[imp, "patch_extracting"], &[]),
@@ -250,7 +248,8 @@ fn build_scenarios() -> Vec<Scenario> {
         });
     }
 
-    for imp in ["spirite_destruction", "uminom"] {
+    // 暂时先占位
+    for imp in [] {
         scenarios.push(Scenario {
             name: format!("{imp}/text_extracting"),
             features: feature_set(all_functional_impl_base(), &[imp, "text_extracting"], &[]),

@@ -86,13 +86,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "encoding_rs"
-version = "0.8.35"
+name = "equivalent"
+version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "75030f3c4f45dafd7586dd6780965a8c7e8e285a5ecb86713e63a79c5b2766f3"
-dependencies = [
- "cfg-if",
-]
+checksum = "877a4ace8713b0bcf2a4e7eec82529c029f1d0619886d18145fea96c3ffe5c0f"
 
 [[package]]
 name = "fastrand"
@@ -146,12 +143,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "hashbrown"
+version = "0.16.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "841d1cc9bed7f9236f321df977030373f4a4163ae1a7dbfe1a51a2c1a51d9100"
+
+[[package]]
 name = "iced-x86"
 version = "1.21.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7c447cff8c7f384a7d4f741cfcff32f75f3ad02b406432e8d6c878d56b1edf6b"
 dependencies = [
  "lazy_static",
+]
+
+[[package]]
+name = "indexmap"
+version = "2.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7714e70437a7dc3ac8eb7e6f8df75fd8eb422675fc7678aff7364301092b1017"
+dependencies = [
+ "equivalent",
+ "hashbrown",
+ "serde",
+ "serde_core",
 ]
 
 [[package]]
@@ -464,7 +479,7 @@ version = "1.0.0"
 dependencies = [
  "anyhow",
  "const-str",
- "encoding_rs",
+ "indexmap",
  "ntapi",
  "path-clean",
  "phf",
@@ -475,7 +490,6 @@ dependencies = [
  "serde_json",
  "sha2",
  "translate-macros",
- "translate-utils",
  "windows-sys",
 ]
 
@@ -485,25 +499,14 @@ version = "1.0.0"
 dependencies = [
  "anyhow",
  "convert_case",
- "encoding_rs",
  "goblin",
  "proc-macro2",
  "quote",
  "serde_json",
  "sha2",
  "syn",
- "translate-utils",
  "walkdir",
  "zstd",
-]
-
-[[package]]
-name = "translate-utils"
-version = "1.0.0"
-dependencies = [
- "anyhow",
- "serde",
- "serde_json",
 ]
 
 [[package]]

@@ -11,8 +11,6 @@ proc-macro = true
 [dependencies]
 serde_json.workspace = true
 anyhow.workspace = true
-translate-utils.workspace = true
-encoding_rs.workspace = true
 
 proc-macro2 = "1"
 quote = "1"

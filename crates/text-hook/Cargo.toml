@@ -121,30 +121,15 @@ mizukake = [
     "no_text_mapping",
 ]
 natsu_natsu = ["export_default_dll_main", "enum_font_families", "text_hook"]
-rainmemory = [
-    "patch",
-    "export_default_dll_main",
-    "text_hook",
-    "dll_hijacking",
-    "no_text_mapping",
-]
 seraph = ["export_default_dll_main"]
-spirite_destruction = [
-    "export_default_dll_main",
-    "text_hook",
-    "text_patch",
-    "no_text_mapping",
-]
 # 提取脚本需要`patch_extracting`
 uminom = ["export_default_dll_main", "text_hook", "window_hook"]
 white_breath = ["default_impl", "patch", "text_hook"]
 
 [dependencies]
 translate-macros.workspace = true
-translate-utils.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-encoding_rs.workspace = true
 
 windows-sys = { version = "0.61", features = [
     "Win32_Foundation",
@@ -171,6 +156,7 @@ windows-sys = { version = "0.61", features = [
 sha2 = "0.10"
 retour = { git = "https://github.com/renamed23/retour-rs", branch = "self-use" }
 phf = { version = "0.13", features = ["macros"] }
+indexmap = { version = "2", features = ["serde"] }
 ntapi = "0.4"
 scopeguard = "1"
 const-str = "1"

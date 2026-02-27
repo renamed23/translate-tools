@@ -43,7 +43,9 @@ pub fn default_dll_main(
             crate::utils::panic::set_debug_panic_hook();
 
             #[cfg(all(feature = "text_patch", feature = "text_extracting"))]
-            crate::text_patch::load_initial_extracted_items_from_json();
+            if let Err(e) = crate::text_patch::load_initial_extracted_items_from_json() {
+                crate::debug!("Failed to load initial extracted items from JSON: {e:?}");
+            }
 
             #[cfg(feature = "veh")]
             if let Err(e) = unsafe { crate::veh::install_veh_handler(true) } {
@@ -83,7 +85,9 @@ pub fn default_dll_main(
         }
         PROCESS_DETACH => {
             #[cfg(all(feature = "text_patch", feature = "text_extracting"))]
-            crate::text_patch::save_extracted_items_to_json();
+            if let Err(e) = crate::text_patch::save_extracted_items_to_json() {
+                crate::debug!("Failed to save extracted items to JSON: {e:?}");
+            }
 
             #[cfg(feature = "veh")]
             if let Err(e) = unsafe { crate::veh::uninstall_veh_handler() } {
