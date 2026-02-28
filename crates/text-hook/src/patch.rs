@@ -1,7 +1,7 @@
 use crate::{debug, utils::sha256_of_bytes};
 
 mod patch_data {
-    translate_macros::generate_patch_data!("assets/raw" => "assets/translated");
+    translate_macros::generate_patch_data!("assets/raw_patch" => "assets/translated_patch");
 }
 
 /// 根据目标数据，获取补丁数据
