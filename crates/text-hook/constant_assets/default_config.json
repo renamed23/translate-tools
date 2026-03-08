@@ -20,6 +20,16 @@
     "type": "u8",
     "optional": true
   },
+  "OVERLAY_TARGET_WINDOW_TEXT": {
+    "type": "&[u16]",
+    "optional": true,
+    "encode_to_u16": true
+  },
+  "OVERLAY_TARGET_WINDOW_CLASS_NAME": {
+    "type": "&[u16]",
+    "optional": true,
+    "encode_to_u16": true
+  },
   "FONT_FILTER": {
     "type": "&[&[u16]]",
     "value": [

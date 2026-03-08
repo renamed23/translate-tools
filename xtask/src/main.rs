@@ -80,143 +80,246 @@ struct Scenario {
 }
 
 fn build_scenarios() -> Vec<Scenario> {
-    let mut scenarios = Vec::new();
-
-    let default_base = feature_set(default_base_features(), &[], &[]);
-
-    // default_impl: 覆盖类 feature 各自两种行为
-    scenarios.push(Scenario {
-        name: "default_impl/resource_pack/external".to_string(),
-        features: feature_set(default_base_features(), &[], &["resource_pack_embedding"]),
-        run_x64: true,
-    });
-    scenarios.push(Scenario {
-        name: "default_impl/resource_pack/embedded".to_string(),
-        features: feature_set(default_base_features(), &["resource_pack_embedding"], &[]),
-        run_x64: true,
-    });
-
-    scenarios.push(Scenario {
-        name: "default_impl/hook_backend/inline".to_string(),
-        features: feature_set(default_base_features(), &[], &["iat_hook"]),
-        run_x64: true,
-    });
-    scenarios.push(Scenario {
-        name: "default_impl/hook_backend/iat".to_string(),
-        features: feature_set(default_base_features(), &["iat_hook"], &[]),
-        run_x64: true,
-    });
-
-    scenarios.push(Scenario {
-        name: "default_impl/text_extracting/off".to_string(),
-        features: feature_set(default_base_features(), &[], &["text_extracting"]),
-        run_x64: true,
-    });
-    scenarios.push(Scenario {
-        name: "default_impl/text_extracting/on".to_string(),
-        features: feature_set(default_base_features(), &["text_extracting"], &[]),
-        run_x64: true,
-    });
-
-    scenarios.push(Scenario {
-        name: "default_impl/patch_extracting/off".to_string(),
-        features: feature_set(default_base_features(), &[], &["patch_extracting"]),
-        run_x64: true,
-    });
-    scenarios.push(Scenario {
-        name: "default_impl/patch_extracting/on".to_string(),
-        features: feature_set(default_base_features(), &["patch_extracting"], &[]),
-        run_x64: true,
-    });
-
-    scenarios.push(Scenario {
-        name: "default_impl/enum_font_families/off".to_string(),
-        features: feature_set(default_base_features(), &[], &["enum_font_families"]),
-        run_x64: true,
-    });
-    scenarios.push(Scenario {
-        name: "default_impl/enum_font_families/on".to_string(),
-        features: feature_set(default_base_features(), &["enum_font_families"], &[]),
-        run_x64: true,
-    });
-
-    scenarios.push(Scenario {
-        name: "default_impl/text_out_arg_c_is_bytes/off".to_string(),
-        features: feature_set(default_base_features(), &[], &["text_out_arg_c_is_bytes"]),
-        run_x64: true,
-    });
-    scenarios.push(Scenario {
-        name: "default_impl/text_out_arg_c_is_bytes/on".to_string(),
-        features: feature_set(default_base_features(), &["text_out_arg_c_is_bytes"], &[]),
-        run_x64: true,
-    });
-
-    scenarios.push(Scenario {
-        name: "default_impl/apply_1337_patch/on_attach".to_string(),
-        features: feature_set(
-            default_base_features(),
-            &["apply_1337_patch_on_attach"],
-            &["apply_1337_patch_on_hwbp_hit"],
-        ),
-        run_x64: true,
-    });
-    scenarios.push(Scenario {
-        name: "default_impl/apply_1337_patch/on_hwbp_hit".to_string(),
-        features: feature_set(
-            default_base_features(),
-            &["apply_1337_patch_on_hwbp_hit"],
-            &["apply_1337_patch_on_attach"],
-        ),
-        run_x64: true,
-    });
-
-    scenarios.push(Scenario {
-        name: "default_impl/override_window_title/off".to_string(),
-        features: feature_set(default_base_features(), &[], &["override_window_title"]),
-        run_x64: true,
-    });
-    scenarios.push(Scenario {
-        name: "default_impl/override_window_title/on".to_string(),
-        features: feature_set(default_base_features(), &["override_window_title"], &[]),
-        run_x64: true,
-    });
-
-    scenarios.push(Scenario {
-        name: "default_impl/no_text_mapping/off".to_string(),
-        features: feature_set(default_base_features(), &[], &["no_text_mapping"]),
-        run_x64: true,
-    });
-    scenarios.push(Scenario {
-        name: "default_impl/no_text_mapping/on".to_string(),
-        features: feature_set(default_base_features(), &["no_text_mapping"], &[]),
-        run_x64: true,
-    });
-
-    scenarios.push(Scenario {
-        name: "default_impl/delayed_attach/off".to_string(),
-        features: feature_set(
-            default_base_features(),
-            &[],
-            &["delayed_attach", "dll_hijacking", "hwbp_from_constants"],
-        ),
-        run_x64: true,
-    });
-    scenarios.push(Scenario {
-        name: "default_impl/delayed_attach/on".to_string(),
-        features: feature_set(
-            default_base_features(),
-            &["delayed_attach", "dll_hijacking", "hwbp_from_constants"],
-            &[],
-        ),
-        run_x64: true,
-    });
-
-    // debug_file_impl: 仅作为 impl 变体测试（x86 + x64）
-    scenarios.push(Scenario {
-        name: "debug_file_impl/all_functional".to_string(),
-        features: feature_set(all_functional_impl_base(), &["debug_file_impl"], &[]),
-        run_x64: true,
-    });
+    let mut scenarios = vec![
+        // default_impl: 覆盖类 feature 各自两种行为
+        Scenario {
+            name: "default_impl/resource_pack/external".to_string(),
+            features: feature_set(
+                all_functional_impl_base(),
+                &["default_impl"],
+                &["resource_pack_embedding"],
+            ),
+            run_x64: true,
+        },
+        Scenario {
+            name: "default_impl/resource_pack/embedded".to_string(),
+            features: feature_set(
+                all_functional_impl_base(),
+                &["default_impl", "resource_pack_embedding"],
+                &[],
+            ),
+            run_x64: true,
+        },
+        Scenario {
+            name: "default_impl/hook_backend/inline".to_string(),
+            features: feature_set(all_functional_impl_base(), &["default_impl"], &["iat_hook"]),
+            run_x64: true,
+        },
+        Scenario {
+            name: "default_impl/hook_backend/iat".to_string(),
+            features: feature_set(
+                all_functional_impl_base(),
+                &["default_impl", "iat_hook"],
+                &[],
+            ),
+            run_x64: true,
+        },
+        Scenario {
+            name: "default_impl/text_extracting/off".to_string(),
+            features: feature_set(
+                all_functional_impl_base(),
+                &["default_impl"],
+                &["text_extracting"],
+            ),
+            run_x64: true,
+        },
+        Scenario {
+            name: "default_impl/text_extracting/on".to_string(),
+            features: feature_set(
+                all_functional_impl_base(),
+                &["default_impl", "text_extracting"],
+                &[],
+            ),
+            run_x64: true,
+        },
+        Scenario {
+            name: "default_impl/patch_extracting/off".to_string(),
+            features: feature_set(
+                all_functional_impl_base(),
+                &["default_impl"],
+                &["patch_extracting"],
+            ),
+            run_x64: true,
+        },
+        Scenario {
+            name: "default_impl/patch_extracting/on".to_string(),
+            features: feature_set(
+                all_functional_impl_base(),
+                &["default_impl", "patch_extracting"],
+                &[],
+            ),
+            run_x64: true,
+        },
+        Scenario {
+            name: "default_impl/enum_font_families/off".to_string(),
+            features: feature_set(
+                all_functional_impl_base(),
+                &["default_impl"],
+                &["enum_font_families"],
+            ),
+            run_x64: true,
+        },
+        Scenario {
+            name: "default_impl/enum_font_families/on".to_string(),
+            features: feature_set(
+                all_functional_impl_base(),
+                &["default_impl", "enum_font_families"],
+                &[],
+            ),
+            run_x64: true,
+        },
+        Scenario {
+            name: "default_impl/text_out_arg_c_is_bytes/off".to_string(),
+            features: feature_set(
+                all_functional_impl_base(),
+                &["default_impl"],
+                &["text_out_arg_c_is_bytes"],
+            ),
+            run_x64: true,
+        },
+        Scenario {
+            name: "default_impl/text_out_arg_c_is_bytes/on".to_string(),
+            features: feature_set(
+                all_functional_impl_base(),
+                &["default_impl", "text_out_arg_c_is_bytes"],
+                &[],
+            ),
+            run_x64: true,
+        },
+        Scenario {
+            name: "default_impl/apply_1337_patch/on_attach".to_string(),
+            features: feature_set(
+                all_functional_impl_base(),
+                &["default_impl", "apply_1337_patch_on_attach"],
+                &["apply_1337_patch_on_hwbp_hit"],
+            ),
+            run_x64: true,
+        },
+        Scenario {
+            name: "default_impl/apply_1337_patch/on_hwbp_hit".to_string(),
+            features: feature_set(
+                all_functional_impl_base(),
+                &["default_impl", "apply_1337_patch_on_hwbp_hit"],
+                &["apply_1337_patch_on_attach"],
+            ),
+            run_x64: true,
+        },
+        Scenario {
+            name: "default_impl/override_window_title/off".to_string(),
+            features: feature_set(
+                all_functional_impl_base(),
+                &["default_impl"],
+                &["override_window_title"],
+            ),
+            run_x64: true,
+        },
+        Scenario {
+            name: "default_impl/override_window_title/on".to_string(),
+            features: feature_set(
+                all_functional_impl_base(),
+                &["default_impl", "override_window_title"],
+                &[],
+            ),
+            run_x64: true,
+        },
+        Scenario {
+            name: "default_impl/no_text_mapping/off".to_string(),
+            features: feature_set(
+                all_functional_impl_base(),
+                &["default_impl"],
+                &["no_text_mapping"],
+            ),
+            run_x64: true,
+        },
+        Scenario {
+            name: "default_impl/no_text_mapping/on".to_string(),
+            features: feature_set(
+                all_functional_impl_base(),
+                &["default_impl", "no_text_mapping"],
+                &[],
+            ),
+            run_x64: true,
+        },
+        Scenario {
+            name: "default_impl/delayed_attach/off".to_string(),
+            features: feature_set(
+                all_functional_impl_base(),
+                &["default_impl"],
+                &["delayed_attach", "dll_hijacking", "hwbp_from_constants"],
+            ),
+            run_x64: true,
+        },
+        Scenario {
+            name: "default_impl/delayed_attach/on".to_string(),
+            features: feature_set(
+                all_functional_impl_base(),
+                &[
+                    "default_impl",
+                    "delayed_attach",
+                    "dll_hijacking",
+                    "hwbp_from_constants",
+                ],
+                &[],
+            ),
+            run_x64: true,
+        },
+        Scenario {
+            name: "default_impl/attach_clean_up/off".to_string(),
+            features: feature_set(
+                all_functional_impl_base(),
+                &["default_impl"],
+                &["attach_clean_up"],
+            ),
+            run_x64: true,
+        },
+        Scenario {
+            name: "default_impl/attach_clean_up/on".to_string(),
+            features: feature_set(
+                all_functional_impl_base(),
+                &["default_impl", "attach_clean_up"],
+                &[],
+            ),
+            run_x64: true,
+        },
+        Scenario {
+            name: "default_impl/win_event_hook/off".to_string(),
+            features: feature_set(
+                all_functional_impl_base(),
+                &["default_impl"],
+                &["win_event_hook"],
+            ),
+            run_x64: true,
+        },
+        Scenario {
+            name: "default_impl/win_event_hook/on".to_string(),
+            features: feature_set(
+                all_functional_impl_base(),
+                &["default_impl", "win_event_hook"],
+                &[],
+            ),
+            run_x64: true,
+        },
+        Scenario {
+            name: "default_impl/overlay/off".to_string(),
+            features: feature_set(all_functional_impl_base(), &["default_impl"], &["overlay"]),
+            run_x64: true,
+        },
+        Scenario {
+            name: "default_impl/overlay/on".to_string(),
+            features: feature_set(
+                all_functional_impl_base(),
+                &["default_impl", "overlay"],
+                &[],
+            ),
+            run_x64: true,
+        },
+        // debug_file_impl: 仅作为 impl 变体测试（x86 + x64）
+        Scenario {
+            name: "debug_file_impl/all_functional".to_string(),
+            features: feature_set(all_functional_impl_base(), &["debug_file_impl"], &[]),
+            run_x64: true,
+        },
+    ];
 
     // 其余 impl: 只跑 x86
     let game_impls = [
@@ -258,10 +361,10 @@ fn build_scenarios() -> Vec<Scenario> {
     }
 
     // 保证顺序稳定 + 去重
-    dedup_scenarios(scenarios, default_base)
+    dedup_scenarios(scenarios)
 }
 
-fn dedup_scenarios(scenarios: Vec<Scenario>, _default_base: Vec<String>) -> Vec<Scenario> {
+fn dedup_scenarios(scenarios: Vec<Scenario>) -> Vec<Scenario> {
     let mut seen = BTreeSet::new();
     let mut out = Vec::new();
 
@@ -275,39 +378,13 @@ fn dedup_scenarios(scenarios: Vec<Scenario>, _default_base: Vec<String>) -> Vec<
     out
 }
 
-fn default_base_features<'a>() -> &'a [&'a str] {
-    &[
-        "default_impl",
-        // 功能类 feature（default_impl 下统一开启）
-        "debug_text_mapping",
-        "debug_output",
-        "veh",
-        "resource_pack",
-        "create_file_redirect",
-        "x64dbg_1337_patch",
-        "text_patch",
-        "patch",
-        "read_file_patch_impl",
-        "export_patch_process_fn",
-        "custom_font",
-        "export_default_dll_main",
-        "locale_emulator",
-        "text_hook",
-        "file_hook",
-        "window_hook",
-        "code_cvt_hook",
-        "export_hooks",
-        // 覆盖类默认行为（部分开启 / 部分关闭）
-        "apply_1337_patch_on_attach",
-    ]
-}
-
 fn all_functional_impl_base<'a>() -> &'a [&'a str] {
     &[
         // 功能类 feature
         "debug_text_mapping",
         "debug_output",
         "hwbp_from_constants",
+        "worker_thread",
         "veh",
         "resource_pack",
         "create_file_redirect",
@@ -323,6 +400,7 @@ fn all_functional_impl_base<'a>() -> &'a [&'a str] {
         "file_hook",
         "window_hook",
         "code_cvt_hook",
+        "life_cycle_hook",
         "export_hooks",
     ]
 }

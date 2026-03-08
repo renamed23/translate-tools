@@ -1,4 +1,6 @@
 use windows_sys::Win32::Foundation::HMODULE;
+#[cfg(feature = "win_event_hook")]
+use windows_sys::Win32::Foundation::HWND;
 
 #[cfg(feature = "veh")]
 use crate::utils::hwbp::HwReg;
@@ -16,17 +18,6 @@ translate_macros::expand_by_files!("src/hook/traits" => {
 });
 
 pub trait CoreHook: Send + Sync + 'static {
-    /// 启用钩子，如果未开启`delayed_attach`，会在`PROCESS_ATTACH`时调用；
-    /// 否则会在入口点被调用。
-    ///
-    /// 在这个方法中应该安装所有需要的API钩子。
-    fn enable_hooks() {}
-
-    /// 禁用钩子，会在`PROCESS_DETACH`时调用
-    ///
-    /// 在这个方法中应该卸载所有安装的API钩子，恢复原始函数。
-    fn disable_hooks() {}
-
     /// 延迟附加回调，在程序入口点被调用时执行
     ///
     /// 此时程序已经完成基本的初始化，可以安全地进行各种需要完整运行环境的操作。
@@ -34,23 +25,43 @@ pub trait CoreHook: Send + Sync + 'static {
     #[cfg(feature = "delayed_attach")]
     fn on_delayed_attach() {}
 
-    /// 延迟附加清理回调，在禁用延迟附加钩子时调用
-    ///
-    /// 用于清理在`on_delayed_attach`中分配的资源。
-    /// 这个方法的调用时机早于`on_process_detach`。
-    #[cfg(feature = "delayed_attach")]
-    fn on_delayed_attach_clean() {}
-
     /// 进程附加回调，在`DllMain`的`PROCESS_ATTACH`分支中调用
     ///
     /// 注意：此时程序初始化可能不完整，某些操作（如创建线程、加载DLL等）可能导致死锁。
     /// 如果有此类操作，请使用`on_delayed_attach`方法。
     fn on_process_attach(_hinst_dll: HMODULE) {}
 
+    /// 进程附加清理回调，会在开启`attach_clean_up`时调用
+    ///
+    /// 此时可以进行安全的各种清理操作的，比如保存文件，清理临时文件等等。
+    #[cfg(feature = "attach_clean_up")]
+    fn on_process_attach_clean_up() {}
+
     /// 进程分离回调，在`DllMain`的`PROCESS_DETACH`分支中调用
     ///
     /// 在这个方法中应该执行所有最终的清理操作。
-    fn on_process_detach(_hinst_dll: HMODULE) {}
+    /// 注意不要执行任何不要会导致死锁的操作，如果必须，请选择使用`on_process_attach_clean_up`。
+    fn on_process_detach(_hinst_dll: HMODULE, _process_terminated: bool) {}
+
+    /// WinEvent 回调，在通用 WinEventHook 收到事件后调用
+    ///
+    /// # 参数
+    /// - `_event`: 事件类型（如 `EVENT_SYSTEM_FOREGROUND`）
+    /// - `_hwnd`: 关联窗口句柄，可能为空
+    /// - `_id_object`: 对象 ID（如 `OBJID_WINDOW`）
+    /// - `_id_child`: 子对象 ID
+    /// - `_id_event_thread`: 触发事件的线程 ID
+    /// - `_dwms_event_time`: 事件触发时间戳（毫秒）
+    #[cfg(feature = "win_event_hook")]
+    fn on_win_event_triggered(
+        _event: u32,
+        _hwnd: HWND,
+        _id_object: i32,
+        _id_child: i32,
+        _id_event_thread: u32,
+        _dwms_event_time: u32,
+    ) {
+    }
 
     /// 硬件断点命中回调，在 VEH 处理程序检测到 `EXCEPTION_SINGLE_STEP` 时调用
     ///

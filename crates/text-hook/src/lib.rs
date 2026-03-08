@@ -18,6 +18,9 @@ pub(crate) mod x64dbg_1337_patch;
 #[cfg(feature = "text_patch")]
 pub(crate) mod text_patch;
 
+#[cfg(feature = "win_event_hook")]
+pub(crate) mod win_event_hook;
+
 #[cfg(feature = "patch")]
 pub(crate) mod patch;
 
@@ -38,6 +41,12 @@ pub(crate) mod resource_pack;
 
 #[cfg(feature = "veh")]
 pub(crate) mod veh;
+
+#[cfg(feature = "overlay")]
+pub(crate) mod overlay;
+
+#[cfg(feature = "worker_thread")]
+pub(crate) mod worker_thread;
 
 #[allow(dead_code)]
 pub(crate) mod constant {

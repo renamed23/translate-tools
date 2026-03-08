@@ -4,7 +4,7 @@ use std::{collections::HashMap, sync::LazyLock};
 use translate_macros::DefaultHook;
 use windows_sys::{
     Win32::{
-        Foundation::{HANDLE, INVALID_HANDLE_VALUE, MAX_PATH, TRUE},
+        Foundation::{HANDLE, HMODULE, INVALID_HANDLE_VALUE, MAX_PATH, TRUE},
         Security::SECURITY_ATTRIBUTES,
         Storage::FileSystem::{WIN32_FIND_DATAA, WIN32_FIND_DATAW},
         System::IO::OVERLAPPED,
@@ -35,7 +35,7 @@ static DEBUG_FILE_STATE: LazyLock<RwLock<DebugFileState>> =
     LazyLock::new(|| RwLock::new(DebugFileState::default()));
 
 impl CoreHook for DebugFileImplHook {
-    fn enable_hooks() {
+    fn on_process_attach(_hinst_dll: HMODULE) {
         unsafe {
             HOOK_CREATE_FILE_A.enable().unwrap();
             HOOK_CREATE_FILE_W.enable().unwrap();
@@ -49,7 +49,8 @@ impl CoreHook for DebugFileImplHook {
         }
     }
 
-    fn disable_hooks() {
+    #[cfg(feature = "attach_clean_up")]
+    fn on_process_attach_clean_up() {
         unsafe {
             HOOK_CREATE_FILE_A.disable().unwrap();
             HOOK_CREATE_FILE_W.disable().unwrap();

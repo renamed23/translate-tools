@@ -2,7 +2,7 @@ use scopeguard::defer;
 use std::mem::MaybeUninit;
 use windows_sys::{
     Win32::{
-        Foundation::{ERROR_INSUFFICIENT_BUFFER, GetLastError, HMODULE, SetLastError},
+        Foundation::{ERROR_INSUFFICIENT_BUFFER, GetLastError, HMODULE, HWND, SetLastError},
         Storage::FileSystem::{Wow64DisableWow64FsRedirection, Wow64RevertWow64FsRedirection},
         System::{
             Environment::GetCurrentDirectoryW,
@@ -11,8 +11,8 @@ use windows_sys::{
         },
         UI::WindowsAndMessaging::{
             CB_ADDSTRING, CB_FINDSTRING, CB_FINDSTRINGEXACT, CB_GETLBTEXT, CB_INSERTSTRING,
-            CB_SELECTSTRING, LB_ADDSTRING, LB_FINDSTRING, LB_FINDSTRINGEXACT, LB_GETTEXT,
-            LB_INSERTSTRING, LB_SELECTSTRING,
+            CB_SELECTSTRING, GetClassNameW, GetWindowTextW, LB_ADDSTRING, LB_FINDSTRING,
+            LB_FINDSTRINGEXACT, LB_GETTEXT, LB_INSERTSTRING, LB_SELECTSTRING,
         },
     },
     core::{PCSTR, PCWSTR},
@@ -161,6 +161,20 @@ pub const fn needs_text_conversion(msg: u32) -> bool {
         LB_ADDSTRING | LB_INSERTSTRING | LB_FINDSTRING | LB_FINDSTRINGEXACT
         | LB_SELECTSTRING | LB_GETTEXT
     )
+}
+
+/// 获取窗口标题
+pub fn get_window_text(hwnd: HWND, add_null: bool) -> crate::Result<Vec<u16>> {
+    fetch_win32_string(add_null, |ptr, size| unsafe {
+        GetWindowTextW(hwnd, ptr, size as i32) as u32
+    })
+}
+
+/// 获取窗口类名
+pub fn get_window_class_name(hwnd: HWND, add_null: bool) -> crate::Result<Vec<u16>> {
+    fetch_win32_string(add_null, |ptr, size| unsafe {
+        GetClassNameW(hwnd, ptr, size as i32) as u32
+    })
 }
 
 /// 通用工具：处理 Win32 字符串获取逻辑

@@ -195,7 +195,6 @@ pub trait WindowHook: Send + Sync + 'static {
 
             if (u_flags & (MF_BITMAP | MF_OWNERDRAW)) == 0 && !lp_new_item.is_null() {
                 let text_slice = crate::utils::mem::slice_until_null(lp_new_item, 512);
-                use windows_sys::Win32::UI::WindowsAndMessaging::ModifyMenuW;
 
                 #[cfg(feature = "debug_output")]
                 {
@@ -207,6 +206,7 @@ pub trait WindowHook: Send + Sync + 'static {
 
                 #[cfg(not(feature = "text_extracting"))]
                 if let Ok(trans_msg) = opt_trans_msg {
+                    use windows_sys::Win32::UI::WindowsAndMessaging::ModifyMenuW;
                     return ModifyMenuW(
                         h_menu,
                         u_position,
@@ -347,8 +347,6 @@ pub trait WindowHook: Send + Sync + 'static {
     unsafe fn send_message_a(h_wnd: HWND, msg: u32, w_param: WPARAM, l_param: LPARAM) -> LRESULT {
         #[cfg(feature = "text_patch")]
         unsafe {
-            use windows_sys::Win32::UI::WindowsAndMessaging::SendMessageW;
-
             if crate::utils::win32::needs_text_conversion(msg) && l_param != 0 {
                 let text_slice = crate::utils::mem::slice_until_null(l_param as *const u8, 4096);
 
@@ -362,6 +360,7 @@ pub trait WindowHook: Send + Sync + 'static {
 
                 #[cfg(not(feature = "text_extracting"))]
                 if let Ok(trans_msg) = opt_trans_msg {
+                    use windows_sys::Win32::UI::WindowsAndMessaging::SendMessageW;
                     return SendMessageW(h_wnd, msg, w_param, trans_msg.as_ptr() as LPARAM);
                 }
             }
@@ -375,8 +374,6 @@ pub trait WindowHook: Send + Sync + 'static {
     ) -> isize {
         #[cfg(feature = "text_patch")]
         unsafe {
-            use windows_sys::Win32::UI::Controls::PROPSHEETHEADERA_V2;
-
             if ppsh.is_null() {
                 return crate::call!(HOOK_PROPERTY_SHEET_A, ppsh);
             }
@@ -402,6 +399,8 @@ pub trait WindowHook: Send + Sync + 'static {
 
             #[cfg(not(feature = "text_extracting"))]
             if let Ok(trans) = opt_trans {
+                use windows_sys::Win32::UI::Controls::PROPSHEETHEADERA_V2;
+
                 let dw_size = header.dwSize as usize;
 
                 let mut new_buf = Box::<[u8]>::new_uninit_slice(dw_size);

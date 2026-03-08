@@ -44,7 +44,6 @@ fn delayed_attach() {
         );
     }
 
-    crate::hook::impls::HookImplType::enable_hooks();
     crate::hook::enable_hooks_from_lists();
     crate::hook::impls::HookImplType::on_delayed_attach();
 }
@@ -56,8 +55,6 @@ fn delayed_attach_clean() {
     unsafe {
         crate::dll_hijacking::unload_library();
     };
-
-    crate::hook::impls::HookImplType::on_delayed_attach_clean();
 }
 
 unsafe extern "C" fn entry_point() {

@@ -23,8 +23,8 @@ static mut FONT_HANDLE: Option<HANDLE> = None;
 /// - 调用者需保证本函数与 `remove_font` 的调用时序正确（先 add 后 remove）。
 pub unsafe fn add_font() -> crate::Result<()> {
     unsafe {
-        #[allow(clippy::redundant_pattern_matching)]
-        if matches!(FONT_HANDLE, Some(_)) {
+        #[allow(static_mut_refs)]
+        if FONT_HANDLE.is_some() {
             return Ok(());
         }
 
@@ -58,8 +58,8 @@ pub unsafe fn add_font() -> crate::Result<()> {
 /// - 调用前必须保证字体已通过 `add_font` 成功添加。
 pub unsafe fn remove_font() -> crate::Result<()> {
     unsafe {
-        if let Some(handle) = FONT_HANDLE {
-            FONT_HANDLE = None;
+        #[allow(static_mut_refs)]
+        if let Some(handle) = FONT_HANDLE.take() {
             if RemoveFontMemResourceEx(handle) != 0 {
                 Ok(())
             } else {

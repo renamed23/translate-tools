@@ -14,12 +14,6 @@ impl CoreHook for LoveBindHook {
             HOOK_MESSAGE_BOX_TIMEOUT_A.enable().unwrap();
         };
     }
-
-    fn on_process_detach(_hinst_dll: HMODULE) {
-        unsafe {
-            HOOK_MESSAGE_BOX_TIMEOUT_A.disable().unwrap();
-        };
-    }
 }
 
 #[detour_fn(dll = "user32.dll", symbol = "MessageBoxTimeoutA", fallback = "1")]

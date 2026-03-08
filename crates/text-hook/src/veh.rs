@@ -21,8 +21,8 @@ static mut VEH_HANDLE: Option<HANDLE> = None;
 pub unsafe fn install_veh_handler(first: bool) -> crate::Result<()> {
     crate::debug!("Installing VEH handler (first={first})");
 
-    #[allow(clippy::redundant_pattern_matching)]
-    if unsafe { matches!(VEH_HANDLE, Some(_)) } {
+    #[allow(static_mut_refs)]
+    if unsafe { VEH_HANDLE.is_some() } {
         return Ok(());
     }
 

@@ -44,5 +44,8 @@
     "SetDlgItemTextA",
     "SetWindowTextA",
     "SendMessageA"
+  ],
+  "all(feature = \"life_cycle_hook\", feature = \"attach_clean_up\")": [
+    "ExitProcess"
   ]
 }

@@ -24,13 +24,6 @@ impl CoreHook for SeraphHook {
             HOOK_GET_PRIVATE_PROFILE_STRING_A.enable().unwrap();
         };
     }
-
-    fn on_process_detach(_hinst_dll: HMODULE) {
-        unsafe {
-            HOOK_GET_PRIVATE_PROFILE_INT_A.disable().unwrap();
-            HOOK_GET_PRIVATE_PROFILE_STRING_A.disable().unwrap();
-        };
-    }
 }
 
 fn query_game_ini_string(section: &str, key: &str) -> Option<String> {

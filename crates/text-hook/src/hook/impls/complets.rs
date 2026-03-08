@@ -20,13 +20,6 @@ impl CoreHook for CompletsHook {
             HOOK_REG_CREATE_KEY_EX_A.enable().unwrap();
         };
     }
-
-    fn on_process_detach(_hinst_dll: HMODULE) {
-        unsafe {
-            HOOK_REG_OPEN_KEY_EX_A.disable().unwrap();
-            HOOK_REG_CREATE_KEY_EX_A.disable().unwrap();
-        };
-    }
 }
 
 const EXPECTED: &str = const_str::concat!("Software\\", ARG_REG_PATH, "\\savedata");
