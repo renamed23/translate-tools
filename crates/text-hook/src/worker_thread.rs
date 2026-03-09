@@ -5,6 +5,9 @@ use windows_sys::Win32::UI::WindowsAndMessaging::{
     DispatchMessageW, MSG, PM_REMOVE, PeekMessageW, TranslateMessage, WM_QUIT,
 };
 
+use crate::hook::impls::HookImplType;
+use crate::hook::traits::CoreHook;
+
 static STOP_FLAG: AtomicBool = AtomicBool::new(false);
 static mut JOIN_HANDLE: Option<JoinHandle<()>> = None;
 
@@ -47,6 +50,16 @@ pub unsafe fn stop() -> crate::Result<()> {
     Ok(())
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum LoopAction {
+    /// 继续运行，立即进入下一轮循环
+    #[default]
+    Continue,
+
+    /// 停止工作线程，触发清理流程并退出 worker_main
+    Exit,
+}
+
 fn worker_main() {
     #[cfg(feature = "win_event_hook")]
     if let Err(e) = unsafe { crate::win_event_hook::install_win_event_hook() } {
@@ -76,8 +89,16 @@ fn worker_main() {
                 DispatchMessageW(&msg);
             }
 
-            #[cfg(feature = "overlay_gl")]
-            crate::overlay::render();
+            match HookImplType::on_worker_main_tick() {
+                LoopAction::Continue => {
+                    #[cfg(feature = "overlay")]
+                    crate::overlay::render();
+                }
+                LoopAction::Exit => {
+                    STOP_FLAG.store(true, Ordering::Release);
+                    break;
+                }
+            };
         }
     }
 }

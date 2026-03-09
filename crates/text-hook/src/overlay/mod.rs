@@ -1,11 +1,9 @@
 mod window;
 
-use std::{cell::RefCell, sync::LazyLock};
+use std::cell::RefCell;
 
-use glow::HasContext;
 use windows_sys::Win32::{
     Foundation::{HWND, RECT},
-    Graphics::OpenGL::SwapBuffers,
     UI::WindowsAndMessaging::{
         EVENT_OBJECT_DESTROY, EVENT_OBJECT_LOCATIONCHANGE, EVENT_OBJECT_SHOW, GetParent,
         GetWindowRect, IsWindow, MoveWindow, OBJID_WINDOW,
@@ -16,6 +14,7 @@ use windows_sys::Win32::{
 use crate::utils::gl::GLContext;
 use crate::{
     constant::{OVERLAY_TARGET_WINDOW_CLASS_NAME, OVERLAY_TARGET_WINDOW_TEXT},
+    hook::{impls::HookImplType, traits::CoreHook},
     overlay::window::create_overlay_window,
     utils::raii_wrapper::OwnedHWND,
 };
@@ -138,33 +137,10 @@ pub fn win_event_callback(
 }
 
 /// Overlay 渲染函数
-///
-/// TODO: 目前只是一个简单的示例，以后再拓展
-#[cfg(feature = "overlay_gl")]
 pub fn render() {
-    if OVERLAY_CTX.with_borrow(|ctx| ctx.is_none()) {
-        return;
-    }
-
-    static START_TIME: LazyLock<std::time::Instant> = LazyLock::new(std::time::Instant::now);
-
     OVERLAY_CTX.with_borrow(|ctx| {
-        let ctx = ctx.as_ref().unwrap();
-        let gl = &ctx.gl_ctx.gl;
-        unsafe {
-            gl.enable(glow::BLEND);
-            gl.blend_func(glow::SRC_ALPHA, glow::ONE_MINUS_SRC_ALPHA);
-
-            let elapsed = START_TIME.elapsed().as_secs_f32();
-            let r = (elapsed.sin() + 1.0) / 2.0;
-            let g = 0.3; // 固定一点绿色
-            let b = (elapsed.cos() + 1.0) / 2.0;
-            let a = 0.4; // 稍微透一点背景
-
-            gl.clear_color(r, g, b, a);
-            gl.clear(glow::COLOR_BUFFER_BIT);
-
-            SwapBuffers(*ctx.gl_ctx.hdc);
+        if let Some(context) = ctx {
+            HookImplType::on_overlay_render(context);
         }
     });
 }

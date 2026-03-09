@@ -7,17 +7,21 @@ use windows_sys::{
         UI::{
             Controls::MARGINS,
             WindowsAndMessaging::{
-                CS_HREDRAW, CS_VREDRAW, CreateWindowExW, DefWindowProcW, GetWindowRect,
-                HTTRANSPARENT, LWA_ALPHA, RegisterClassW, SW_SHOWNOACTIVATE,
-                SetLayeredWindowAttributes, ShowWindow, WM_NCHITTEST, WNDCLASSW, WS_EX_LAYERED,
-                WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW, WS_EX_TRANSPARENT, WS_POPUP,
+                CS_HREDRAW, CS_VREDRAW, CreateWindowExW, DefWindowProcW, GetWindowRect, LWA_ALPHA,
+                RegisterClassW, SW_SHOWNOACTIVATE, SetLayeredWindowAttributes, ShowWindow,
+                WNDCLASSW, WS_EX_LAYERED, WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW, WS_EX_TRANSPARENT,
+                WS_POPUP,
             },
         },
     },
     w,
 };
 
-use crate::{print_last_error_message, utils::raii_wrapper::OwnedHWND};
+use crate::{
+    hook::{impls::HookImplType, traits::CoreHook},
+    print_last_error_message,
+    utils::raii_wrapper::OwnedHWND,
+};
 
 const TEXT_HOOK_OVERLAY_CLASS_NAME: *const u16 = w!("tt_text_hook_overlay_class_name");
 const TEXT_HOOK_OVERLAY_TITLE_NAME: *const u16 = w!("tt_text_hook_overlay_title_name");
@@ -28,9 +32,9 @@ unsafe extern "system" fn overlay_wnd_proc(
     w_param: WPARAM,
     l_param: LPARAM,
 ) -> LRESULT {
-    match msg {
-        WM_NCHITTEST => HTTRANSPARENT as isize,
-        _ => unsafe { DefWindowProcW(hwnd, msg, w_param, l_param) },
+    match HookImplType::on_overlay_wnd_proc(hwnd, msg, w_param, l_param) {
+        Some(ret) => ret,
+        None => unsafe { DefWindowProcW(hwnd, msg, w_param, l_param) },
     }
 }
 

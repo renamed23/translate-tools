@@ -1,11 +1,10 @@
-use windows_sys::Win32::Foundation::HMODULE;
-#[cfg(feature = "win_event_hook")]
-use windows_sys::Win32::Foundation::HWND;
-
-#[cfg(feature = "veh")]
-use crate::utils::hwbp::HwReg;
-#[cfg(feature = "veh")]
+use windows_sys::Win32::Foundation::{HMODULE, HWND, LPARAM, LRESULT, WPARAM};
 use windows_sys::Win32::System::Diagnostics::Debug::CONTEXT;
+
+use crate::overlay::OverlayContext;
+use crate::utils::hwbp::HwReg;
+#[cfg(feature = "worker_thread")]
+use crate::worker_thread::LoopAction;
 
 // 声明所有的Hook接口的模块文件，并导出Trait
 translate_macros::expand_by_files!("src/hook/traits" => {
@@ -80,5 +79,59 @@ pub trait CoreHook: Send + Sync + 'static {
     #[cfg(feature = "veh")]
     fn on_hwbp_hit(_context: &mut CONTEXT, _reg: HwReg) -> bool {
         true
+    }
+
+    /// Overlay 窗口消息回调
+    ///
+    /// # 说明
+    /// 此方法直接挂载在 Overlay 窗口的 `WndProc` 中。实现者可以通过此接口拦截、
+    /// 修改或响应发往 Overlay 窗口的所有 Windows 消息。
+    ///
+    /// # 参数
+    /// - `hwnd`: Overlay 窗口本身的句柄。
+    /// - `msg`: Windows 消息 ID（如 `WM_PAINT`, `WM_MOUSEMOVE`, `WM_SIZE` 等）。
+    /// - `w_param`: 消息附加参数。
+    /// - `l_param`: 消息附加参数。
+    ///
+    /// # 返回值
+    /// - `Some(LRESULT)`: 表示消息已被 Hook 消费。框架将直接返回此值给系统，**不再**调用 `DefWindowProcW`。
+    /// - `None`: 表示 Hook 不关心此消息。框架将自动调用 `DefWindowProcW` 进行系统默认处理。
+    ///
+    /// # 注意事项
+    /// - 此方法在 **Overlay 窗口所属线程**（`worker_thread`）的消息循环中执行。
+    /// - **禁止**在此处执行任何阻塞操作，否则会导致窗口失去响应或渲染卡顿。
+    /// - 如果打算实现点击穿透之外的交互（如菜单、按钮），需要在此处通过 `egui-winit` 或手动逻辑
+    ///   判断鼠标是否落在 UI 元素上，并据此决定是否拦截消息。
+    #[cfg(feature = "overlay")]
+    fn on_overlay_wnd_proc(
+        _hwnd: HWND,
+        _msg: u32,
+        _w_param: WPARAM,
+        _l_param: LPARAM,
+    ) -> Option<LRESULT> {
+        None
+    }
+
+    /// Overlay 渲染回调
+    ///
+    /// # 参数
+    /// - `_context`: 包含当前 Overlay 运行状态的上下文引用
+    ///
+    /// # 注意事项
+    /// - 此方法在 `worker_thread` 中执行，请确保绘制操作的线程安全性。
+    /// - 严禁在此回调中执行耗时过长的阻塞操作，否则会拖慢渲染帧率及消息循环。
+    #[cfg(feature = "overlay")]
+    fn on_overlay_render(_context: &OverlayContext) {}
+
+    /// 工作线程的主循环 Tick 回调
+    ///
+    /// # 返回值
+    /// - `LoopAction`: 用于控制worker_thread的行为
+    ///
+    /// # 注意事项
+    /// - 此处严禁执行高耗时的阻塞操作（如同步 IO、复杂的循环计算），否则会直接降低渲染帧率（FPS）。
+    #[cfg(feature = "worker_thread")]
+    fn on_worker_main_tick() -> LoopAction {
+        LoopAction::Continue
     }
 }
