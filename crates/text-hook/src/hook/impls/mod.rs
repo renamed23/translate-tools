@@ -115,9 +115,6 @@ pub fn attach_clean_up() {
 
     crate::debug!("Process attach clean up");
 
-    #[cfg(feature = "overlay")]
-    crate::overlay::clean_up();
-
     #[cfg(all(feature = "text_patch", feature = "text_extracting"))]
     if let Err(e) = crate::text_patch::save_extracted_items_to_json() {
         crate::debug!("Failed to save extracted items to JSON: {e:?}");

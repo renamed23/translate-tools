@@ -1,32 +1,42 @@
 mod window;
 
-use std::sync::RwLock;
+use std::{cell::RefCell, sync::LazyLock};
 
+use glow::HasContext;
 use windows_sys::Win32::{
     Foundation::{HWND, RECT},
+    Graphics::OpenGL::SwapBuffers,
     UI::WindowsAndMessaging::{
-        DestroyWindow, EVENT_OBJECT_DESTROY, EVENT_OBJECT_LOCATIONCHANGE, EVENT_OBJECT_SHOW,
-        GetParent, GetWindowRect, IsWindow, MoveWindow, OBJID_WINDOW,
+        EVENT_OBJECT_DESTROY, EVENT_OBJECT_LOCATIONCHANGE, EVENT_OBJECT_SHOW, GetParent,
+        GetWindowRect, IsWindow, MoveWindow, OBJID_WINDOW,
     },
 };
 
+#[cfg(feature = "overlay_gl")]
+use crate::utils::gl::GLContext;
 use crate::{
     constant::{OVERLAY_TARGET_WINDOW_CLASS_NAME, OVERLAY_TARGET_WINDOW_TEXT},
     overlay::window::create_overlay_window,
+    utils::raii_wrapper::OwnedHWND,
 };
 
 /// Overlay上下文结构体
-#[derive(Clone, Copy)]
 pub struct OverlayContext {
+    /// OpenGL 上下文
+    #[cfg(feature = "overlay_gl")]
+    pub gl_ctx: GLContext,
+
     /// 目标窗口 hwnd
-    pub target: usize,
+    pub target: HWND,
 
     /// Overlay窗口 hwnd
-    pub overlay: usize,
+    pub overlay: OwnedHWND,
 }
 
-/// Overlay上下文
-pub static OVERLAY_CTX: RwLock<Option<OverlayContext>> = RwLock::new(None);
+thread_local! {
+    /// Overlay上下文
+    pub static OVERLAY_CTX: RefCell<Option<OverlayContext>> = const { RefCell::new(None) };
+}
 
 /// 根据窗口事件获取目标窗口的hwnd并创建overlay窗口，并根据目标窗口同步overlay窗口
 ///
@@ -46,7 +56,7 @@ pub fn win_event_callback(
 
         match event {
             EVENT_OBJECT_SHOW => {
-                if OVERLAY_CTX.read().unwrap().is_some() {
+                if OVERLAY_CTX.with_borrow(|ctx| ctx.is_some()) {
                     return;
                 }
 
@@ -73,19 +83,28 @@ pub fn win_event_callback(
                 }
 
                 if let Ok(overlay) = create_overlay_window(hwnd) {
-                    OVERLAY_CTX.write().unwrap().insert(OverlayContext {
-                        target: hwnd as usize,
-                        overlay: overlay as usize,
-                    });
+                    #[cfg(feature = "overlay_gl")]
+                    let Ok(gl_ctx) = GLContext::new(*overlay) else {
+                        return;
+                    };
+
+                    OVERLAY_CTX.set(Some(OverlayContext {
+                        #[cfg(feature = "overlay_gl")]
+                        gl_ctx,
+                        target: hwnd,
+                        overlay,
+                    }));
                 }
             }
 
             EVENT_OBJECT_LOCATIONCHANGE => {
-                let Some(OverlayContext { target, overlay }) = *OVERLAY_CTX.read().unwrap() else {
+                let Some((target, overlay)) = OVERLAY_CTX
+                    .with_borrow(|ctx| ctx.as_ref().map(|ctx| (ctx.target, *ctx.overlay)))
+                else {
                     return;
                 };
 
-                if hwnd as usize != target {
+                if hwnd != target {
                     return;
                 }
 
@@ -95,22 +114,22 @@ pub fn win_event_callback(
                     let width = rect.right - rect.left;
                     let height = rect.bottom - rect.top;
 
-                    MoveWindow(overlay as HWND, rect.left, rect.top, width, height, 1);
+                    MoveWindow(overlay, rect.left, rect.top, width, height, 1);
                 }
             }
 
             EVENT_OBJECT_DESTROY => {
-                let Some(OverlayContext { target, overlay }) = *OVERLAY_CTX.read().unwrap() else {
+                let Some(target) =
+                    OVERLAY_CTX.with_borrow(|ctx| ctx.as_ref().map(|ctx| ctx.target))
+                else {
                     return;
                 };
 
-                if hwnd as usize != target {
+                if hwnd != target {
                     return;
                 }
 
-                DestroyWindow(overlay as HWND);
-
-                OVERLAY_CTX.write().unwrap().take();
+                OVERLAY_CTX.with(|ctx| ctx.take());
             }
 
             _ => {}
@@ -118,13 +137,39 @@ pub fn win_event_callback(
     }
 }
 
+/// Overlay 渲染函数
+///
+/// TODO: 目前只是一个简单的示例，以后再拓展
+#[cfg(feature = "overlay_gl")]
+pub fn render() {
+    if OVERLAY_CTX.with_borrow(|ctx| ctx.is_none()) {
+        return;
+    }
+
+    static START_TIME: LazyLock<std::time::Instant> = LazyLock::new(std::time::Instant::now);
+
+    OVERLAY_CTX.with_borrow(|ctx| {
+        let ctx = ctx.as_ref().unwrap();
+        let gl = &ctx.gl_ctx.gl;
+        unsafe {
+            gl.enable(glow::BLEND);
+            gl.blend_func(glow::SRC_ALPHA, glow::ONE_MINUS_SRC_ALPHA);
+
+            let elapsed = START_TIME.elapsed().as_secs_f32();
+            let r = (elapsed.sin() + 1.0) / 2.0;
+            let g = 0.3; // 固定一点绿色
+            let b = (elapsed.cos() + 1.0) / 2.0;
+            let a = 0.4; // 稍微透一点背景
+
+            gl.clear_color(r, g, b, a);
+            gl.clear(glow::COLOR_BUFFER_BIT);
+
+            SwapBuffers(*ctx.gl_ctx.hdc);
+        }
+    });
+}
+
 /// Overlay 清理函数
 pub fn clean_up() {
-    let Some(OverlayContext { overlay, .. }) = *OVERLAY_CTX.read().unwrap() else {
-        return;
-    };
-
-    unsafe { DestroyWindow(overlay as HWND) };
-
-    OVERLAY_CTX.write().unwrap().take();
+    OVERLAY_CTX.with(|ctx| ctx.take());
 }

@@ -53,6 +53,11 @@ fn worker_main() {
         crate::debug!("Install WinEvent hook failed with {e:?}");
     }
 
+    #[cfg(feature = "overlay")]
+    scopeguard::defer!(
+        crate::overlay::clean_up();
+    );
+
     #[cfg(feature = "win_event_hook")]
     scopeguard::defer!(
         if let Err(e) = unsafe { crate::win_event_hook::uninstall_win_event_hook() } {
@@ -71,7 +76,8 @@ fn worker_main() {
                 DispatchMessageW(&msg);
             }
 
-            std::thread::yield_now();
+            #[cfg(feature = "overlay_gl")]
+            crate::overlay::render();
         }
     }
 }

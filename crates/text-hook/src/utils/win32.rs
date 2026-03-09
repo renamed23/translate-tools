@@ -1,5 +1,5 @@
+use core::mem::MaybeUninit;
 use scopeguard::defer;
-use std::mem::MaybeUninit;
 use windows_sys::{
     Win32::{
         Foundation::{ERROR_INSUFFICIENT_BUFFER, GetLastError, HMODULE, HWND, SetLastError},
@@ -20,7 +20,10 @@ use windows_sys::{
 
 use crate::{
     constant, print_last_error_message,
-    utils::exts::{path_ext::PathExt, slice_ext::WideSliceExt},
+    utils::{
+        exts::{path_ext::PathExt, slice_ext::WideSliceExt},
+        raii_wrapper::OwnedHMODULE,
+    },
 };
 
 /// 获取模块句柄的包装函数
@@ -76,13 +79,13 @@ pub fn get_system_directory(add_null: bool) -> crate::Result<Vec<u16>> {
 }
 
 /// 根据路径加载指定DLL，若失败返回Err
-pub fn load_library(path: PCWSTR) -> crate::Result<HMODULE> {
+pub fn load_library(path: PCWSTR) -> crate::Result<OwnedHMODULE> {
     let handle = unsafe { LoadLibraryW(path) };
     if handle.is_null() {
         print_last_error_message!();
         crate::bail!("LoadLibraryW failed for: {path:?}");
     }
-    Ok(handle)
+    Ok(OwnedHMODULE(handle))
 }
 
 /// 获取模块文件路径
@@ -105,7 +108,7 @@ pub fn get_current_dir(add_null: bool) -> crate::Result<Vec<u16>> {
 /// - 如果 `constant::HIJACKED_DLL_PATH` 为空字符串，则从系统目录加载指定的DLL
 /// - 如果 `constant::HIJACKED_DLL_PATH` 不为空，则直接从该路径加载DLL
 #[allow(clippy::const_is_empty)]
-pub fn load_hijacked_library(dll_name: &str) -> crate::Result<HMODULE> {
+pub fn load_hijacked_library(dll_name: &str) -> crate::Result<OwnedHMODULE> {
     if constant::HIJACKED_DLL_PATH.is_empty() {
         let system_dir = get_system_directory(false)?.to_path_buf();
         let full_path = system_dir.join(dll_name);

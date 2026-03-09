@@ -9,7 +9,7 @@ use crate::utils::mem::patch::{get_dos_and_nt_headers, write_bytes};
 /// IAT 修补函数
 ///
 /// # 参数
-/// - `target_module`: 目标模块基址 (HMODULE)
+/// - `target_module_base`: 目标模块基址
 /// - `original_addr`: 函数当前的真实地址（IAT 中存储的旧值）
 /// - `hook_addr`: 准备替换进去的 Hook 函数地址
 ///
@@ -17,15 +17,15 @@ use crate::utils::mem::patch::{get_dos_and_nt_headers, write_bytes};
 /// - `Result`: 成功返回 `Ok(())`，失败返回错误信息
 ///
 /// # Safety
-/// - `target_module` 必须是当前进程中已加载模块的有效基址。
+/// - `target_module_base` 必须是当前进程中已加载模块的有效基址。
 /// - 调用者必须保证 `original_addr` 与 `hook_addr` 均为可执行函数地址，且替换期间不存在并发写入 IAT。
 pub unsafe fn patch_iat(
-    target_module: HMODULE,
+    target_module_base: usize,
     original_addr: usize,
     hook_addr: usize,
 ) -> crate::Result<()> {
     unsafe {
-        let iat_entry_ptr = find_iat_entry(target_module, original_addr)?;
+        let iat_entry_ptr = find_iat_entry(target_module_base, original_addr)?;
         write_bytes(iat_entry_ptr as _, &hook_addr.to_ne_bytes())?;
         Ok(())
     }
@@ -34,26 +34,26 @@ pub unsafe fn patch_iat(
 /// 在导入表中遍历查找特定地址的指针位置
 ///
 /// # Safety
-/// - `module` 必须指向有效 PE 模块基址，且其导入表结构完整可读。
+/// - `module_base` 必须指向有效 PE 模块基址，且其导入表结构完整可读。
 /// - 调用者必须保证遍历导入表期间该模块不会被卸载。
-pub unsafe fn find_iat_entry(module: HMODULE, target_ptr: usize) -> crate::Result<*mut usize> {
+pub unsafe fn find_iat_entry(module_base: usize, target_ptr: usize) -> crate::Result<*mut usize> {
     unsafe {
-        let base = module as usize;
-        let (_, nt) = get_dos_and_nt_headers(base)?;
+        let (_, nt) = get_dos_and_nt_headers(module_base)?;
 
         let import_dir = nt.OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT as usize];
         if import_dir.VirtualAddress == 0 {
             crate::bail!("Target module has no import directory");
         }
 
-        let mut imp = (base + import_dir.VirtualAddress as usize) as *const IMAGE_IMPORT_DESCRIPTOR;
+        let mut imp =
+            (module_base + import_dir.VirtualAddress as usize) as *const IMAGE_IMPORT_DESCRIPTOR;
 
         // 遍历所有导入的 DLL
         while (*imp).Name != 0 {
             // FirstThunk 指向 IAT (Import Address Table)
             let first_thunk = (*imp).FirstThunk;
             if first_thunk != 0 {
-                let mut thunk = (base + first_thunk as usize) as *mut usize;
+                let mut thunk = (module_base + first_thunk as usize) as *mut usize;
 
                 // 遍历该 DLL 下所有的导出函数地址
                 while *thunk != 0 {
@@ -111,7 +111,7 @@ where
 
         let module = crate::utils::win32::get_module_handle(core::ptr::null())? as HMODULE;
 
-        unsafe { patch_iat(module, self.orig, self.hook) }?;
+        unsafe { patch_iat(module as usize, self.orig, self.hook) }?;
         self.enabled
             .store(true, std::sync::atomic::Ordering::SeqCst);
         Ok(())
@@ -127,7 +127,7 @@ where
 
         let module = crate::utils::win32::get_module_handle(core::ptr::null())? as HMODULE;
 
-        unsafe { patch_iat(module, self.hook, self.orig) }?;
+        unsafe { patch_iat(module as usize, self.hook, self.orig) }?;
         self.enabled
             .store(false, std::sync::atomic::Ordering::SeqCst);
         Ok(())
@@ -137,7 +137,7 @@ where
     pub fn orig(&self) -> T {
         const {
             assert!(
-                std::mem::size_of::<T>() == std::mem::size_of::<usize>(),
+                core::mem::size_of::<T>() == core::mem::size_of::<usize>(),
                 "IatHook 类型 T 必须和指针相同大小"
             );
         }

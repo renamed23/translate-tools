@@ -9,16 +9,15 @@ use windows_sys::{
             WindowsAndMessaging::{
                 CS_HREDRAW, CS_VREDRAW, CreateWindowExW, DefWindowProcW, GetWindowRect,
                 HTTRANSPARENT, LWA_ALPHA, RegisterClassW, SW_SHOWNOACTIVATE,
-                SetLayeredWindowAttributes, ShowWindow, WM_DESTROY, WM_NCHITTEST, WNDCLASSW,
-                WS_EX_LAYERED, WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW, WS_EX_TRANSPARENT, WS_POPUP,
-                WS_VISIBLE,
+                SetLayeredWindowAttributes, ShowWindow, WM_NCHITTEST, WNDCLASSW, WS_EX_LAYERED,
+                WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW, WS_EX_TRANSPARENT, WS_POPUP,
             },
         },
     },
     w,
 };
 
-use crate::print_last_error_message;
+use crate::{print_last_error_message, utils::raii_wrapper::OwnedHWND};
 
 const TEXT_HOOK_OVERLAY_CLASS_NAME: *const u16 = w!("tt_text_hook_overlay_class_name");
 const TEXT_HOOK_OVERLAY_TITLE_NAME: *const u16 = w!("tt_text_hook_overlay_title_name");
@@ -30,8 +29,7 @@ unsafe extern "system" fn overlay_wnd_proc(
     l_param: LPARAM,
 ) -> LRESULT {
     match msg {
-        WM_DESTROY => return 0,
-        WM_NCHITTEST => return HTTRANSPARENT as isize,
+        WM_NCHITTEST => HTTRANSPARENT as isize,
         _ => unsafe { DefWindowProcW(hwnd, msg, w_param, l_param) },
     }
 }
@@ -59,7 +57,7 @@ fn ensure_window_class() -> crate::Result<()> {
 }
 
 /// 创建一个overlay窗口
-pub fn create_overlay_window(target_hwnd: HWND) -> crate::Result<HWND> {
+pub(super) fn create_overlay_window(target_hwnd: HWND) -> crate::Result<OwnedHWND> {
     ensure_window_class()?;
 
     let mut rect = RECT::default();
@@ -72,12 +70,12 @@ pub fn create_overlay_window(target_hwnd: HWND) -> crate::Result<HWND> {
     let height = (rect.bottom - rect.top).max(1);
 
     let instance = crate::utils::win32::get_module_handle(core::ptr::null())?;
-    let hwnd = unsafe {
+    let hwnd_raw = unsafe {
         CreateWindowExW(
             WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE | WS_EX_TRANSPARENT | WS_EX_LAYERED,
             TEXT_HOOK_OVERLAY_CLASS_NAME,
             TEXT_HOOK_OVERLAY_TITLE_NAME,
-            WS_POPUP | WS_VISIBLE,
+            WS_POPUP,
             rect.left,
             rect.top,
             width,
@@ -89,12 +87,14 @@ pub fn create_overlay_window(target_hwnd: HWND) -> crate::Result<HWND> {
         )
     };
 
-    if hwnd.is_null() {
+    if hwnd_raw.is_null() {
         print_last_error_message!();
         crate::bail!("CreateWindowExW failed");
     }
 
-    if unsafe { SetLayeredWindowAttributes(hwnd, 0, 255, LWA_ALPHA) } == 0 {
+    let hwnd = OwnedHWND(hwnd_raw);
+
+    if unsafe { SetLayeredWindowAttributes(*hwnd, 0, 255, LWA_ALPHA) } == 0 {
         print_last_error_message!();
         crate::debug!("SetLayeredWindowAttributes failed");
     }
@@ -106,13 +106,13 @@ pub fn create_overlay_window(target_hwnd: HWND) -> crate::Result<HWND> {
         cyBottomHeight: -1,
     };
 
-    let hr = unsafe { DwmExtendFrameIntoClientArea(hwnd, &margins) };
+    let hr = unsafe { DwmExtendFrameIntoClientArea(*hwnd, &margins) };
     if hr < 0 {
         crate::debug!("DwmExtendFrameIntoClientArea failed: hr={hr:#x}");
     }
 
     unsafe {
-        ShowWindow(hwnd, SW_SHOWNOACTIVATE);
+        ShowWindow(*hwnd, SW_SHOWNOACTIVATE);
     }
 
     Ok(hwnd)

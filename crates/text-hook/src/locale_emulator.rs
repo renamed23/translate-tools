@@ -218,7 +218,7 @@ unsafe fn relaunch(process_info: *mut MlProcessInformation) -> crate::Result<()>
     let loader = crate::utils::win32::load_library(w!("LoaderDll.dll"))?;
 
     let proc =
-        crate::utils::win32::get_module_symbol_addr_from_handle(loader, s!("LeCreateProcess"))?;
+        crate::utils::win32::get_module_symbol_addr_from_handle(*loader, s!("LeCreateProcess"))?;
     let le_create_process: LeCreateProcessFn = unsafe { core::mem::transmute(proc) };
 
     let mut startup_info: STARTUPINFOW = unsafe { core::mem::zeroed() };

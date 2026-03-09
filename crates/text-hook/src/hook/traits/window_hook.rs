@@ -202,10 +202,10 @@ pub trait WindowHook: Send + Sync + 'static {
                     debug!("Get menu text: {raw_text}");
                 }
 
-                let opt_trans_msg = text_slice.to_wide_ansi().lookup_or_add_item_null();
+                let _opt_trans_msg = text_slice.to_wide_ansi().lookup_or_add_item_null();
 
                 #[cfg(not(feature = "text_extracting"))]
-                if let Ok(trans_msg) = opt_trans_msg {
+                if let Ok(trans_msg) = _opt_trans_msg {
                     use windows_sys::Win32::UI::WindowsAndMessaging::ModifyMenuW;
                     return ModifyMenuW(
                         h_menu,
@@ -258,14 +258,14 @@ pub trait WindowHook: Send + Sync + 'static {
                 }
             }
 
-            let opt_wide_text = text_slice.to_wide_ansi().lookup_or_add_item_null();
-            let opt_wide_caption = cap_slice.to_wide_ansi().lookup_or_add_item_null();
+            let _opt_wide_text = text_slice.to_wide_ansi().lookup_or_add_item_null();
+            let _opt_wide_caption = cap_slice.to_wide_ansi().lookup_or_add_item_null();
 
             #[cfg(not(feature = "text_extracting"))]
-            if opt_wide_text.is_ok() || opt_wide_caption.is_ok() {
-                let wide_text = opt_wide_text.unwrap_or_else(|_| text_slice.to_wide_null_ansi());
+            if _opt_wide_text.is_ok() || _opt_wide_caption.is_ok() {
+                let wide_text = _opt_wide_text.unwrap_or_else(|_| text_slice.to_wide_null_ansi());
                 let wide_caption =
-                    opt_wide_caption.unwrap_or_else(|_| cap_slice.to_wide_null_ansi());
+                    _opt_wide_caption.unwrap_or_else(|_| cap_slice.to_wide_null_ansi());
 
                 let wide_text_ptr = if wide_text.len() == 1 {
                     core::ptr::null()
@@ -303,10 +303,10 @@ pub trait WindowHook: Send + Sync + 'static {
                 debug!("Get SetDlgItemTextA text: {raw_text}");
             }
 
-            let opt_trans_msg = text_slice.to_wide_ansi().lookup_or_add_item_null();
+            let _opt_trans_msg = text_slice.to_wide_ansi().lookup_or_add_item_null();
 
             #[cfg(not(feature = "text_extracting"))]
-            if let Ok(trans_msg) = opt_trans_msg {
+            if let Ok(trans_msg) = _opt_trans_msg {
                 use windows_sys::Win32::UI::WindowsAndMessaging::SetDlgItemTextW;
                 return SetDlgItemTextW(h_dlg, n_id_dlg_item, trans_msg.as_ptr());
             }
@@ -331,10 +331,10 @@ pub trait WindowHook: Send + Sync + 'static {
                 debug!("Get SetWindowTextA text: {raw_text}");
             }
 
-            let opt_trans_msg = text_slice.to_wide_ansi().lookup_or_add_item_null();
+            let _opt_trans_msg = text_slice.to_wide_ansi().lookup_or_add_item_null();
 
             #[cfg(not(feature = "text_extracting"))]
-            if let Ok(trans_msg) = opt_trans_msg {
+            if let Ok(trans_msg) = _opt_trans_msg {
                 use windows_sys::Win32::UI::WindowsAndMessaging::SetWindowTextW;
                 return SetWindowTextW(h_wnd, trans_msg.as_ptr());
             }
@@ -356,10 +356,10 @@ pub trait WindowHook: Send + Sync + 'static {
                     debug!("Get SendMessageA (msg={msg:#x}) text: {raw_text}");
                 }
 
-                let opt_trans_msg = text_slice.to_wide_ansi().lookup_or_add_item_null();
+                let _opt_trans_msg = text_slice.to_wide_ansi().lookup_or_add_item_null();
 
                 #[cfg(not(feature = "text_extracting"))]
-                if let Ok(trans_msg) = opt_trans_msg {
+                if let Ok(trans_msg) = _opt_trans_msg {
                     use windows_sys::Win32::UI::WindowsAndMessaging::SendMessageW;
                     return SendMessageW(h_wnd, msg, w_param, trans_msg.as_ptr() as LPARAM);
                 }
@@ -392,13 +392,13 @@ pub trait WindowHook: Send + Sync + 'static {
                 debug!("PropertySheetA original caption (ANSI): {raw}");
             }
 
-            let opt_trans = caption_slice
+            let _opt_trans = caption_slice
                 .to_wide_ansi()
                 .lookup_or_add_item()
                 .map(|s| s.to_multi_byte_null(0));
 
             #[cfg(not(feature = "text_extracting"))]
-            if let Ok(trans) = opt_trans {
+            if let Ok(trans) = _opt_trans {
                 use windows_sys::Win32::UI::Controls::PROPSHEETHEADERA_V2;
 
                 let dw_size = header.dwSize as usize;

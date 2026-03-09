@@ -1,9 +1,11 @@
 pub(crate) mod error_handling;
 pub(crate) mod exts;
+pub(crate) mod gl;
 pub(crate) mod hwbp;
 pub(crate) mod mem;
 pub(crate) mod nt;
 pub(crate) mod panic;
+pub(crate) mod raii_wrapper;
 pub(crate) mod win32;
 
 use sha2::{Digest, Sha256};

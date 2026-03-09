@@ -17,6 +17,8 @@ debug_output = []
 # 调试输出映射文本
 debug_text_mapping = ["debug_output"]
 
+# 启用独立透明覆盖层，使用OpenGL绘制
+overlay_gl = ["overlay"]
 # 启用独立透明覆盖层（同进程）
 overlay = ["win_event_hook", "worker_thread"]
 # 窗口事件钩子(windows的SetWinEventHook的钩子机制)
@@ -148,6 +150,7 @@ windows-sys = { version = "0.61", features = [
     "Win32_UI_WindowsAndMessaging",
     "Win32_Graphics_Gdi",
     "Win32_Graphics_Dwm",
+    "Win32_Graphics_OpenGL",
     "Win32_UI_Accessibility",
     "Win32_System_LibraryLoader",
     "Win32_System_Memory",
@@ -176,6 +179,7 @@ scopeguard = "1"
 const-str = "1"
 path-clean = "1"
 ruzstd = "0.8"
+glow = "0.17"
 
 [build-dependencies]
 anyhow.workspace = true

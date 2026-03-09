@@ -313,6 +313,24 @@ fn build_scenarios() -> Vec<Scenario> {
             ),
             run_x64: true,
         },
+        Scenario {
+            name: "default_impl/overlay_gl/off".to_string(),
+            features: feature_set(
+                all_functional_impl_base(),
+                &["default_impl"],
+                &["overlay_gl"],
+            ),
+            run_x64: true,
+        },
+        Scenario {
+            name: "default_impl/overlay_gl/on".to_string(),
+            features: feature_set(
+                all_functional_impl_base(),
+                &["default_impl", "overlay_gl"],
+                &[],
+            ),
+            run_x64: true,
+        },
         // debug_file_impl: 仅作为 impl 变体测试（x86 + x64）
         Scenario {
             name: "debug_file_impl/all_functional".to_string(),

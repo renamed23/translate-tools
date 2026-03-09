@@ -192,14 +192,15 @@ fn try_generate(dll_dir: &PathBuf, def_output_path: &PathBuf) -> anyhow::Result<
 
                 // 使用 crate 提供的辅助函数批量获取地址
                 let addrs = crate::utils::win32::get_module_symbol_addrs_from_handle(
-                    hmod,
+                    *hmod,
                     &[
                         #(#c_lits_tokens),*
                     ]
                 ).expect("Could not get symbol addrs for target DLL");
 
                 // 保存模块句柄
-                HMOD = hmod as usize;
+                HMOD = *hmod as usize;
+                ::core::mem::forget(hmod);
 
                 // 将返回的地址写入每个静态变量
                 #(#addr_assigns)*
