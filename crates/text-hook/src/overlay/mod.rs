@@ -6,7 +6,8 @@ use windows_sys::Win32::{
     Foundation::{HWND, RECT},
     UI::WindowsAndMessaging::{
         EVENT_OBJECT_DESTROY, EVENT_OBJECT_LOCATIONCHANGE, EVENT_OBJECT_SHOW, GetParent,
-        GetWindowRect, IsWindow, MoveWindow, OBJID_WINDOW,
+        GetWindowRect, IsWindow, OBJID_WINDOW, SWP_NOACTIVATE, SWP_NOCOPYBITS, SWP_NOZORDER,
+        SetWindowPos,
     },
 };
 
@@ -109,11 +110,21 @@ pub fn win_event_callback(
 
                 let mut rect = RECT::default();
 
+                // 因为overlay的owner被设为了目标窗口（本身是POPUP）
+                // 所以不需要处理overlay的Z-Order
                 if GetWindowRect(hwnd, &mut rect) != 0 {
                     let width = rect.right - rect.left;
                     let height = rect.bottom - rect.top;
 
-                    MoveWindow(overlay, rect.left, rect.top, width, height, 1);
+                    SetWindowPos(
+                        overlay,
+                        core::ptr::null_mut(),
+                        rect.left,
+                        rect.top,
+                        width,
+                        height,
+                        SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOCOPYBITS,
+                    );
                 }
             }
 
@@ -138,7 +149,7 @@ pub fn win_event_callback(
 
 /// Overlay 渲染函数
 pub fn render() {
-    OVERLAY_CTX.with_borrow(|ctx| {
+    OVERLAY_CTX.with_borrow_mut(|ctx| {
         if let Some(context) = ctx {
             HookImplType::on_overlay_render(context);
         }

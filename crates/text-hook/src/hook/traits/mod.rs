@@ -1,6 +1,7 @@
 use windows_sys::Win32::Foundation::{HMODULE, HWND, LPARAM, LRESULT, WPARAM};
 use windows_sys::Win32::System::Diagnostics::Debug::CONTEXT;
 
+#[cfg(feature = "overlay")]
 use crate::overlay::OverlayContext;
 use crate::utils::hwbp::HwReg;
 #[cfg(feature = "worker_thread")]
@@ -121,7 +122,7 @@ pub trait CoreHook: Send + Sync + 'static {
     /// - 此方法在 `worker_thread` 中执行，请确保绘制操作的线程安全性。
     /// - 严禁在此回调中执行耗时过长的阻塞操作，否则会拖慢渲染帧率及消息循环。
     #[cfg(feature = "overlay")]
-    fn on_overlay_render(_context: &OverlayContext) {}
+    fn on_overlay_render(_context: &mut OverlayContext) {}
 
     /// 工作线程的主循环 Tick 回调
     ///

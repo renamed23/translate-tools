@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use windows_sys::{
     Win32::{
         Foundation::HWND,
@@ -54,7 +55,7 @@ use crate::{
 pub struct GLContext {
     pub hglrc: OwnedHGLRC,
     pub hdc: OwnedHDC,
-    pub gl: glow::Context,
+    pub gl: Arc<glow::Context>,
 }
 
 impl GLContext {
@@ -88,7 +89,7 @@ impl GLContext {
     pub unsafe fn new(hwnd: HWND) -> crate::Result<Self> {
         unsafe {
             let (hdc, hglrc) = create_gl_context(hwnd)?;
-            let gl = create_glow_context()?;
+            let gl = Arc::new(create_glow_context()?);
 
             Ok(Self { hdc, hglrc, gl })
         }
