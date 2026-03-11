@@ -10,6 +10,8 @@ pub(crate) mod hook;
 #[allow(dead_code)]
 pub(crate) mod code_cvt;
 #[allow(dead_code)]
+pub(crate) mod gl;
+#[allow(dead_code)]
 pub(crate) mod utils;
 
 #[cfg(feature = "x64dbg_1337_patch")]

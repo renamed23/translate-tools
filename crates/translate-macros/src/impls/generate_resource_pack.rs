@@ -1,11 +1,14 @@
+use std::collections::HashMap;
+
 use proc_macro2::{Span, TokenStream};
 use quote::quote;
+use serde_json::Value;
 use syn::{
     LitByteStr, LitStr, Token,
     parse::{Parse, ParseStream},
 };
 
-use crate::impls::utils::{get_full_path_by_manifest, read_config_json};
+use crate::impls::utils::get_full_path_by_manifest;
 
 struct PathInput {
     resource_dir: LitStr,
@@ -39,7 +42,10 @@ pub fn generate_resource_pack(input: TokenStream) -> syn::Result<TokenStream> {
     let resource_dir_path = get_full_path_by_manifest(parsed.resource_dir.value())?;
     let config_path = get_full_path_by_manifest(parsed.config_path.value())?;
 
-    let config = read_config_json(config_path)?;
+    let config_str = std::fs::read_to_string(&config_path)
+        .map_err(|e| syn_err2!("无法读取配置 {}: {}", config_path.display(), e))?;
+    let config: HashMap<String, Value> = serde_json::from_str(&config_str)
+        .map_err(|e| syn_err2!("解析配置 JSON 失败 ({}): {}", config_path.display(), e))?;
     let Some(pack_name) = config.get("RESOURCE_PACK_NAME").and_then(|v| v.as_str()) else {
         syn_bail!(
             parsed.config_path,

@@ -1,5 +1,6 @@
 use proc_macro2::{Literal, TokenStream};
 use quote::{format_ident, quote};
+use serde::Deserialize;
 use serde_json::Value as JsonValue;
 use std::collections::HashMap;
 use syn::{
@@ -7,7 +8,7 @@ use syn::{
     parse::{Parse, ParseStream},
 };
 
-use crate::impls::utils::{get_full_path_by_manifest, read_config_json};
+use crate::impls::utils::get_full_path_by_manifest;
 
 struct PathsInput {
     default: LitStr,
@@ -23,80 +24,100 @@ impl Parse for PathsInput {
     }
 }
 
+#[derive(Deserialize)]
+#[serde(untagged)]
+pub enum ConfigEntry {
+    Complex {
+        #[serde(rename = "type")]
+        ty: String,
+        #[serde(default)]
+        value: Option<serde_json::Value>,
+        #[serde(default)]
+        encode_to_u16: bool,
+        #[serde(default)]
+        optional: bool,
+        #[serde(default)]
+        expr: bool,
+    },
+    Simple(serde_json::Value),
+}
+
+#[derive(Deserialize)]
+pub struct ConstantConfig(pub HashMap<String, ConfigEntry>);
+
 pub fn generate_constants_from_json(input: TokenStream) -> syn::Result<TokenStream> {
-    // 解析两个字符串字面量（默认配置, 覆盖配置）
     let parsed = syn::parse2::<PathsInput>(input)?;
 
+    // 读取 default 配置作为锚点
     let default_path = get_full_path_by_manifest(parsed.default.value())?;
+    let default_cfg: ConstantConfig = serde_json::from_str(
+        &std::fs::read_to_string(&default_path)
+            .map_err(|e| syn_err2!("读取 default 失败: {}", e))?,
+    )
+    .map_err(|e| syn_err2!("解析 default 失败: {}", e))?;
+
+    let mut merged = default_cfg.0;
+
+    // 读取 user 配置
     let user_path = get_full_path_by_manifest(parsed.user.value())?;
+    if user_path.is_file() {
+        let user_cfg: ConstantConfig = serde_json::from_str(
+            &std::fs::read_to_string(&user_path).map_err(|e| syn_err2!("读取 user 失败: {}", e))?,
+        )
+        .map_err(|e| syn_err2!("解析 user 失败: {}", e))?;
 
-    // 读取并解析默认配置文件
-    let default_json = read_config_json(&default_path)?;
-
-    // 读取并解析用户配置（如果存在）
-    let user_json = if user_path.is_file() {
-        read_config_json(&user_path)?
-    } else {
-        HashMap::new()
-    };
-
-    let mut merged_json: HashMap<String, JsonValue> = HashMap::new();
-
-    // 1. 先处理 default_json
-    for (key, def_entry) in &default_json {
-        let mut merged_entry = def_entry.clone();
-
-        // 如果 user 有对应值，则覆盖
-        if let Some(user_entry) = user_json.get(key)
-            && let Some(obj) = merged_entry.as_object_mut()
-        {
-            obj.insert("value".to_string(), user_entry.clone());
-        }
-
-        merged_json.insert(key.clone(), merged_entry);
-    }
-
-    // 2. 再处理 user_json 中 default 不存在的 key
-    for (key, user_entry) in &user_json {
-        if !merged_json.contains_key(key) {
-            merged_json.insert(key.clone(), user_entry.clone());
-        }
-    }
-    // 为每个键生成 const
-    let mut const_tokens = Vec::new();
-    for (key, entry) in &merged_json {
-        let type_str = match entry.get("type").and_then(|t| t.as_str()) {
-            Some(s) => s,
-            None => syn_bail2!("配置字段 '{key}' 缺少 type"),
-        };
-
-        let encode_to_u16 = entry
-            .get("encode_to_u16")
-            .and_then(|b| b.as_bool())
-            .unwrap_or(false);
-
-        let optional = entry
-            .get("optional")
-            .and_then(|b| b.as_bool())
-            .unwrap_or(false);
-
-        let expr = entry.get("expr").and_then(|b| b.as_bool()).unwrap_or(false);
-
-        let value_opt = entry.get("value");
-
-        match json_item_to_const_tokens(key, type_str, value_opt, encode_to_u16, optional, expr) {
-            Ok(token) => const_tokens.push(token),
-            Err(e) => {
-                syn_bail2!("解析 {key} (type '{type_str}') 失败，错误信息为: {e}")
+        for (k, v) in user_cfg.0 {
+            match merged.get_mut(&k) {
+                // 1. Default 和 User 共有的 Entry，优先使用 User 配置提供的值
+                Some(ConfigEntry::Complex { value, .. }) => {
+                    *value = match v {
+                        ConfigEntry::Simple(sv) => Some(sv),
+                        ConfigEntry::Complex { .. } => syn_bail2!(
+                            "User 配置不可以使用 Complex 类型覆盖默认配置已有的 Entry '{k}'，请使用 Simple 覆盖"
+                        ),
+                    };
+                }
+                // 2. Default 的 Entry 必须为 Complex
+                Some(ConfigEntry::Simple(_)) => {
+                    syn_bail2!("默认配置 '{}' 必须为 Complex 类型，发现 Simple", k);
+                }
+                // 3. User 新增的 Entry，必须是 Complex
+                None => {
+                    if let ConfigEntry::Complex { .. } = v {
+                        merged.insert(k, v);
+                    } else {
+                        syn_bail2!("User 新增键 '{}' 必须为 Complex 类型", k);
+                    }
+                }
             }
-        };
+        }
     }
 
-    let expanded = quote! {
-        #(#const_tokens)*
-    };
+    // 生成代码
+    let mut const_tokens = Vec::new();
+    for (key, entry) in merged {
+        if let ConfigEntry::Complex {
+            ty,
+            value,
+            encode_to_u16,
+            optional,
+            expr,
+        } = entry
+        {
+            let val_opt = value.as_ref();
 
-    Ok(expanded)
+            const_tokens.push(json_item_to_const_tokens(
+                &key,
+                &ty,
+                val_opt,
+                encode_to_u16,
+                optional,
+                expr,
+            )?);
+        }
+    }
+
+    Ok(quote! { #(#const_tokens)* })
 }
 
 /// 将 JSON 值转换为对应的 TokenStream（支持基本类型和数组）

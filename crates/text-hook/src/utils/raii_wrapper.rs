@@ -1,4 +1,6 @@
 use core::ops::Deref;
+use glow::HasContext;
+use std::sync::Arc;
 use windows_sys::Win32::{
     Foundation::{FreeLibrary, HMODULE, HWND},
     Graphics::{
@@ -91,10 +93,104 @@ impl Drop for OwnedHMODULE {
     }
 }
 
-// 方便像原始句柄一样使用
 impl Deref for OwnedHMODULE {
     type Target = HMODULE;
     fn deref(&self) -> &Self::Target {
         &self.0
+    }
+}
+
+/// 拥有所有权的 glow::Buffer
+pub struct OwnedBuffer {
+    pub gl: Arc<glow::Context>,
+    pub buffer: glow::Buffer,
+}
+
+impl Drop for OwnedBuffer {
+    fn drop(&mut self) {
+        unsafe { self.gl.delete_buffer(self.buffer) };
+    }
+}
+
+impl Deref for OwnedBuffer {
+    type Target = glow::Buffer;
+    fn deref(&self) -> &Self::Target {
+        &self.buffer
+    }
+}
+
+/// 拥有所有权的 glow::VertexArray
+pub struct OwnedVertexArray {
+    pub gl: Arc<glow::Context>,
+    pub vao: glow::VertexArray,
+}
+
+impl Drop for OwnedVertexArray {
+    fn drop(&mut self) {
+        unsafe { self.gl.delete_vertex_array(self.vao) };
+    }
+}
+
+impl Deref for OwnedVertexArray {
+    type Target = glow::VertexArray;
+    fn deref(&self) -> &Self::Target {
+        &self.vao
+    }
+}
+
+/// 拥有所有权的 glow::Program
+pub struct OwnedProgram {
+    pub gl: Arc<glow::Context>,
+    pub program: glow::Program,
+}
+
+impl Drop for OwnedProgram {
+    fn drop(&mut self) {
+        unsafe { self.gl.delete_program(self.program) };
+    }
+}
+
+impl Deref for OwnedProgram {
+    type Target = glow::Program;
+    fn deref(&self) -> &Self::Target {
+        &self.program
+    }
+}
+
+/// 拥有所有权的 glow::Shader
+pub struct OwnedShader {
+    pub gl: Arc<glow::Context>,
+    pub shader: glow::Shader,
+}
+
+impl Drop for OwnedShader {
+    fn drop(&mut self) {
+        unsafe { self.gl.delete_shader(self.shader) };
+    }
+}
+
+impl Deref for OwnedShader {
+    type Target = glow::Shader;
+    fn deref(&self) -> &Self::Target {
+        &self.shader
+    }
+}
+
+/// 拥有所有权的 glow::Texture
+pub struct OwnedTexture {
+    pub gl: Arc<glow::Context>,
+    pub texture: glow::Texture,
+}
+
+impl Drop for OwnedTexture {
+    fn drop(&mut self) {
+        unsafe { self.gl.delete_texture(self.texture) };
+    }
+}
+
+impl Deref for OwnedTexture {
+    type Target = glow::Texture;
+    fn deref(&self) -> &Self::Target {
+        &self.texture
     }
 }

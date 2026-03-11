@@ -9,6 +9,7 @@ license = "MIT"
 proc-macro = true
 
 [dependencies]
+serde.workspace = true
 serde_json.workspace = true
 anyhow.workspace = true
 
@@ -20,3 +21,4 @@ sha2 = "0.10"
 goblin = "0.10"
 convert_case = "0.8"
 walkdir = "2"
+fontdue = "0.9"

@@ -884,3 +884,69 @@ pub fn generate_resource_pack(input: TokenStream) -> TokenStream {
         Err(err) => err.into_compile_error().into(),
     }
 }
+
+/// 生成位图字体资源及访问代码的过程宏。
+///
+/// 该宏在编译时读取字体文件和配置，光栅化指定字符集，打包生成纹理图集（Atlas），
+/// 并生成运行时访问字体元数据的静态代码。
+///
+/// # 语法
+///
+/// ```ignore
+/// generate_bitmap_font!("path/to/font_config.json");
+/// ```
+///
+/// # 配置文件格式
+///
+/// 参数指向一个 JSON 文件，包含以下字段：
+///
+/// - `font_path`: 字体文件路径（TTF/OTF，相对于 `Cargo.toml`）。
+/// - `chars`: 需要生成的字符集合字符串。
+/// - `font_size`: 字体大小（可选，默认 24）。
+/// - `padding`: 图集中字符间距（可选，默认 2 像素）。
+/// - `texture_max_width`: 纹理图集最大宽度（可选，默认 2048）。
+///
+/// 示例 `bitmap_font.json`：
+///
+/// ```json
+/// {
+///     "font_path": "assets/fonts/NotoSansSC-Regular.otf",
+///     "chars": "abcdefghijklmnopqrstuvwxyz0123456789",
+///     "font_size": 32,
+///     "padding": 2,
+///     "texture_max_width": 2048
+/// }
+/// ```
+///
+/// # 处理流程
+///
+/// 1. **去重**：对 `chars` 去重，保持首次出现顺序。
+/// 2. **光栅化**：使用 `fontdue` 将每个字符渲染为灰度位图。
+/// 3. **图集打包**：采用简单 Shelf 算法将字符打包到 2D 纹理，(0,0) 像素预留给 `WHITE_PIXEL`。
+/// 4. **生成资源**：输出 `assets/temp/bitmap_font.bin` 二进制纹理文件。
+/// 5. **代码生成**：生成包含字体元数据访问的 Rust 代码。
+///
+/// # 生成的内容
+///
+/// 宏会生成以下静态项（位于调用模块的 `super` 作用域）：
+///
+/// - `BITMAP_FONT`: 嵌入的二进制纹理数据（`&'static [u8]`）。
+/// - `ATLAS_WIDTH` / `ATLAS_HEIGHT`: 纹理图集尺寸（`u32`）。
+/// - `ASCENT`: 字体上沿高度（`i32`，用于基线计算）。
+/// - `DESCENT`: 字体下沿高度（`i32`，负值）。
+/// - `LINE_HEIGHT`: 行高（`usize`，`ASCENT - DESCENT`）。
+/// - `WHITE_PIXEL`: 单像素白色字符信息，用于纯色矩形绘制。
+/// - `CHAR_MAP`: `phf::Map<char, CharInfo>`，字符到纹理坐标的映射表。
+///
+/// # 限制
+///
+/// - 图集高度限制为 8192 像素，超出将编译错误。
+/// - 仅支持单通道 R8 灰度纹理（每个像素 1 字节）。
+/// - 字符位图宽度不能超过 `texture_max_width`。
+#[proc_macro]
+pub fn generate_bitmap_font(input: TokenStream) -> TokenStream {
+    match impls::generate_bitmap_font::generate_bitmap_font(input.into()) {
+        Ok(ts) => ts.into(),
+        Err(err) => err.into_compile_error().into(),
+    }
+}

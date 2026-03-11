@@ -1,0 +1,7 @@
+{
+    "font_path": "assets/font/MSGothic_WenQuanYi.ttf",
+    "font_size": 24,
+    "padding": 2,
+    "chars": "hello world\n你好世界",
+    "texture_max_width": 2048
+}

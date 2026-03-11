@@ -12,7 +12,7 @@ use windows_sys::Win32::{
 };
 
 #[cfg(feature = "overlay_gl")]
-use crate::utils::gl::GLContext;
+use crate::gl::{GLContext, painter::GLPainter};
 use crate::{
     constant::{OVERLAY_TARGET_WINDOW_CLASS_NAME, OVERLAY_TARGET_WINDOW_TEXT},
     hook::{impls::HookImplType, traits::CoreHook},
@@ -22,6 +22,10 @@ use crate::{
 
 /// Overlay上下文结构体
 pub struct OverlayContext {
+    /// OpenGL 轻量级绘制器
+    #[cfg(feature = "overlay_gl")]
+    pub gl_painter: GLPainter,
+
     /// OpenGL 上下文
     #[cfg(feature = "overlay_gl")]
     pub gl_ctx: GLContext,
@@ -88,7 +92,14 @@ pub fn win_event_callback(
                         return;
                     };
 
+                    #[cfg(feature = "overlay_gl")]
+                    let Ok(gl_painter) = GLPainter::new(gl_ctx.gl.clone()) else {
+                        return;
+                    };
+
                     OVERLAY_CTX.set(Some(OverlayContext {
+                        #[cfg(feature = "overlay_gl")]
+                        gl_painter,
                         #[cfg(feature = "overlay_gl")]
                         gl_ctx,
                         target: hwnd,

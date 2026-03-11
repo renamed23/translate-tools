@@ -2,7 +2,7 @@ use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use std::path::PathBuf;
 use syn::parse::{Parse, ParseStream};
-use syn::{Ident, LitByteStr, LitStr, Token};
+use syn::{Ident, LitByteStr, LitStr, Token, Visibility};
 
 use crate::impls::utils::get_full_path_by_manifest;
 
@@ -12,7 +12,7 @@ enum Kind {
 }
 
 struct EmbedInput {
-    pub_kw: Option<Token![pub]>,
+    vis: Visibility,
     kind: Kind,
     name: Ident,
     path: LitStr,
@@ -20,11 +20,7 @@ struct EmbedInput {
 
 impl Parse for EmbedInput {
     fn parse(input: ParseStream) -> syn::Result<Self> {
-        let pub_kw = if input.peek(Token![pub]) {
-            Some(input.parse()?)
-        } else {
-            None
-        };
+        let vis: Visibility = input.parse()?;
 
         // 支持 static 或 const
         let kind = if input.peek(Token![static]) {
@@ -48,7 +44,7 @@ impl Parse for EmbedInput {
         let path: LitStr = input.parse()?;
 
         Ok(EmbedInput {
-            pub_kw,
+            vis,
             kind,
             name,
             path,
@@ -60,11 +56,7 @@ pub fn embed(input: TokenStream) -> syn::Result<TokenStream> {
     let input = syn::parse2::<EmbedInput>(input)?;
 
     let name_ident = &input.name;
-    let pub_token = if input.pub_kw.is_some() {
-        quote! { pub }
-    } else {
-        quote! {}
-    };
+    let vis = &input.vis;
 
     let target_file_path = determine_target_file_path(&input.path.value())
         .map_err(|e| syn_err!(&input.path, "路径解析失败: {e}"))?;
@@ -88,7 +80,7 @@ pub fn embed(input: TokenStream) -> syn::Result<TokenStream> {
             let file_len = file_bytes.len();
 
             quote! {
-                #pub_token static #name_ident: ::std::sync::LazyLock<Vec<u8>> = ::std::sync::LazyLock::new(|| {
+                #vis static #name_ident: ::std::sync::LazyLock<Vec<u8>> = ::std::sync::LazyLock::new(|| {
                     crate::utils::decompress(#bytes, #file_len).unwrap()
                 });
             }
@@ -98,7 +90,7 @@ pub fn embed(input: TokenStream) -> syn::Result<TokenStream> {
             let bytes = LitByteStr::new(&file_bytes, Span::call_site());
 
             quote! {
-                #pub_token const #name_ident: &[u8] = #bytes;
+                #vis const #name_ident: &[u8] = #bytes;
             }
         }
     };

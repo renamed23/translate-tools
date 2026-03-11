@@ -9,7 +9,7 @@ fn main() -> anyhow::Result<()> {
     // 但是目前Rust并不支持在代码中指定导出序号，所以我们需要def表
     if std::env::var("CARGO_FEATURE_DLL_HIJACKING").is_ok() {
         let manifest_dir = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR")?);
-        let def_path = manifest_dir.join("assets").join("exports.def");
+        let def_path = manifest_dir.join("assets").join("temp").join("exports.def");
         println!("cargo:rerun-if-changed={}", def_path.display());
         println!("cargo:rustc-link-arg-cdylib=/DEF:{}", def_path.display());
     }

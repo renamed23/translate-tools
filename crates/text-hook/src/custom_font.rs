@@ -6,7 +6,7 @@ use windows_sys::Win32::{
 use crate::print_last_error_message;
 
 translate_macros::embed!(
-    static CUSTOM_FONT: [u8] from "assets\\font"
+    static CUSTOM_FONT: [u8] from "assets/font"
 );
 
 /// 获取内嵌的字体数据

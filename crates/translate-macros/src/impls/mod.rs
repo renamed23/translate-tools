@@ -50,6 +50,7 @@ pub(crate) mod detour;
 pub(crate) mod embed;
 pub(crate) mod expand_by_files;
 pub(crate) mod ffi_catch_unwind;
+pub(crate) mod generate_bitmap_font;
 pub(crate) mod generate_constants_from_json;
 pub(crate) mod generate_exports_from_hijacked_dll;
 pub(crate) mod generate_hook_lists_from_json;

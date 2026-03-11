@@ -180,6 +180,7 @@ const-str = "1"
 path-clean = "1"
 ruzstd = "0.8"
 glow = "0.17"
+bytemuck = { version = "1.25", features = ["derive"] }
 
 [build-dependencies]
 anyhow.workspace = true

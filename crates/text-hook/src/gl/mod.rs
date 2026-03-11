@@ -1,3 +1,6 @@
+pub(crate) mod painter;
+
+use glow::HasContext;
 use std::sync::Arc;
 use windows_sys::{
     Win32::{
@@ -18,7 +21,10 @@ use crate::{
     print_last_error_message,
     utils::{
         exts::slice_ext::ByteSliceExt,
-        raii_wrapper::{OwnedHDC, OwnedHGLRC},
+        raii_wrapper::{
+            OwnedBuffer, OwnedHDC, OwnedHGLRC, OwnedProgram, OwnedShader, OwnedTexture,
+            OwnedVertexArray,
+        },
     },
 };
 
@@ -217,4 +223,98 @@ unsafe fn create_glow_context() -> crate::Result<glow::Context> {
 
         Ok(ctx)
     }
+}
+
+/// 编译并创建着色器对象。
+///
+/// # 参数
+/// - `gl`: OpenGL 上下文引用，用于执行 GPU 操作
+/// - `shader_type`: 着色器类型，应为 `glow::VERTEX_SHADER` 或 `glow::FRAGMENT_SHADER` 等常量
+/// - `source`: GLSL 源代码字符串
+pub fn compile_shader(
+    gl: &Arc<glow::Context>,
+    shader_type: u32,
+    source: &str,
+) -> crate::Result<OwnedShader> {
+    unsafe {
+        let raw_shader = gl
+            .create_shader(shader_type)
+            .map_err(|e| crate::anyhow!("Shader creation failed: {}", e))?;
+        let shader = OwnedShader {
+            gl: gl.clone(),
+            shader: raw_shader,
+        };
+        gl.shader_source(*shader, source);
+        gl.compile_shader(*shader);
+
+        if !gl.get_shader_compile_status(*shader) {
+            crate::bail!("Shader compile error: {}", gl.get_shader_info_log(*shader));
+        }
+
+        Ok(shader)
+    }
+}
+
+/// 创建顶点数组对象（VAO）。
+///
+/// VAO 用于存储顶点属性配置（如顶点坐标、颜色、法线的内存布局），
+/// 绑定 VAO 后可快速切换整组顶点状态，避免重复配置。
+pub fn create_vertex_array(gl: &Arc<glow::Context>) -> crate::Result<OwnedVertexArray> {
+    let raw_vao = unsafe {
+        gl.create_vertex_array()
+            .map_err(|e| crate::anyhow!("Vertex array creation failed: {e}"))?
+    };
+
+    Ok(OwnedVertexArray {
+        gl: gl.clone(),
+        vao: raw_vao,
+    })
+}
+
+/// 创建 GPU 缓冲区对象（VBO/EBO 通用）。
+///
+/// 缓冲区用于存储顶点数据（坐标、颜色、UV）或索引数据，
+/// 创建后需通过 `gl.bind_buffer()` 和 `gl.buffer_data()` 上传实际数据。
+pub fn create_buffer(gl: &Arc<glow::Context>) -> crate::Result<OwnedBuffer> {
+    let raw_buffer = unsafe {
+        gl.create_buffer()
+            .map_err(|e| crate::anyhow!("Buffer creation failed: {e}"))?
+    };
+    Ok(OwnedBuffer {
+        gl: gl.clone(),
+        buffer: raw_buffer,
+    })
+}
+
+/// 创建着色器程序对象。
+///
+/// 程序对象用于链接多个着色器阶段（顶点、片段、几何等），
+/// 是 GPU 渲染管线的最终执行单元。
+pub fn create_program(gl: &Arc<glow::Context>) -> crate::Result<OwnedProgram> {
+    let raw_program = unsafe {
+        gl.create_program()
+            .map_err(|e| crate::anyhow!("Program creation failed: {}", e))?
+    };
+
+    Ok(OwnedProgram {
+        gl: gl.clone(),
+        program: raw_program,
+    })
+}
+
+/// 创建 GPU 纹理对象。
+///
+/// 纹理用于存储图像数据（颜色、深度、模板等），可被着色器采样。
+/// 创建后需通过 `gl.bind_texture()` 和 `gl.tex_image_2d()` 等函数
+/// 上传实际数据并配置纹理参数。
+pub fn create_texture(gl: &Arc<glow::Context>) -> crate::Result<OwnedTexture> {
+    let raw_texture = unsafe {
+        gl.create_texture()
+            .map_err(|e| crate::anyhow!("Texture creation failed: {}", e))?
+    };
+
+    Ok(OwnedTexture {
+        gl: gl.clone(),
+        texture: raw_texture,
+    })
 }
