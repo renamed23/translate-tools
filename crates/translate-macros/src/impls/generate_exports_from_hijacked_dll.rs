@@ -137,6 +137,13 @@ fn try_generate(dll_dir: &PathBuf, def_output_path: &PathBuf) -> anyhow::Result<
             #[unsafe(link_section = ".text")]
             #[unsafe(export_name = #export_name)]
             pub unsafe extern "system" fn #export_fn_ident() {
+                #[cfg(target_arch = "x86_64")]
+                ::core::arch::naked_asm!(
+                    "jmp qword ptr [rip + {0}]",
+                    sym #ident,
+                );
+
+                #[cfg(target_arch = "x86")]
                 ::core::arch::naked_asm!(
                     "jmp [{0}]",
                     sym #ident,
