@@ -44,7 +44,7 @@ pub fn get_filename(src: &[u8]) -> Option<&str> {
 /// - 调用者需保证该内存在本次调用期间不被并发读写。
 #[cfg(not(feature = "patch_extracting"))]
 pub unsafe fn try_patching(ptr: *mut u8, len: usize) -> bool {
-    if !crate::utils::mem::quick_memory_check_win32(ptr, len) {
+    if !crate::utils::mem::quick_memory_check(ptr, len) {
         return false;
     }
 
@@ -77,7 +77,7 @@ pub unsafe fn try_patching(ptr: *mut u8, len: usize) -> bool {
 #[allow(dead_code, unused_variables)]
 #[cfg(feature = "patch_extracting")]
 pub unsafe fn try_extracting(ptr: *mut u8, len: usize) -> bool {
-    if !crate::utils::mem::quick_memory_check_win32(ptr, len) {
+    if !crate::utils::mem::quick_memory_check(ptr, len) {
         return false;
     }
 

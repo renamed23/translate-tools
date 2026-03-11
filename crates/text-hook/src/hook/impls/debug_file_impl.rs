@@ -13,13 +13,14 @@ use windows_sys::{
 };
 
 use crate::debug;
+use crate::hook::traits::CoreHook;
 use crate::hook::traits::file_hook::{
     FileHook, HOOK_CLOSE_HANDLE, HOOK_CREATE_FILE_A, HOOK_CREATE_FILE_W, HOOK_FIND_CLOSE,
     HOOK_FIND_FIRST_FILE_A, HOOK_FIND_FIRST_FILE_W, HOOK_FIND_NEXT_FILE_A, HOOK_FIND_NEXT_FILE_W,
     HOOK_READ_FILE,
 };
+use crate::utils::exts::ptr_ext::PtrExt;
 use crate::utils::exts::slice_ext::{ByteSliceExt, WideSliceExt};
-use crate::{hook::traits::CoreHook, utils::mem::slice_until_null};
 
 #[derive(DefaultHook)]
 #[exclude(FileHook)]
@@ -76,7 +77,7 @@ impl FileHook for DebugFileImplHook {
         h_template_file: HANDLE,
     ) -> HANDLE {
         let file_name = if !lp_file_name.is_null() {
-            let ansi_bytes = unsafe { slice_until_null(lp_file_name, MAX_PATH as _) };
+            let ansi_bytes = unsafe { lp_file_name.to_slice_until_null(MAX_PATH as _) };
             ansi_bytes.to_wide(0).to_string_lossy()
         } else {
             "(null)".to_string()
@@ -119,7 +120,7 @@ impl FileHook for DebugFileImplHook {
     ) -> HANDLE {
         // 使用工具函数安全地获取宽字符串
         let file_name = if !lp_file_name.is_null() {
-            let wide_str = unsafe { slice_until_null(lp_file_name, MAX_PATH as _) };
+            let wide_str = unsafe { lp_file_name.to_slice_until_null(MAX_PATH as _) };
             wide_str.to_string_lossy()
         } else {
             "(null)".to_string()
@@ -219,7 +220,7 @@ impl FileHook for DebugFileImplHook {
         lp_find_file_data: *mut WIN32_FIND_DATAA,
     ) -> HANDLE {
         let search_pattern = if !lp_file_name.is_null() {
-            let ansi_bytes = unsafe { slice_until_null(lp_file_name, MAX_PATH as _) };
+            let ansi_bytes = unsafe { lp_file_name.to_slice_until_null(MAX_PATH as _) };
             ansi_bytes.to_wide(0).to_string_lossy()
         } else {
             "(null)".to_string()
@@ -241,10 +242,10 @@ impl FileHook for DebugFileImplHook {
             if !lp_find_file_data.is_null() {
                 let find_data = unsafe { &*lp_find_file_data };
                 let file_name_bytes = unsafe {
-                    slice_until_null(
-                        find_data.cFileName.as_ptr() as *const u8,
-                        find_data.cFileName.len(),
-                    )
+                    find_data
+                        .cFileName
+                        .as_ptr()
+                        .to_slice_until_null(find_data.cFileName.len())
                 };
                 let file_name = file_name_bytes.to_wide(0).to_string_lossy();
 
@@ -261,7 +262,7 @@ impl FileHook for DebugFileImplHook {
     ) -> HANDLE {
         // 使用工具函数安全地获取宽字符串
         let search_pattern = if !lp_file_name.is_null() {
-            let wide_str = unsafe { slice_until_null(lp_file_name, MAX_PATH as _) };
+            let wide_str = unsafe { lp_file_name.to_slice_until_null(MAX_PATH as _) };
             wide_str.to_string_lossy()
         } else {
             "(null)".to_string()
@@ -283,7 +284,10 @@ impl FileHook for DebugFileImplHook {
             if !lp_find_file_data.is_null() {
                 let find_data = unsafe { &*lp_find_file_data };
                 let file_name_wide = unsafe {
-                    slice_until_null(find_data.cFileName.as_ptr(), find_data.cFileName.len())
+                    find_data
+                        .cFileName
+                        .as_ptr()
+                        .to_slice_until_null(find_data.cFileName.len())
                 };
                 let file_name = file_name_wide.to_string_lossy();
 
@@ -316,10 +320,10 @@ impl FileHook for DebugFileImplHook {
         if result == TRUE && !lp_find_file_data.is_null() {
             let find_data = unsafe { &*lp_find_file_data };
             let file_name_bytes = unsafe {
-                slice_until_null(
-                    find_data.cFileName.as_ptr() as *const u8,
-                    find_data.cFileName.len(),
-                )
+                find_data
+                    .cFileName
+                    .as_ptr()
+                    .to_slice_until_null(find_data.cFileName.len())
             };
             let file_name = file_name_bytes.to_wide(0).to_string_lossy();
 
@@ -351,7 +355,10 @@ impl FileHook for DebugFileImplHook {
         if result == TRUE && !lp_find_file_data.is_null() {
             let find_data = unsafe { &*lp_find_file_data };
             let file_name_wide = unsafe {
-                slice_until_null(find_data.cFileName.as_ptr(), find_data.cFileName.len())
+                find_data
+                    .cFileName
+                    .as_ptr()
+                    .to_slice_until_null(find_data.cFileName.len())
             };
             let file_name = file_name_wide.to_string_lossy();
 

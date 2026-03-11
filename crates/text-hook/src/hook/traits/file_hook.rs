@@ -9,6 +9,8 @@ use windows_sys::{
     core::{BOOL, PCSTR, PCWSTR},
 };
 
+use crate::utils::exts::ptr_ext::PtrExt;
+
 #[detour_trait]
 pub trait FileHook: Send + Sync + 'static {
     #[detour(
@@ -17,20 +19,20 @@ pub trait FileHook: Send + Sync + 'static {
         fallback = "windows_sys::Win32::Foundation::INVALID_HANDLE_VALUE"
     )]
     unsafe fn create_file_a(
-        lp_file_name: PCSTR,
-        dw_desired_access: u32,
-        dw_share_mode: u32,
-        lp_security_attributes: *const SECURITY_ATTRIBUTES,
-        dw_creation_disposition: u32,
-        dw_flags_and_attributes: u32,
-        h_template_file: HANDLE,
+        _lp_file_name: PCSTR,
+        _dw_desired_access: u32,
+        _dw_share_mode: u32,
+        _lp_security_attributes: *const SECURITY_ATTRIBUTES,
+        _dw_creation_disposition: u32,
+        _dw_flags_and_attributes: u32,
+        _h_template_file: HANDLE,
     ) -> HANDLE {
         #[cfg(any(feature = "create_file_redirect", feature = "resource_pack"))]
         unsafe {
             #[cfg(feature = "resource_pack")]
             use crate::utils::exts::slice_ext::ByteSliceExt;
 
-            let filename_bytes = crate::utils::mem::slice_until_null(lp_file_name, 4096);
+            let filename_bytes = _lp_file_name.to_slice_until_null(4096);
 
             #[cfg(feature = "create_file_redirect")]
             {
@@ -56,12 +58,12 @@ pub trait FileHook: Send + Sync + 'static {
                     return crate::call!(
                         HOOK_CREATE_FILE_A,
                         new_path.as_ptr(),
-                        dw_desired_access,
-                        dw_share_mode,
-                        lp_security_attributes,
-                        dw_creation_disposition,
-                        dw_flags_and_attributes,
-                        h_template_file,
+                        _dw_desired_access,
+                        _dw_share_mode,
+                        _lp_security_attributes,
+                        _dw_creation_disposition,
+                        _dw_flags_and_attributes,
+                        _h_template_file,
                     );
                 }
             }
@@ -69,25 +71,25 @@ pub trait FileHook: Send + Sync + 'static {
             #[cfg(feature = "resource_pack")]
             if let Some(handle) = try_redirect(
                 &filename_bytes.to_wide(0),
-                dw_desired_access,
-                dw_share_mode,
-                lp_security_attributes,
-                dw_creation_disposition,
-                dw_flags_and_attributes,
-                h_template_file,
+                _dw_desired_access,
+                _dw_share_mode,
+                _lp_security_attributes,
+                _dw_creation_disposition,
+                _dw_flags_and_attributes,
+                _h_template_file,
             ) {
                 return handle;
             }
 
             crate::call!(
                 HOOK_CREATE_FILE_A,
-                lp_file_name,
-                dw_desired_access,
-                dw_share_mode,
-                lp_security_attributes,
-                dw_creation_disposition,
-                dw_flags_and_attributes,
-                h_template_file,
+                _lp_file_name,
+                _dw_desired_access,
+                _dw_share_mode,
+                _lp_security_attributes,
+                _dw_creation_disposition,
+                _dw_flags_and_attributes,
+                _h_template_file,
             )
         }
 
@@ -101,37 +103,37 @@ pub trait FileHook: Send + Sync + 'static {
         fallback = "windows_sys::Win32::Foundation::INVALID_HANDLE_VALUE"
     )]
     unsafe fn create_file_w(
-        lp_file_name: PCWSTR,
-        dw_desired_access: u32,
-        dw_share_mode: u32,
-        lp_security_attributes: *const SECURITY_ATTRIBUTES,
-        dw_creation_disposition: u32,
-        dw_flags_and_attributes: u32,
-        h_template_file: HANDLE,
+        _lp_file_name: PCWSTR,
+        _dw_desired_access: u32,
+        _dw_share_mode: u32,
+        _lp_security_attributes: *const SECURITY_ATTRIBUTES,
+        _dw_creation_disposition: u32,
+        _dw_flags_and_attributes: u32,
+        _h_template_file: HANDLE,
     ) -> HANDLE {
         #[cfg(feature = "resource_pack")]
         unsafe {
             if let Some(handle) = try_redirect(
-                crate::utils::mem::slice_until_null(lp_file_name, 4096),
-                dw_desired_access,
-                dw_share_mode,
-                lp_security_attributes,
-                dw_creation_disposition,
-                dw_flags_and_attributes,
-                h_template_file,
+                _lp_file_name.to_slice_until_null(4096),
+                _dw_desired_access,
+                _dw_share_mode,
+                _lp_security_attributes,
+                _dw_creation_disposition,
+                _dw_flags_and_attributes,
+                _h_template_file,
             ) {
                 return handle;
             }
 
             crate::call!(
                 HOOK_CREATE_FILE_W,
-                lp_file_name,
-                dw_desired_access,
-                dw_share_mode,
-                lp_security_attributes,
-                dw_creation_disposition,
-                dw_flags_and_attributes,
-                h_template_file,
+                _lp_file_name,
+                _dw_desired_access,
+                _dw_share_mode,
+                _lp_security_attributes,
+                _dw_creation_disposition,
+                _dw_flags_and_attributes,
+                _h_template_file,
             )
         }
 
@@ -146,11 +148,11 @@ pub trait FileHook: Send + Sync + 'static {
         fallback = "windows_sys::Win32::Foundation::FALSE"
     )]
     unsafe fn read_file(
-        h_file: HANDLE,
-        lp_buffer: *mut u8,
-        n_number_of_bytes_to_read: u32,
-        lp_number_of_bytes_read: *mut u32,
-        lp_overlapped: *mut OVERLAPPED,
+        _h_file: HANDLE,
+        _lp_buffer: *mut u8,
+        _n_number_of_bytes_to_read: u32,
+        _lp_number_of_bytes_read: *mut u32,
+        _lp_overlapped: *mut OVERLAPPED,
     ) -> BOOL {
         #[cfg(not(feature = "read_file_patch_impl"))]
         unimplemented!();
@@ -161,11 +163,11 @@ pub trait FileHook: Send + Sync + 'static {
 
             let result = crate::call!(
                 HOOK_READ_FILE,
-                h_file,
-                lp_buffer,
-                n_number_of_bytes_to_read,
-                lp_number_of_bytes_read,
-                lp_overlapped,
+                _h_file,
+                _lp_buffer,
+                _n_number_of_bytes_to_read,
+                _lp_number_of_bytes_read,
+                _lp_overlapped,
             );
 
             if result == FALSE {
@@ -176,17 +178,17 @@ pub trait FileHook: Send + Sync + 'static {
             // 如果 lp_number_of_bytes_read 为 NULL
             // - 若 lp_overlapped 非 NULL（异步），我们无法得知实际读到多少字节，跳过 patch
             // - 若 lp_overlapped 为 NULL（同步），按规范 lp_number_of_bytes_read 不应为 NULL，跳过 patch
-            let len: usize = if !lp_number_of_bytes_read.is_null() {
+            let len: usize = if !_lp_number_of_bytes_read.is_null() {
                 // 安全地读取并 clamp 到请求的最大值，避免异常值
-                let bytes = *lp_number_of_bytes_read as usize;
-                let max = n_number_of_bytes_to_read as usize;
+                let bytes = *_lp_number_of_bytes_read as usize;
+                let max = _n_number_of_bytes_to_read as usize;
                 core::cmp::min(bytes, max)
             } else {
                 crate::debug!("ReadFile: lp_number_of_bytes_read is NULL");
                 return result;
             };
 
-            crate::patch::process_buffer(lp_buffer, len);
+            crate::patch::process_buffer(_lp_buffer, len);
             result
         }
     }

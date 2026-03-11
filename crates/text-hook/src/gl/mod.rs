@@ -1,3 +1,4 @@
+#[cfg(feature = "gl_painter")]
 pub(crate) mod painter;
 
 use glow::HasContext;

@@ -67,6 +67,7 @@ pub const EXCEPTION_SET_HW_BREAK: NTSTATUS = 0xEABC0001u32 as _;
 ///
 /// 通过自触发异常进入 VEH，在异常处理函数中安全修改 DR 寄存器。
 /// 避免直接操作 DR 寄存器导致的线程同步问题。
+#[allow(dead_code)]
 pub fn request_set_hw_breakpoint_on_current_thread(
     addr: usize,
     kind: HwBreakpointType,

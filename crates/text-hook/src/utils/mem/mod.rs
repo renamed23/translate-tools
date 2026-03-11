@@ -2,16 +2,6 @@ pub(crate) mod iat;
 pub(crate) mod patch;
 pub(crate) mod protect_guard;
 
-/// 创建一个空切片
-pub const fn empty_slice<'a, T>() -> &'a [T] {
-    unsafe { core::slice::from_raw_parts(core::ptr::NonNull::<T>::dangling().as_ptr(), 0) }
-}
-
-/// 创建一个可变的空切片
-pub const fn empty_slice_mut<'a, T>() -> &'a mut [T] {
-    unsafe { core::slice::from_raw_parts_mut(core::ptr::NonNull::<T>::dangling().as_ptr(), 0) }
-}
-
 /// 从 `*const T` 开始搜索第一个值为 0 的元素，返回 `&[T]`（长度 ≤ max_len）。
 ///
 /// # Safety
@@ -21,9 +11,25 @@ pub const fn empty_slice_mut<'a, T>() -> &'a mut [T] {
 /// - `T` 必须实现 `From<u8>`, `PartialEq` 与 `Copy`（内置无符号整型符合此条件）。
 pub unsafe fn slice_until_null<'a, T>(ptr: *const T, max_len: usize) -> &'a [T]
 where
-    T: From<u8> + PartialEq + Copy,
+    T: PartialEq + Copy + Default,
 {
-    unsafe { slice_until_null_mut(ptr as *mut T, max_len) }
+    unsafe {
+        if max_len == 0 || !quick_memory_check(ptr as *const u8, max_len * size_of::<T>()) {
+            return &mut [];
+        }
+
+        let zero = T::default();
+
+        // 遍历查找第一个 0
+        for i in 0..max_len {
+            if *ptr.add(i) == zero {
+                return core::slice::from_raw_parts(ptr, i);
+            }
+        }
+
+        // 未找到 0，则以 max_len 返回
+        core::slice::from_raw_parts(ptr, max_len)
+    }
 }
 
 /// 从 `*mut T` 开始搜索第一个值为 0 的元素，返回 `&[T]`（长度 ≤ max_len）。
@@ -35,21 +41,20 @@ where
 /// - `T` 必须实现 `From<u8>`, `PartialEq` 与 `Copy`（内置无符号整型符合此条件）。
 pub unsafe fn slice_until_null_mut<'a, T>(ptr: *mut T, max_len: usize) -> &'a mut [T]
 where
-    T: From<u8> + PartialEq + Copy,
+    T: PartialEq + Copy + Default,
 {
     unsafe {
         // 如果是非法指针，返回空切片（注意：从任意指针构造 0 长度切片是允许的）
         // 或者长度为 0 的情况直接返回空切片
-        if max_len == 0 || !quick_memory_check_win32(ptr as *mut u8, max_len * size_of::<T>()) {
-            return empty_slice_mut::<'a>();
+        if max_len == 0 || !quick_memory_check(ptr as *mut u8, max_len * size_of::<T>()) {
+            return &mut [];
         }
 
-        let zero = T::from(0u8);
+        let zero = T::default();
 
         // 遍历查找第一个 0
         for i in 0..max_len {
-            let v = ptr.add(i).read();
-            if v == zero {
+            if *ptr.add(i) == zero {
                 return core::slice::from_raw_parts_mut(ptr, i);
             }
         }
@@ -78,8 +83,8 @@ where
 {
     unsafe {
         // 长度为 0 或者非法指针时直接返回空切片
-        if len == 0 || !quick_memory_check_win32(ptr as *mut u8, len * core::mem::size_of::<T>()) {
-            return empty_slice::<'a>();
+        if len == 0 || !quick_memory_check(ptr as *mut u8, len * core::mem::size_of::<T>()) {
+            return &[];
         }
 
         // 指针有效，构造切片
@@ -106,8 +111,8 @@ where
 {
     unsafe {
         // 长度为 0 或者非法指针时直接返回空切片
-        if len == 0 || !quick_memory_check_win32(ptr as *mut u8, len * core::mem::size_of::<T>()) {
-            return empty_slice_mut::<'a>();
+        if len == 0 || !quick_memory_check(ptr as *mut u8, len * core::mem::size_of::<T>()) {
+            return &mut [];
         }
 
         // 指针有效，构造可变切片
@@ -115,23 +120,31 @@ where
     }
 }
 
-/// Windows 32位平台上的简单内存访问检查
-pub fn quick_memory_check_win32(ptr: *mut u8, len: usize) -> bool {
+/// Windows 平台上的简单内存访问检查
+pub fn quick_memory_check(ptr: *const u8, len: usize) -> bool {
     if len == 0 {
         return true;
     }
-
-    // 32位 Windows 用户空间典型地址范围
     let addr = ptr as usize;
 
-    // 32位地址范围：0x00010000 - 0x7FFEFFFF
-    // 避免 NULL 指针区域和小地址区域
-    if !(0x00010000..=0x7FFEFFFF).contains(&addr) {
+    // 1. 基础范围检查：避开 Null Page (0 - 64KB)
+    if addr < 0x10000 {
         return false;
     }
 
-    // 检查地址 + len 是否会越界
-    if addr.saturating_add(len - 1) > 0x7FFEFFFF {
+    // 2. 根据架构检查用户空间上限
+    #[cfg(target_arch = "x86")]
+    let user_space_limit = 0x7FFEFFFF; // 典型的 32 位用户空间上限（3GB/4GB 模式下会有变动，但这是安全值）
+
+    #[cfg(target_arch = "x86_64")]
+    let user_space_limit = 0x00007FFFFFFFFFFF; // 64 位用户空间上限
+
+    // 3. 边界与溢出检查
+    if addr > user_space_limit {
+        return false;
+    }
+
+    if addr.saturating_add(len - 1) > user_space_limit {
         return false;
     }
 

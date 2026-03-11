@@ -35,7 +35,7 @@ pub unsafe extern "system" fn patch_asm() {
 #[ffi_catch_unwind]
 pub unsafe extern "system" fn replace_script(ptr: *mut u8) {
     unsafe {
-        if !crate::utils::mem::quick_memory_check_win32(ptr, 0x18) {
+        if !crate::utils::mem::quick_memory_check(ptr, 0x18) {
             return;
         }
 

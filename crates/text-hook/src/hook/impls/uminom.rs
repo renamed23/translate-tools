@@ -3,6 +3,8 @@ use translate_macros::DefaultHook;
 use windows_sys::{Win32::Foundation::HMODULE, core::PCSTR};
 
 use crate::hook::traits::CoreHook;
+#[cfg(feature = "patch_extracting")]
+use crate::utils::exts::ptr_ext::PtrExt;
 
 #[derive(DefaultHook)]
 pub struct UminomHook;
@@ -58,8 +60,9 @@ pub unsafe extern "system" fn extract_script(ptr: *mut u8, len: usize, filename:
         use std::io::Write;
         use windows_sys::Win32::Foundation::MAX_PATH;
 
-        let filename =
-            crate::utils::mem::slice_until_null(filename, MAX_PATH as _).to_string_lossy();
+        let filename = filename
+            .to_slice_until_null(MAX_PATH as _)
+            .to_string_lossy();
         if crate::patch::try_extracting(ptr, len) {
             let new_filename = format!("{filename}.isf");
 

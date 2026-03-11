@@ -69,10 +69,12 @@ pub unsafe extern "system" fn enum_fonts_proc_a(
 
         #[cfg(feature = "debug_output")]
         {
-            let facename_slice = crate::utils::mem::slice_until_null(
-                modified_lf.lfFaceName.as_ptr() as *const u8,
-                modified_lf.lfFaceName.len(),
-            );
+            use crate::utils::exts::ptr_ext::PtrExt;
+
+            let facename_slice = modified_lf
+                .lfFaceName
+                .as_ptr()
+                .to_slice_until_null(modified_lf.lfFaceName.len());
 
             debug!(
                 "Enuming font '{}'...",
@@ -118,10 +120,12 @@ pub unsafe extern "system" fn enum_fonts_proc_w(
 
         #[cfg(feature = "debug_output")]
         {
-            let facename_slice = crate::utils::mem::slice_until_null(
-                modified_lf.lfFaceName.as_ptr(),
-                modified_lf.lfFaceName.len(),
-            );
+            use crate::utils::exts::ptr_ext::PtrExt;
+
+            let facename_slice = modified_lf
+                .lfFaceName
+                .as_ptr()
+                .to_slice_until_null(modified_lf.lfFaceName.len());
 
             debug!("Enuming font '{}'...", facename_slice.to_string_lossy());
         }

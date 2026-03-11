@@ -9,7 +9,10 @@ use windows_sys::core::BOOL;
 
 use crate::{
     debug,
-    utils::exts::slice_ext::{ByteSliceExt, WideSliceExt},
+    utils::exts::{
+        ptr_ext::PtrExt,
+        slice_ext::{ByteSliceExt, WideSliceExt},
+    },
 };
 
 #[detour_trait]
@@ -41,10 +44,10 @@ pub trait WindowHook: Send + Sync + 'static {
                     core::mem::size_of::<CREATESTRUCTW>(),
                 );
 
-                let class_bytes = crate::utils::mem::slice_until_null((*params_a).lpszClass, 512);
+                let class_bytes = (*params_a).lpszClass.to_slice_until_null(512);
                 let class_name = class_bytes.to_wide_null_ansi();
 
-                let title_slice = crate::utils::mem::slice_until_null((*params_a).lpszName, 512);
+                let title_slice = (*params_a).lpszName.to_slice_until_null(512);
 
                 #[cfg(feature = "override_window_title")]
                 let window_title = crate::constant::WINDOW_TITLE.with_null();
@@ -76,7 +79,7 @@ pub trait WindowHook: Send + Sync + 'static {
                     return crate::call!(HOOK_DEF_WINDOW_PROC_A, h_wnd, u_msg, w_param, l_param);
                 }
 
-                let text_slice = crate::utils::mem::slice_until_null(text_ptr, 512);
+                let text_slice = text_ptr.to_slice_until_null(512);
 
                 #[cfg(feature = "override_window_title")]
                 let text = crate::constant::WINDOW_TITLE.with_null();
@@ -116,15 +119,14 @@ pub trait WindowHook: Send + Sync + 'static {
                     return crate::call!(HOOK_DEF_WINDOW_PROC_W, h_wnd, u_msg, w_param, l_param);
                 }
 
-                let title_slice = crate::utils::mem::slice_until_null((*params_w).lpszName, 512);
+                let title_slice = (*params_w).lpszName.to_slice_until_null(512);
 
                 #[cfg(feature = "debug_output")]
                 {
-                    let raw_class = {
-                        let class_slice =
-                            crate::utils::mem::slice_until_null((*params_w).lpszClass, 512);
-                        class_slice.to_string_lossy()
-                    };
+                    let raw_class = (*params_w)
+                        .lpszClass
+                        .to_slice_until_null(512)
+                        .to_string_lossy();
 
                     let raw_title = title_slice.to_string_lossy();
 
@@ -155,7 +157,7 @@ pub trait WindowHook: Send + Sync + 'static {
                     return crate::call!(HOOK_DEF_WINDOW_PROC_W, h_wnd, u_msg, w_param, l_param);
                 }
 
-                let text_slice = crate::utils::mem::slice_until_null(l_param as *const u16, 512);
+                let text_slice = text_ptr.to_slice_until_null(512);
 
                 #[cfg(feature = "debug_output")]
                 {
@@ -194,7 +196,7 @@ pub trait WindowHook: Send + Sync + 'static {
             use windows_sys::Win32::UI::WindowsAndMessaging::{MF_BITMAP, MF_OWNERDRAW};
 
             if (u_flags & (MF_BITMAP | MF_OWNERDRAW)) == 0 && !lp_new_item.is_null() {
-                let text_slice = crate::utils::mem::slice_until_null(lp_new_item, 512);
+                let text_slice = lp_new_item.to_slice_until_null(512);
 
                 #[cfg(feature = "debug_output")]
                 {
@@ -243,8 +245,8 @@ pub trait WindowHook: Send + Sync + 'static {
                 return crate::call!(HOOK_MESSAGE_BOX_A, h_wnd, lp_text, lp_caption, u_type);
             }
 
-            let text_slice = crate::utils::mem::slice_until_null(lp_text, 2048);
-            let cap_slice = crate::utils::mem::slice_until_null(lp_caption, 1024);
+            let text_slice = lp_text.to_slice_until_null(2048);
+            let cap_slice = lp_caption.to_slice_until_null(1024);
 
             #[cfg(feature = "debug_output")]
             {
@@ -295,7 +297,7 @@ pub trait WindowHook: Send + Sync + 'static {
                 return crate::call!(HOOK_SET_DLG_ITEM_TEXT_A, h_dlg, n_id_dlg_item, lp_string);
             }
 
-            let text_slice = crate::utils::mem::slice_until_null(lp_string, 1024);
+            let text_slice = lp_string.to_slice_until_null(1024);
 
             #[cfg(feature = "debug_output")]
             {
@@ -323,7 +325,7 @@ pub trait WindowHook: Send + Sync + 'static {
                 return crate::call!(HOOK_SET_WINDOW_TEXT_A, h_wnd, lp_string);
             }
 
-            let text_slice = crate::utils::mem::slice_until_null(lp_string, 1024);
+            let text_slice = lp_string.to_slice_until_null(1024);
 
             #[cfg(feature = "debug_output")]
             {
@@ -348,7 +350,7 @@ pub trait WindowHook: Send + Sync + 'static {
         #[cfg(feature = "text_patch")]
         unsafe {
             if crate::utils::win32::needs_text_conversion(msg) && l_param != 0 {
-                let text_slice = crate::utils::mem::slice_until_null(l_param as *const u8, 4096);
+                let text_slice = (l_param as *const u8).to_slice_until_null(4096);
 
                 #[cfg(feature = "debug_output")]
                 {
@@ -384,7 +386,7 @@ pub trait WindowHook: Send + Sync + 'static {
                 return crate::call!(HOOK_PROPERTY_SHEET_A, ppsh);
             }
 
-            let caption_slice = crate::utils::mem::slice_until_null(header.pszCaption, 1024);
+            let caption_slice = header.pszCaption.to_slice_until_null(1024);
 
             #[cfg(feature = "debug_output")]
             {

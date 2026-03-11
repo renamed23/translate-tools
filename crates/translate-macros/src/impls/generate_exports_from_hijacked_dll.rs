@@ -1,5 +1,4 @@
 use anyhow::Context;
-use convert_case::{Case, Casing};
 use goblin::Object;
 use proc_macro2::{Literal, TokenStream};
 use quote::{format_ident, quote};
@@ -112,27 +111,26 @@ fn try_generate(dll_dir: &PathBuf, def_output_path: &PathBuf) -> anyhow::Result<
     // 收集 .def 的每一行（EXPORTS 下的行），格式：Name @ordinal
     let mut def_export_lines: Vec<String> = Vec::new();
 
-    for (name, ordinal) in export_pairs.iter() {
-        // 生成静态名
-        let static_name = rust_static_name_from_export(name);
-        let ident = format_ident!("{}", static_name);
-        addr_idents.push(ident.clone());
+    for (i, (name, ordinal)) in export_pairs.iter().enumerate() {
+        // 1. 生成内部使用的标识符：如 ADDR_1, lib_export_1
+        let static_ident = format_ident!("ADDR_{i}");
+        let export_fn_ident = format_ident!("lib_export_{i}");
 
-        // 生成 C 风格字符串字面（带 NUL 结尾）
+        addr_idents.push(static_ident.clone());
+
+        // 2. 准备 C 风格字符串字面量（用于 GetProcAddress）
         let cname = format!("{}\0", name);
         c_string_literals.push(cname);
 
-        // static mut ADDR_XXX: usize = 0;
-        let st = quote! {
-            // 存放导出函数地址（运行时由 load_library 填充）
-            static mut #ident: usize = 0;
-        };
-        statics.push(st);
+        // 3. 生成静态变量：用于存放函数地址
+        statics.push(quote! {
+            static mut #static_ident: usize = 0;
+        });
 
-        // 生成 wrapper 函数，named export 保持原名（使用 export_name 属性）
+        // 4. 生成 naked 跳转函数
+        // 关键点：#[unsafe(export_name = #name)] 确保导出的符号与原 DLL 严格一致
         let export_name = name.clone();
-        let export_fn_ident = format_ident!("lib_{}", export_name); // 内部函数名（不导出）
-        let asm = quote! {
+        asm_fns.push(quote! {
             #[unsafe(naked)]
             #[unsafe(link_section = ".text")]
             #[unsafe(export_name = #export_name)]
@@ -140,20 +138,18 @@ fn try_generate(dll_dir: &PathBuf, def_output_path: &PathBuf) -> anyhow::Result<
                 #[cfg(target_arch = "x86_64")]
                 ::core::arch::naked_asm!(
                     "jmp qword ptr [rip + {0}]",
-                    sym #ident,
+                    sym #static_ident,
                 );
 
                 #[cfg(target_arch = "x86")]
                 ::core::arch::naked_asm!(
-                    "jmp [{0}]",
-                    sym #ident,
+                    "jmp dword ptr [{0}]",
+                    sym #static_ident,
                 );
             }
-        };
-        asm_fns.push(asm);
+        });
 
-        // 准备 def 行；保持与原 DLL 的 ordinal 一致
-        // def 格式：<Name> @<ordinal>
+        // 5. 准备 .def 行
         def_export_lines.push(format!("    {name} @{ordinal}"));
     }
 
@@ -270,18 +266,6 @@ fn try_generate(dll_dir: &PathBuf, def_output_path: &PathBuf) -> anyhow::Result<
     };
 
     Ok(output)
-}
-
-/// 对导出名做一个简单的 Rust 静态符号名转换：
-/// - 非字母数字字符替换为下划线
-/// - 转换为大写下划线风格： e.g. "GetFileVersionInfoA" -> "ADDR_GET_FILE_VERSION_INFO_A"
-fn rust_static_name_from_export(export: &str) -> String {
-    let mut s = export.to_case(Case::Snake).to_uppercase();
-    s = s
-        .chars()
-        .map(|c| if c.is_ascii_alphanumeric() { c } else { '_' })
-        .collect();
-    format!("ADDR_{}", s)
 }
 
 /// 从 bytes 里解析导出符号（只返回有名字的导出）

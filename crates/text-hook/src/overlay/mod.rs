@@ -87,6 +87,8 @@ pub fn win_event_callback(
                 }
 
                 if let Ok(overlay) = create_overlay_window(hwnd) {
+                    crate::debug!("Initialize overlay context");
+
                     #[cfg(feature = "overlay_gl")]
                     let Ok(gl_ctx) = GLContext::new(*overlay) else {
                         return;
@@ -96,6 +98,8 @@ pub fn win_event_callback(
                     let Ok(gl_painter) = GLPainter::new(gl_ctx.gl.clone()) else {
                         return;
                     };
+
+                    crate::debug!("Initialize overlay context finished");
 
                     OVERLAY_CTX.set(Some(OverlayContext {
                         #[cfg(feature = "overlay_gl")]
@@ -149,6 +153,8 @@ pub fn win_event_callback(
                 if hwnd != target {
                     return;
                 }
+
+                crate::debug!("Desotry overlay context");
 
                 OVERLAY_CTX.with(|ctx| ctx.take());
             }

@@ -21,19 +21,28 @@ use windows_sys::{
 use crate::{
     constant, print_last_error_message,
     utils::{
-        exts::{path_ext::PathExt, slice_ext::WideSliceExt},
+        exts::{
+            path_ext::PathExt,
+            ptr_ext::PtrExt,
+            slice_ext::{ByteSliceExt, WideSliceExt},
+        },
         raii_wrapper::OwnedHMODULE,
     },
 };
 
 /// 获取模块句柄的包装函数
 pub fn get_module_handle(module_name: PCWSTR) -> crate::Result<HMODULE> {
-    let handle = unsafe { GetModuleHandleW(module_name) };
-    if handle.is_null() {
-        print_last_error_message!();
-        crate::bail!("GetModuleHandleW for {:?} failed", module_name);
-    } else {
-        Ok(handle)
+    unsafe {
+        let handle = GetModuleHandleW(module_name);
+        if handle.is_null() {
+            print_last_error_message!();
+            crate::bail!(
+                "GetModuleHandleW for {} failed",
+                module_name.to_slice_until_null(8192).to_string_lossy()
+            );
+        } else {
+            Ok(handle)
+        }
     }
 }
 
@@ -54,7 +63,10 @@ pub fn get_module_symbol_addr_from_handle(module: HMODULE, symbol: PCSTR) -> cra
     unsafe {
         let func = GetProcAddress(module, symbol).ok_or_else(|| {
             print_last_error_message!();
-            crate::anyhow!("GetProcAddress failed")
+            crate::anyhow!(
+                "GetProcAddress failed, symbol: '{}'",
+                symbol.to_slice_until_null(8192).to_string_lossy()
+            )
         })?;
         Ok(func as usize)
     }
@@ -80,12 +92,17 @@ pub fn get_system_directory(add_null: bool) -> crate::Result<Vec<u16>> {
 
 /// 根据路径加载指定DLL，若失败返回Err
 pub fn load_library(path: PCWSTR) -> crate::Result<OwnedHMODULE> {
-    let handle = unsafe { LoadLibraryW(path) };
-    if handle.is_null() {
-        print_last_error_message!();
-        crate::bail!("LoadLibraryW failed for: {path:?}");
+    unsafe {
+        let handle = LoadLibraryW(path);
+        if handle.is_null() {
+            print_last_error_message!();
+            crate::bail!(
+                "LoadLibraryW failed for: {}",
+                path.to_slice_until_null(8192).to_string_lossy()
+            );
+        }
+        Ok(OwnedHMODULE(handle))
     }
-    Ok(OwnedHMODULE(handle))
 }
 
 /// 获取模块文件路径

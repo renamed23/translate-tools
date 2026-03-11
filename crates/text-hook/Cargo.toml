@@ -18,9 +18,11 @@ debug_output = []
 debug_text_mapping = ["debug_output"]
 
 # 启用独立透明覆盖层，使用OpenGL绘制
-overlay_gl = ["overlay"]
+overlay_gl = ["overlay", "gl_painter"]
 # 启用独立透明覆盖层（同进程）
 overlay = ["win_event_hook", "worker_thread"]
+# 启用轻量的OpenGL绘制器
+gl_painter = []
 # 窗口事件钩子(windows的SetWinEventHook的钩子机制)
 win_event_hook = ["worker_thread"]
 # 在DLL attach的时候创建一个工作线程

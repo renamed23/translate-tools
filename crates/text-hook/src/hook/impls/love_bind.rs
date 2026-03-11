@@ -3,6 +3,7 @@ use windows_sys::Win32::Foundation::{HMODULE, HWND};
 use windows_sys::Win32::UI::WindowsAndMessaging::{MESSAGEBOX_RESULT, MESSAGEBOX_STYLE};
 
 use crate::hook::traits::CoreHook;
+use crate::utils::exts::ptr_ext::PtrExt;
 use crate::utils::exts::slice_ext::{ByteSliceExt, WideSliceExt};
 
 #[derive(DefaultHook)]
@@ -26,8 +27,10 @@ unsafe extern "system" fn message_box_timeout_a(
     dw_milliseconds: u32,
 ) -> MESSAGEBOX_RESULT {
     unsafe {
-        let cap_slice = crate::utils::mem::slice_until_null(lp_caption, 1024);
-        let s = cap_slice.to_wide_ansi().to_string_lossy();
+        let s = lp_caption
+            .to_slice_until_null(1024)
+            .to_wide_ansi()
+            .to_string_lossy();
 
         crate::debug!("Get message box caption: {s}");
         if s == "日本語版Windows判定" {

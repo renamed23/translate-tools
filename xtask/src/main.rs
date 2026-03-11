@@ -300,6 +300,24 @@ fn build_scenarios() -> Vec<Scenario> {
             run_x64: true,
         },
         Scenario {
+            name: "default_impl/gl_painter/off".to_string(),
+            features: feature_set(
+                all_functional_impl_base(),
+                &["default_impl"],
+                &["gl_painter"],
+            ),
+            run_x64: true,
+        },
+        Scenario {
+            name: "default_impl/gl_painter/on".to_string(),
+            features: feature_set(
+                all_functional_impl_base(),
+                &["default_impl", "gl_painter"],
+                &[],
+            ),
+            run_x64: true,
+        },
+        Scenario {
             name: "default_impl/overlay/off".to_string(),
             features: feature_set(all_functional_impl_base(), &["default_impl"], &["overlay"]),
             run_x64: true,

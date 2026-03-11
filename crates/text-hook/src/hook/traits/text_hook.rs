@@ -10,7 +10,10 @@ use windows_sys::{
     core::{BOOL, PCSTR, PCWSTR},
 };
 
-use crate::constant::{CHAR_SET, FONT_FACE, FONT_FILTER};
+use crate::{
+    constant::{CHAR_SET, FONT_FACE, FONT_FILTER},
+    utils::exts::ptr_ext::PtrExt,
+};
 use crate::{
     debug,
     utils::exts::slice_ext::{ByteSliceExt, WideSliceExt},
@@ -32,7 +35,7 @@ pub trait TextHook: Send + Sync + 'static {
         unsafe {
             let byte_len = get_byte_len(lp_string, c as usize);
 
-            let input_slice = crate::utils::mem::slice_from_raw_parts(lp_string, byte_len);
+            let input_slice = lp_string.to_slice(byte_len);
             let buf = input_slice.to_wide_ansi().mapping();
 
             #[cfg(feature = "debug_text_mapping")]
@@ -52,7 +55,7 @@ pub trait TextHook: Send + Sync + 'static {
     )]
     unsafe fn text_out_w(hdc: HDC, x: i32, y: i32, lp_string: PCWSTR, c: i32) -> BOOL {
         unsafe {
-            let input_slice = crate::utils::mem::slice_from_raw_parts(lp_string, c as usize);
+            let input_slice = lp_string.to_slice(c as usize);
 
             let buf = input_slice.mapping();
 
@@ -81,7 +84,7 @@ pub trait TextHook: Send + Sync + 'static {
         unsafe {
             let byte_len = get_byte_len(lp_string, c as usize);
 
-            let input_slice = crate::utils::mem::slice_from_raw_parts(lp_string, byte_len);
+            let input_slice = lp_string.to_slice(byte_len);
             let buf = input_slice.to_wide_ansi().mapping();
 
             #[cfg(feature = "debug_text_mapping")]
@@ -120,7 +123,7 @@ pub trait TextHook: Send + Sync + 'static {
         _lp_dx: *const i32,
     ) -> BOOL {
         unsafe {
-            let input_slice = crate::utils::mem::slice_from_raw_parts(lp_string, c as usize);
+            let input_slice = lp_string.to_slice(c as usize);
 
             let buf = input_slice.mapping();
 
@@ -158,7 +161,7 @@ pub trait TextHook: Send + Sync + 'static {
         unsafe {
             let byte_len = get_byte_len(lp_string, c as usize);
 
-            let input_slice = crate::utils::mem::slice_from_raw_parts(lp_string, byte_len);
+            let input_slice = lp_string.to_slice(byte_len);
             let buf = input_slice.to_wide_ansi().mapping();
 
             #[cfg(feature = "debug_text_mapping")]
@@ -186,7 +189,7 @@ pub trait TextHook: Send + Sync + 'static {
         lp_size: *mut SIZE,
     ) -> BOOL {
         unsafe {
-            let input_slice = crate::utils::mem::slice_from_raw_parts(lp_string, c as usize);
+            let input_slice = lp_string.to_slice(c as usize);
 
             let buf = input_slice.mapping();
 
@@ -303,9 +306,9 @@ pub trait TextHook: Send + Sync + 'static {
         psz_face_name: PCSTR,
     ) -> HFONT {
         unsafe {
-            let face_u16 =
-                crate::utils::mem::slice_until_null(psz_face_name, (LF_FACESIZE - 1) as usize)
-                    .to_wide_null(0);
+            let face_u16 = psz_face_name
+                .to_slice_until_null((LF_FACESIZE - 1) as usize)
+                .to_wide_null(0);
 
             Self::create_font_w(
                 c_height,
@@ -348,9 +351,8 @@ pub trait TextHook: Send + Sync + 'static {
         i_pitch_and_family: u32,
         psz_face_name: PCWSTR,
     ) -> HFONT {
-        let mut u16_slice: &[u16] = unsafe {
-            crate::utils::mem::slice_until_null(psz_face_name, (LF_FACESIZE - 1) as usize)
-        };
+        let mut u16_slice: &[u16] =
+            unsafe { psz_face_name.to_slice_until_null((LF_FACESIZE - 1) as usize) };
 
         debug!("Requested font name: {}", u16_slice.to_string_lossy());
 
@@ -396,6 +398,10 @@ pub trait TextHook: Send + Sync + 'static {
         fallback = "core::ptr::null_mut()"
     )]
     unsafe fn create_font_indirect_a(lplf: *const LOGFONTA) -> HFONT {
+        if lplf.is_null() {
+            return unsafe { crate::call!(HOOK_CREATE_FONT_INDIRECT_A, lplf) };
+        }
+
         let logfona = unsafe { &*lplf };
         let mut logfontw = unsafe { core::mem::zeroed::<LOGFONTW>() };
 
@@ -415,10 +421,10 @@ pub trait TextHook: Send + Sync + 'static {
 
         let face_u16 = {
             let bytes = unsafe {
-                crate::utils::mem::slice_until_null(
-                    logfona.lfFaceName.as_ptr() as *const u8,
-                    logfona.lfFaceName.len() - 1, // 最后一个字节必须为null
-                )
+                logfona
+                    .lfFaceName
+                    .as_ptr()
+                    .to_slice_until_null(logfona.lfFaceName.len() - 1) // 最后一个字节必须为null
             };
 
             bytes.to_wide_null(0)
@@ -436,14 +442,18 @@ pub trait TextHook: Send + Sync + 'static {
         fallback = "core::ptr::null_mut()"
     )]
     unsafe fn create_font_indirect_w(lplf: *const LOGFONTW) -> HFONT {
+        if lplf.is_null() {
+            return unsafe { crate::call!(HOOK_CREATE_FONT_INDIRECT_W, lplf) };
+        }
+
         let mut logfontw = unsafe { *lplf };
         logfontw.lfCharSet = CHAR_SET;
 
         let u16_slice = unsafe {
-            crate::utils::mem::slice_until_null(
-                logfontw.lfFaceName.as_ptr(),
-                logfontw.lfFaceName.len() - 1,
-            )
+            logfontw
+                .lfFaceName
+                .as_ptr()
+                .to_slice_until_null(logfontw.lfFaceName.len() - 1)
         };
 
         debug!("Requested font name: {}", u16_slice.to_string_lossy());

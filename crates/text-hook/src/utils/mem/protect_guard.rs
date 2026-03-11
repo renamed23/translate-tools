@@ -37,7 +37,7 @@ impl ProtectGuard {
         if size == 0 {
             crate::bail!("size must be > 0");
         }
-        if !crate::utils::mem::quick_memory_check_win32(address as *mut u8, size) {
+        if !crate::utils::mem::quick_memory_check(address as *mut u8, size) {
             crate::bail!("address is invalid: ({address:p};{size})");
         }
 
