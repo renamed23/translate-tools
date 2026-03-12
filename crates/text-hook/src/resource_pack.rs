@@ -93,9 +93,8 @@ pub fn get_resource_path(path: &Path) -> crate::Result<Option<PathBuf>> {
             relative_str = &relative_str[..relative_str.len() - 1];
         }
 
-        crate::debug!("Relative path for resource pack: {}", relative_str);
-
         if pack::is_resource(relative_str) {
+            crate::debug!("Redirection to resource pack: {}", relative_str);
             let temp_dir = pack::get_temp_dir();
             let final_path = temp_dir.join(relative_str);
             return Ok(Some(PathBuf::from(to_windows_path(&final_path))));
