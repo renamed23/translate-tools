@@ -7,6 +7,7 @@ use windows_sys::Win32::Graphics::Gdi::{
 use windows_sys::Win32::UI::WindowsAndMessaging::CharNextExA;
 
 use crate::constant::{CHAR_FILTER, CHAR_SET};
+use crate::print_last_error_message;
 
 mod mapping_data {
     translate_macros::generate_mapping_data!("assets/mapping.json");
@@ -55,16 +56,45 @@ pub fn multi_byte_to_wide_char_impl(
     code_page: u32,
     add_null: bool,
 ) -> crate::Result<Vec<u16>> {
-    crate::utils::win32::fetch_win32_string(add_null, |ptr, size| unsafe {
-        MultiByteToWideChar(
+    let input_len = bytes.len() as i32;
+    if input_len == 0 {
+        return Ok(if add_null { vec![0] } else { vec![] });
+    }
+
+    unsafe {
+        let required = MultiByteToWideChar(
             code_page,
             0,
             bytes.as_ptr(),
-            bytes.len() as i32,
-            ptr,
-            size as i32,
-        ) as u32
-    })
+            input_len,
+            core::ptr::null_mut(),
+            0,
+        );
+        if required <= 0 {
+            print_last_error_message!();
+            crate::bail!("MultiByteToWideChar Failed");
+        }
+
+        let mut buf = Vec::with_capacity(required as usize + if add_null { 1 } else { 0 });
+
+        let spare = buf.spare_capacity_mut();
+        let ptr = spare.as_mut_ptr() as *mut u16;
+
+        let written = MultiByteToWideChar(code_page, 0, bytes.as_ptr(), input_len, ptr, required);
+        if written <= 0 {
+            print_last_error_message!();
+            crate::bail!("MultiByteToWideChar Failed during write");
+        }
+
+        let mut final_len = written as usize;
+        if add_null {
+            ptr.add(final_len).write(0);
+            final_len += 1;
+        }
+
+        buf.set_len(final_len);
+        Ok(buf)
+    }
 }
 
 /// 将宽字符切片转换为指定代码页的字节向量
@@ -81,18 +111,58 @@ pub fn wide_char_to_multi_byte_impl(
     code_page: u32,
     add_null: bool,
 ) -> crate::Result<Vec<u8>> {
-    crate::utils::win32::fetch_win32_string(add_null, |ptr, size| unsafe {
-        WideCharToMultiByte(
+    let input_len = wide_str.len() as i32;
+    if input_len == 0 {
+        return Ok(if add_null { vec![0] } else { vec![] });
+    }
+
+    unsafe {
+        let required = WideCharToMultiByte(
             code_page,
             0,
             wide_str.as_ptr(),
-            wide_str.len() as i32,
-            ptr,
-            size as i32,
+            input_len,
+            core::ptr::null_mut(),
+            0,
             core::ptr::null(),
             core::ptr::null_mut(),
-        ) as u32
-    })
+        );
+
+        if required <= 0 {
+            print_last_error_message!();
+            crate::bail!("WideCharToMultiByte failed");
+        }
+
+        let mut buf = Vec::<u8>::with_capacity(required as usize + if add_null { 1 } else { 0 });
+
+        let spare = buf.spare_capacity_mut();
+        let ptr = spare.as_mut_ptr() as *mut u8;
+
+        let written = WideCharToMultiByte(
+            code_page,
+            0,
+            wide_str.as_ptr(),
+            input_len,
+            ptr,
+            required,
+            core::ptr::null(),
+            core::ptr::null_mut(),
+        );
+
+        if written <= 0 {
+            print_last_error_message!();
+            crate::bail!("WideCharToMultiByte failed during write");
+        }
+
+        let mut final_len = written as usize;
+        if add_null {
+            ptr.add(final_len).write(0);
+            final_len += 1;
+        }
+
+        buf.set_len(final_len);
+        Ok(buf)
+    }
 }
 
 /// 根据CharSet获取对应的代码页

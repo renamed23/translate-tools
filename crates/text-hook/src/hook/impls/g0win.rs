@@ -7,6 +7,7 @@ use translate_macros::{DefaultHook, byte_slice};
 use windows_sys::Win32::Foundation::HMODULE;
 
 use crate::{
+    constant::ARG_GAME_TYPE,
     hook::traits::CoreHook,
     utils::exts::{
         ptr_ext::PtrExt,
@@ -23,10 +24,37 @@ impl CoreHook for G0WinHook {
         let module = handle as *mut u8;
 
         unsafe {
-            crate::utils::mem::patch::write_asm(module.add(0x2A78C), &byte_slice!("EB 14 90"))
-                .unwrap();
-            crate::utils::mem::patch::write_jmp_instruction(module.add(0x2A7A2), trampoline as _)
-                .unwrap();
+            match ARG_GAME_TYPE {
+                "うたかな" => {
+                    crate::utils::mem::patch::write_asm(
+                        module.add(0x2A78C),
+                        &byte_slice!("EB 14 90"),
+                    )
+                    .unwrap();
+                    crate::utils::mem::patch::write_jmp_instruction(
+                        module.add(0x2A7A2),
+                        trampoline as _,
+                    )
+                    .unwrap();
+                }
+
+                "天巫女姫" => {
+                    crate::utils::mem::patch::write_asm(
+                        module.add(0x2C18C),
+                        &byte_slice!("EB 14 90"),
+                    )
+                    .unwrap();
+                    crate::utils::mem::patch::write_jmp_instruction(
+                        module.add(0x2C1A2),
+                        trampoline as _,
+                    )
+                    .unwrap();
+                }
+
+                _ => {
+                    unreachable!()
+                }
+            }
         }
     }
 }
