@@ -368,7 +368,8 @@ fn build_scenarios() -> Vec<Scenario> {
         "seraph",
         "uminom",
         "white_breath",
-        "g0win"
+        "g0win",
+        "hitocos2",
     ];
 
     for imp in game_impls {

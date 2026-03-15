@@ -116,28 +116,25 @@ pub unsafe fn resolve_patchable_addr(mut addr: usize) -> crate::Result<usize> {
     crate::bail!("Too many jumps followed when resolving patchable address");
 }
 
-/// 在指定地址写入32位相对跳转指令（E9 jmp）
+/// 通用的相对偏移指令写入函数（支持 jmp/call 等）
 ///
-/// 该函数用于在指定的内存地址处写入一个5字节的`jmp`指令，该指令会跳转到目标函数。
-/// 使用相对寻址方式，计算从`jmp`指令下一条指令到目标函数的偏移量。
+/// 在指定地址写入 5 字节的相对调用/跳转指令，格式为：`<OPCODE> + rel32`。
+/// 偏移量计算方式：`target - (patch_address + 5)`，需在 i32 范围内。
+///
+/// # 泛型参数
+/// - `OPCODE`: 指令的操作码，例如 jmp 为 0xE9，call 为 0xE8。
 ///
 /// # 参数
-///
-/// - `patch_address`: 要写入`jmp`指令的内存地址
-/// - `target_function`: 要跳转到的目标函数地址
+/// - `patch_address`: 要写入指令的内存地址
+/// - `target_function`: 目标地址
 ///
 /// # 返回值
-///
-/// 返回`crate::Result<()>`，成功时返回`Ok(())`。
-///
-/// # 错误
-///
-/// 如果相对偏移量超出32位有符号整数范围（±2GB），则返回错误。
+/// 成功返回 `Ok(())`，若偏移量超出 32 位有符号整数范围则返回错误。
 ///
 /// # Safety
 /// - `patch_address` 必须可写且至少有 5 字节可用空间。
-/// - `target_function` 必须是可执行有效地址，且调用者需保证跳转覆盖不会破坏指令边界。
-pub unsafe fn write_jmp_instruction(
+/// - `target_function` 必须是有效的可执行地址，且写入的指令不会破坏程序逻辑。
+pub unsafe fn write_rel32_instruction<const OPCODE: u8>(
     patch_address: *mut u8,
     target_function: *const u8,
 ) -> crate::Result<()> {
@@ -156,12 +153,54 @@ pub unsafe fn write_jmp_instruction(
         )
     })?;
 
-    // 在栈上构建机器码
+    // 构建指令
     let mut opcode = [0u8; 5];
-    opcode[0] = 0xE9;
+    opcode[0] = OPCODE;
     opcode[1..5].copy_from_slice(&rel32.to_le_bytes());
 
     write_asm(patch_address, &opcode)
+}
+
+/// 在指定地址写入 32 位相对跳转指令（E9 jmp）
+///
+/// 功能同 `write_rel32_instruction<0xE9>`，但提供更明确的命名和文档。
+///
+/// # 参数
+/// - `patch_address`: 要写入指令的内存地址
+/// - `target_function`: 目标地址
+///
+/// # 返回值
+/// 成功返回 `Ok(())`，若偏移量超出 32 位有符号整数范围则返回错误。
+///
+/// # Safety
+/// - `patch_address` 必须可写且至少有 5 字节可用空间。
+/// - `target_function` 必须是有效的可执行地址，且写入的指令不会破坏程序逻辑。
+pub unsafe fn write_jmp_instruction(
+    patch_address: *mut u8,
+    target_function: *const u8,
+) -> crate::Result<()> {
+    unsafe { write_rel32_instruction::<0xE9>(patch_address, target_function) }
+}
+
+/// 在指定地址写入 32 位相对调用指令（E8 call）
+///
+/// 功能同 `write_rel32_instruction<0xE8>`，但提供更明确的命名和文档。
+///
+/// # 参数
+/// - `patch_address`: 要写入指令的内存地址
+/// - `target_function`: 目标地址
+///
+/// # 返回值
+/// 成功返回 `Ok(())`，若偏移量超出 32 位有符号整数范围则返回错误。
+///
+/// # Safety
+/// - `patch_address` 必须可写且至少有 5 字节可用空间。
+/// - `target_function` 必须是有效的可执行地址，且写入的指令不会破坏程序逻辑。
+pub unsafe fn write_call_instruction(
+    patch_address: *mut u8,
+    target_function: *const u8,
+) -> crate::Result<()> {
+    unsafe { write_rel32_instruction::<0xE8>(patch_address, target_function) }
 }
 
 #[cfg(target_pointer_width = "32")]
