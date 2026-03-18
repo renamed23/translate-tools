@@ -90,13 +90,16 @@ fn worker_main() {
             }
 
             match HookImplType::on_worker_main_tick() {
-                LoopAction::Continue => {
+                Ok(LoopAction::Continue) => {
                     #[cfg(feature = "overlay")]
                     crate::overlay::render();
                 }
-                LoopAction::Exit => {
+                Ok(LoopAction::Exit) => {
                     STOP_FLAG.store(true, Ordering::Release);
                     break;
+                }
+                Err(e) => {
+                    crate::debug!("on_worker_main_tick failed with {e:?}");
                 }
             };
         }

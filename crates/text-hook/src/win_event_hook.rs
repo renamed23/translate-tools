@@ -96,12 +96,14 @@ unsafe extern "system" fn win_event_hook_proc(
         dwms_event_time,
     );
 
-    HookImplType::on_win_event_triggered(
+    if let Err(e) = HookImplType::on_win_event_triggered(
         event,
         hwnd,
         id_object,
         id_child,
         id_event_thread,
         dwms_event_time,
-    );
+    ) {
+        crate::debug!("on_win_event_triggered failed with {e:?}");
+    }
 }

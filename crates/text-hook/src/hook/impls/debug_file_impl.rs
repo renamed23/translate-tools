@@ -36,33 +36,35 @@ static DEBUG_FILE_STATE: LazyLock<RwLock<DebugFileState>> =
     LazyLock::new(|| RwLock::new(DebugFileState::default()));
 
 impl CoreHook for DebugFileImplHook {
-    fn on_process_attach(_hinst_dll: HMODULE) {
+    fn on_process_attach(_hinst_dll: HMODULE) -> crate::Result<()> {
         unsafe {
-            HOOK_CREATE_FILE_A.enable().unwrap();
-            HOOK_CREATE_FILE_W.enable().unwrap();
-            HOOK_READ_FILE.enable().unwrap();
-            HOOK_CLOSE_HANDLE.enable().unwrap();
-            HOOK_FIND_FIRST_FILE_A.enable().unwrap();
-            HOOK_FIND_FIRST_FILE_W.enable().unwrap();
-            HOOK_FIND_NEXT_FILE_A.enable().unwrap();
-            HOOK_FIND_NEXT_FILE_W.enable().unwrap();
-            HOOK_FIND_CLOSE.enable().unwrap();
+            HOOK_CREATE_FILE_A.enable()?;
+            HOOK_CREATE_FILE_W.enable()?;
+            HOOK_READ_FILE.enable()?;
+            HOOK_CLOSE_HANDLE.enable()?;
+            HOOK_FIND_FIRST_FILE_A.enable()?;
+            HOOK_FIND_FIRST_FILE_W.enable()?;
+            HOOK_FIND_NEXT_FILE_A.enable()?;
+            HOOK_FIND_NEXT_FILE_W.enable()?;
+            HOOK_FIND_CLOSE.enable()?;
         }
+        Ok(())
     }
 
     #[cfg(feature = "attach_clean_up")]
-    fn on_process_attach_clean_up() {
+    fn on_process_attach_clean_up() -> crate::Result<()> {
         unsafe {
-            HOOK_CREATE_FILE_A.disable().unwrap();
-            HOOK_CREATE_FILE_W.disable().unwrap();
-            HOOK_READ_FILE.disable().unwrap();
-            HOOK_CLOSE_HANDLE.disable().unwrap();
-            HOOK_FIND_FIRST_FILE_A.disable().unwrap();
-            HOOK_FIND_FIRST_FILE_W.disable().unwrap();
-            HOOK_FIND_NEXT_FILE_A.disable().unwrap();
-            HOOK_FIND_NEXT_FILE_W.disable().unwrap();
-            HOOK_FIND_CLOSE.disable().unwrap();
+            HOOK_CREATE_FILE_A.disable()?;
+            HOOK_CREATE_FILE_W.disable()?;
+            HOOK_READ_FILE.disable()?;
+            HOOK_CLOSE_HANDLE.disable()?;
+            HOOK_FIND_FIRST_FILE_A.disable()?;
+            HOOK_FIND_FIRST_FILE_W.disable()?;
+            HOOK_FIND_NEXT_FILE_A.disable()?;
+            HOOK_FIND_NEXT_FILE_W.disable()?;
+            HOOK_FIND_CLOSE.disable()?;
         }
+        Ok(())
     }
 }
 

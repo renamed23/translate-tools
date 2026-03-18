@@ -33,8 +33,12 @@ unsafe extern "system" fn overlay_wnd_proc(
     l_param: LPARAM,
 ) -> LRESULT {
     match HookImplType::on_overlay_wnd_proc(hwnd, msg, w_param, l_param) {
-        Some(ret) => ret,
-        None => unsafe { DefWindowProcW(hwnd, msg, w_param, l_param) },
+        Ok(Some(ret)) => ret,
+        Ok(None) => unsafe { DefWindowProcW(hwnd, msg, w_param, l_param) },
+        Err(e) => {
+            crate::debug!("on_overlay_wnd_proc failed with {e:?}");
+            unsafe { DefWindowProcW(hwnd, msg, w_param, l_param) }
+        }
     }
 }
 

@@ -105,3 +105,69 @@ where
         unsafe { crate::utils::mem::slice_until_null_mut(self.as_mut_ptr(), max_len) }
     }
 }
+
+pub trait PtrWriteExt {
+    /// 写入汇编字节到当前地址，返回自身以支持链式调用。
+    fn patch_asm(self, data: &[u8]) -> crate::Result<Self>
+    where
+        Self: Sized;
+
+    /// 写入普通字节到当前地址，返回自身以支持链式调用。
+    fn patch_bytes(self, data: &[u8]) -> crate::Result<Self>
+    where
+        Self: Sized;
+
+    /// 写入 32 位相对偏移指令（支持 jmp/call 等），返回自身以支持链式调用。
+    fn write_rel32_instruction<const OPCODE: u8>(
+        self,
+        target_function: *const u8,
+    ) -> crate::Result<Self>
+    where
+        Self: Sized;
+
+    /// 写入 32 位相对跳转指令（E9 jmp），返回自身以支持链式调用。
+    fn write_jmp_instruction(self, target_function: *const u8) -> crate::Result<Self>
+    where
+        Self: Sized;
+
+    /// 写入 32 位相对调用指令（E8 call），返回自身以支持链式调用。
+    fn write_call_instruction(self, target_function: *const u8) -> crate::Result<Self>
+    where
+        Self: Sized;
+}
+
+impl PtrWriteExt for *mut u8 {
+    fn patch_asm(self, data: &[u8]) -> crate::Result<Self> {
+        crate::utils::mem::patch::write_asm(self, data)?;
+        Ok(self)
+    }
+
+    fn patch_bytes(self, data: &[u8]) -> crate::Result<Self> {
+        crate::utils::mem::patch::write_bytes(self, data)?;
+        Ok(self)
+    }
+
+    fn write_rel32_instruction<const OPCODE: u8>(
+        self,
+        target_function: *const u8,
+    ) -> crate::Result<Self> {
+        unsafe {
+            crate::utils::mem::patch::write_rel32_instruction::<OPCODE>(self, target_function)?;
+        }
+        Ok(self)
+    }
+
+    fn write_jmp_instruction(self, target_function: *const u8) -> crate::Result<Self> {
+        unsafe {
+            crate::utils::mem::patch::write_jmp_instruction(self, target_function)?;
+        }
+        Ok(self)
+    }
+
+    fn write_call_instruction(self, target_function: *const u8) -> crate::Result<Self> {
+        unsafe {
+            crate::utils::mem::patch::write_call_instruction(self, target_function)?;
+        }
+        Ok(self)
+    }
+}

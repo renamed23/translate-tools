@@ -4,7 +4,7 @@ use windows_sys::Win32::Foundation::HMODULE;
 use windows_sys::Win32::System::Diagnostics::Debug::IMAGE_DIRECTORY_ENTRY_IMPORT;
 use windows_sys::Win32::System::SystemServices::IMAGE_IMPORT_DESCRIPTOR;
 
-use crate::utils::mem::patch::{get_dos_and_nt_headers, write_bytes};
+use crate::utils::{exts::ptr_ext::PtrWriteExt, mem::patch::get_dos_and_nt_headers};
 
 /// IAT 修补函数
 ///
@@ -26,7 +26,7 @@ pub unsafe fn patch_iat(
 ) -> crate::Result<()> {
     unsafe {
         let iat_entry_ptr = find_iat_entry(target_module_base, original_addr)?;
-        write_bytes(iat_entry_ptr as _, &hook_addr.to_ne_bytes())?;
+        (iat_entry_ptr as *mut u8).patch_bytes(&hook_addr.to_ne_bytes())?;
         Ok(())
     }
 }

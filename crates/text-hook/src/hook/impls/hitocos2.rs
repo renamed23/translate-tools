@@ -11,7 +11,7 @@ use crate::{
     constant::ARG_GAME_TYPE,
     hook::traits::CoreHook,
     utils::exts::{
-        ptr_ext::PtrExt,
+        ptr_ext::{PtrExt, PtrWriteExt},
         slice_ext::{ByteSliceExt, WideSliceExt},
     },
 };
@@ -39,8 +39,8 @@ static mut TEXT_RETURN_ADDR: usize = 0;
 static mut SUB_402B70: usize = 0;
 
 impl CoreHook for Hitocos2Hook {
-    fn on_process_attach(_hinst_dll: HMODULE) {
-        let handle = crate::utils::win32::get_module_handle(core::ptr::null()).unwrap();
+    fn on_process_attach(_hinst_dll: HMODULE) -> crate::Result<()> {
+        let handle = crate::utils::win32::get_module_handle(core::ptr::null())?;
         let module = handle as *mut u8;
 
         unsafe {
@@ -51,17 +51,13 @@ impl CoreHook for Hitocos2Hook {
         unsafe {
             match ARG_GAME_TYPE {
                 "hitocos2" => {
-                    crate::utils::mem::patch::write_jmp_instruction(
-                        module.add(0xF686),
-                        name_trampoline as _,
-                    )
-                    .unwrap();
+                    module
+                        .add(0xF686)
+                        .write_jmp_instruction(name_trampoline as _)?;
 
-                    crate::utils::mem::patch::write_jmp_instruction(
-                        module.add(0xE490),
-                        text_trampoline as _,
-                    )
-                    .unwrap();
+                    module
+                        .add(0xE490)
+                        .write_jmp_instruction(text_trampoline as _)?;
                 }
 
                 _ => {
@@ -69,6 +65,7 @@ impl CoreHook for Hitocos2Hook {
                 }
             }
         }
+        Ok(())
     }
 }
 

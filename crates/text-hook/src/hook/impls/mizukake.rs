@@ -3,25 +3,25 @@ use windows_sys::Win32::Foundation::HMODULE;
 
 use crate::debug;
 use crate::hook::traits::CoreHook;
+use crate::utils::exts::ptr_ext::PtrWriteExt;
 
 #[derive(DefaultHook)]
 pub struct MizukakeHook;
 
 impl CoreHook for MizukakeHook {
-    fn on_process_attach(_hinst_dll: HMODULE) {
-        let handle = crate::utils::win32::get_module_handle(core::ptr::null()).unwrap();
+    fn on_process_attach(_hinst_dll: HMODULE) -> crate::Result<()> {
+        let handle = crate::utils::win32::get_module_handle(core::ptr::null())?;
 
         debug!("patch {handle:p}");
 
         let module_addr = handle as *mut u8;
 
         unsafe {
-            crate::utils::mem::patch::write_jmp_instruction(
-                module_addr.add(0x1A8F1C),
-                trampoline as _,
-            )
-            .unwrap();
+            module_addr
+                .add(0x1A8F1C)
+                .write_jmp_instruction(trampoline as _)?;
         }
+        Ok(())
     }
 }
 

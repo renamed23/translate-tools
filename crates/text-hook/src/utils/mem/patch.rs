@@ -6,7 +6,7 @@ use windows_sys::Win32::System::{
     Threading::GetCurrentProcess,
 };
 
-use crate::utils::mem::protect_guard::ProtectGuard;
+use crate::utils::{exts::ptr_ext::PtrWriteExt, mem::protect_guard::ProtectGuard};
 
 /// 刷新指令缓存（在修改代码段字节后必须调用）
 pub fn flush_icache(addr: *const u8, size: usize) {
@@ -158,7 +158,8 @@ pub unsafe fn write_rel32_instruction<const OPCODE: u8>(
     opcode[0] = OPCODE;
     opcode[1..5].copy_from_slice(&rel32.to_le_bytes());
 
-    write_asm(patch_address, &opcode)
+    patch_address.patch_asm(&opcode)?;
+    Ok(())
 }
 
 /// 在指定地址写入 32 位相对跳转指令（E9 jmp）

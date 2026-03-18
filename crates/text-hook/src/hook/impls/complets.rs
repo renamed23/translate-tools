@@ -15,11 +15,12 @@ use crate::{debug, print_last_error_message};
 pub struct CompletsHook;
 
 impl CoreHook for CompletsHook {
-    fn on_process_attach(_hinst_dll: HMODULE) {
+    fn on_process_attach(_hinst_dll: HMODULE) -> crate::Result<()> {
         unsafe {
-            HOOK_REG_OPEN_KEY_EX_A.enable().unwrap();
-            HOOK_REG_CREATE_KEY_EX_A.enable().unwrap();
+            HOOK_REG_OPEN_KEY_EX_A.enable()?;
+            HOOK_REG_CREATE_KEY_EX_A.enable()?;
         };
+        Ok(())
     }
 }
 

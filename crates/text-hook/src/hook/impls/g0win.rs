@@ -10,7 +10,7 @@ use crate::{
     constant::ARG_GAME_TYPE,
     hook::traits::CoreHook,
     utils::exts::{
-        ptr_ext::PtrExt,
+        ptr_ext::{PtrExt, PtrWriteExt},
         slice_ext::{ByteSliceExt, WideSliceExt},
     },
 };
@@ -19,36 +19,20 @@ use crate::{
 pub struct G0WinHook;
 
 impl CoreHook for G0WinHook {
-    fn on_process_attach(_hinst_dll: HMODULE) {
-        let handle = crate::utils::win32::get_module_handle(core::ptr::null()).unwrap();
+    fn on_process_attach(_hinst_dll: HMODULE) -> crate::Result<()> {
+        let handle = crate::utils::win32::get_module_handle(core::ptr::null())?;
         let module = handle as *mut u8;
 
         unsafe {
             match ARG_GAME_TYPE {
                 "うたかな" => {
-                    crate::utils::mem::patch::write_asm(
-                        module.add(0x2A78C),
-                        &byte_slice!("EB 14 90"),
-                    )
-                    .unwrap();
-                    crate::utils::mem::patch::write_jmp_instruction(
-                        module.add(0x2A7A2),
-                        trampoline as _,
-                    )
-                    .unwrap();
+                    module.add(0x2A78C).patch_asm(&byte_slice!("EB 14 90"))?;
+                    module.add(0x2A7A2).write_jmp_instruction(trampoline as _)?;
                 }
 
                 "天巫女姫" => {
-                    crate::utils::mem::patch::write_asm(
-                        module.add(0x2C18C),
-                        &byte_slice!("EB 14 90"),
-                    )
-                    .unwrap();
-                    crate::utils::mem::patch::write_jmp_instruction(
-                        module.add(0x2C1A2),
-                        trampoline as _,
-                    )
-                    .unwrap();
+                    module.add(0x2C18C).patch_asm(&byte_slice!("EB 14 90"))?;
+                    module.add(0x2C1A2).write_jmp_instruction(trampoline as _)?;
                 }
 
                 _ => {
@@ -56,6 +40,7 @@ impl CoreHook for G0WinHook {
                 }
             }
         }
+        Ok(())
     }
 }
 
@@ -81,6 +66,7 @@ unsafe extern "system" fn trampoline() {
     )
 }
 
+#[allow(clippy::type_complexity)]
 static CACHE: LazyLock<Mutex<HashMap<Box<[u8]>, &'static [u8]>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
 

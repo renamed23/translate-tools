@@ -5,6 +5,8 @@ use windows_sys::{Win32::Foundation::HMODULE, core::PCSTR};
 use crate::hook::traits::CoreHook;
 #[cfg(feature = "patch_extracting")]
 use crate::utils::exts::ptr_ext::PtrExt;
+#[cfg(feature = "patch_extracting")]
+use crate::utils::exts::ptr_ext::PtrWriteExt;
 
 #[derive(DefaultHook)]
 pub struct UminomHook;
@@ -12,20 +14,19 @@ pub struct UminomHook;
 impl CoreHook for UminomHook {
     // 解压器实现，仅为了获取解包数据，不要在真补丁中使用
     #[cfg(feature = "patch_extracting")]
-    fn on_process_attach(_hinst_dll: HMODULE) {
-        let handle = crate::utils::win32::get_module_handle(core::ptr::null()).unwrap();
+    fn on_process_attach(_hinst_dll: HMODULE) -> crate::Result<()> {
+        let handle = crate::utils::win32::get_module_handle(core::ptr::null())?;
 
         crate::debug!("patch {handle:p}");
 
         let module_addr = handle as *mut u8;
 
         unsafe {
-            crate::utils::mem::patch::write_jmp_instruction(
-                module_addr.add(0x5DDDB),
-                trampoline as _,
-            )
-            .unwrap();
+            module_addr
+                .add(0x5DDDB)
+                .write_jmp_instruction(trampoline as _)?;
         }
+        Ok(())
     }
 }
 

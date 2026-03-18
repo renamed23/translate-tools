@@ -2,6 +2,7 @@ use translate_macros::{byte_slice, ffi_catch_unwind};
 use windows_sys::w;
 
 use crate::debug;
+use crate::utils::exts::ptr_ext::PtrWriteExt;
 
 #[ffi_catch_unwind]
 #[unsafe(no_mangle)]
@@ -13,12 +14,11 @@ pub unsafe extern "system" fn patch_asm() {
     let module_addr = handle as *mut u8;
 
     unsafe {
-        crate::utils::mem::patch::write_asm(
-            module_addr.add(0x27F4E),
+        module_addr
+            .add(0x27F4E)
             // jmp system.10034A00
-            &byte_slice!("E9 AD CA 00 00"),
-        )
-        .unwrap();
+            .patch_asm(&byte_slice!("E9 AD CA 00 00"))
+            .unwrap();
 
         let code_buf = crate::utils::mem::patch::generate_trampoline_stub_32(
             replace_script as *const () as _,
@@ -28,7 +28,7 @@ pub unsafe extern "system" fn patch_asm() {
             &byte_slice!("C2 0C 00"),
         );
 
-        crate::utils::mem::patch::write_asm(module_addr.add(0x34A00), &code_buf).unwrap();
+        module_addr.add(0x34A00).patch_asm(&code_buf).unwrap();
     }
 }
 

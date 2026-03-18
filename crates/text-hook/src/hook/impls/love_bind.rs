@@ -10,10 +10,11 @@ use crate::utils::exts::slice_ext::{ByteSliceExt, WideSliceExt};
 pub struct LoveBindHook;
 
 impl CoreHook for LoveBindHook {
-    fn on_process_attach(_hinst_dll: HMODULE) {
+    fn on_process_attach(_hinst_dll: HMODULE) -> crate::Result<()> {
         unsafe {
-            HOOK_MESSAGE_BOX_TIMEOUT_A.enable().unwrap();
+            HOOK_MESSAGE_BOX_TIMEOUT_A.enable()?;
         };
+        Ok(())
     }
 }
 

@@ -85,12 +85,19 @@ pub fn default_dll_main(
             #[cfg(feature = "delayed_attach")]
             crate::delayed_attach::enable_entry_point_hook();
 
-            HookImplType::on_process_attach(hinst_dll);
+            if let Err(e) = crate::hook::impls::HookImplType::on_process_attach(hinst_dll) {
+                crate::debug!("on_process_attach failed with {e:?}");
+            }
         }
         PROCESS_DETACH => {
             crate::debug!("Process detach");
 
-            HookImplType::on_process_detach(hinst_dll, !_lpv_reserved.is_null());
+            if let Err(e) = crate::hook::impls::HookImplType::on_process_detach(
+                hinst_dll,
+                !_lpv_reserved.is_null(),
+            ) {
+                crate::debug!("on_process_detach failed with {e:?}");
+            }
         }
         _ => {}
     }
@@ -147,7 +154,9 @@ pub fn attach_clean_up() {
 
     crate::hook::disable_hooks_from_lists();
 
-    HookImplType::on_process_attach_clean_up();
+    if let Err(e) = crate::hook::impls::HookImplType::on_process_attach_clean_up() {
+        crate::debug!("on_process_attach_clean_up failed with {e:?}");
+    }
 
     #[cfg(feature = "delayed_attach")]
     crate::delayed_attach::disable_entry_point_hook();

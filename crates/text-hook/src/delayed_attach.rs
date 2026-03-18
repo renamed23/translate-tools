@@ -45,7 +45,9 @@ fn delayed_attach() {
     }
 
     crate::hook::enable_hooks_from_lists();
-    crate::hook::impls::HookImplType::on_delayed_attach();
+    if let Err(e) = crate::hook::impls::HookImplType::on_delayed_attach() {
+        crate::debug!("on_delayed_attach failed with {e:?}");
+    }
 }
 
 fn delayed_attach_clean() {

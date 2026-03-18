@@ -18,11 +18,12 @@ use crate::{
 pub struct SeraphHook;
 
 impl CoreHook for SeraphHook {
-    fn on_process_attach(_hinst_dll: HMODULE) {
+    fn on_process_attach(_hinst_dll: HMODULE) -> crate::Result<()> {
         unsafe {
-            HOOK_GET_PRIVATE_PROFILE_INT_A.enable().unwrap();
-            HOOK_GET_PRIVATE_PROFILE_STRING_A.enable().unwrap();
+            HOOK_GET_PRIVATE_PROFILE_INT_A.enable()?;
+            HOOK_GET_PRIVATE_PROFILE_STRING_A.enable()?;
         };
+        Ok(())
     }
 }
 

@@ -4,7 +4,7 @@ use windows_sys::Win32::Foundation::HMODULE;
 
 use crate::constant::ARG_PATCH_TYPE;
 use crate::hook::traits::CoreHook;
-use crate::utils::mem::patch::write_asm;
+use crate::utils::exts::ptr_ext::PtrWriteExt;
 
 #[derive(DefaultHook)]
 pub struct NatsuNatsuHook;
@@ -12,8 +12,8 @@ pub struct NatsuNatsuHook;
 translate_macros::embed!(const CHARS: [u8] from "assets/misc/System002");
 
 impl CoreHook for NatsuNatsuHook {
-    fn on_process_attach(_hinst_dll: HMODULE) {
-        let handle = crate::utils::win32::get_module_handle(core::ptr::null()).unwrap();
+    fn on_process_attach(_hinst_dll: HMODULE) -> crate::Result<()> {
+        let handle = crate::utils::win32::get_module_handle(core::ptr::null())?;
 
         let module_addr = handle as *mut u8;
 
@@ -25,7 +25,7 @@ impl CoreHook for NatsuNatsuHook {
     }
 }
 
-fn patch_natsu_natsu(module_addr: *mut u8) {
+fn patch_natsu_natsu(module_addr: *mut u8) -> crate::Result<()> {
     unsafe {
         let chars_mem_ptr = CHARS.as_ptr() as u32;
 
@@ -34,64 +34,65 @@ fn patch_natsu_natsu(module_addr: *mut u8) {
         let mut buf = vec![0x0F, 0xBE, 0x99];
         buf.extend_from_slice(&chars_mem_ptr.to_le_bytes());
         buf.push(0x90);
-        write_asm(module_addr.add(0xACDE), &buf).unwrap();
+        module_addr.add(0xACDE).patch_asm(&buf)?;
 
         // movsx ebx, byte ptr ds:[ecx + {CHARS_MEM_PTR} + 1]
         // nop
         let mut buf = vec![0x0F, 0xBE, 0x99];
         buf.extend_from_slice(&chars_mem_ptr.add(1).to_le_bytes());
         buf.push(0x90);
-        write_asm(module_addr.add(0xACF2), &buf).unwrap();
+        module_addr.add(0xACF2).patch_asm(&buf)?;
 
         // mov cl, byte ptr ds:[esi + {CHARS_MEM_PTR}]
         // nop
         let mut buf = vec![0x8A, 0x8E];
         buf.extend_from_slice(&chars_mem_ptr.to_le_bytes());
         buf.push(0x90);
-        write_asm(module_addr.add(0xBC47), &buf).unwrap();
-        write_asm(module_addr.add(0x98E4), &buf).unwrap();
+        module_addr.add(0xBC47).patch_asm(&buf)?;
+        module_addr.add(0x98E4).patch_asm(&buf)?;
 
         // mov dl, byte ptr ds:[esi + {CHARS_MEM_PTR} + 1]
         // nop
         let mut buf = vec![0x8A, 0x96];
         buf.extend_from_slice(&chars_mem_ptr.add(1).to_le_bytes());
         buf.push(0x90);
-        write_asm(module_addr.add(0xBC52), &buf).unwrap();
+        module_addr.add(0xBC52).patch_asm(&buf)?;
 
         // mov cl, byte ptr ds:[eax + {CHARS_MEM_PTR}]
         // nop
         let mut buf = vec![0x8A, 0x88];
         buf.extend_from_slice(&chars_mem_ptr.to_le_bytes());
         buf.push(0x90);
-        write_asm(module_addr.add(0xD221), &buf).unwrap();
-        write_asm(module_addr.add(0xE692), &buf).unwrap();
-        write_asm(module_addr.add(0xE6EB), &buf).unwrap();
+        module_addr.add(0xD221).patch_asm(&buf)?;
+        module_addr.add(0xE692).patch_asm(&buf)?;
+        module_addr.add(0xE6EB).patch_asm(&buf)?;
 
         // mov al, byte ptr ds:[eax + {CHARS_MEM_PTR} + 1]
         // nop
         let mut buf = vec![0x8A, 0x80];
         buf.extend_from_slice(&chars_mem_ptr.add(1).to_le_bytes());
         buf.push(0x90);
-        write_asm(module_addr.add(0xD22D), &buf).unwrap();
+        module_addr.add(0xD22D).patch_asm(&buf)?;
 
         // mov dl, byte ptr ds:[eax + {CHARS_MEM_PTR} + 1]
         // nop
         let mut buf = vec![0x8A, 0x90];
         buf.extend_from_slice(&chars_mem_ptr.add(1).to_le_bytes());
         buf.push(0x90);
-        write_asm(module_addr.add(0xE69D), &buf).unwrap();
-        write_asm(module_addr.add(0xE6F6), &buf).unwrap();
+        module_addr.add(0xE69D).patch_asm(&buf)?;
+        module_addr.add(0xE6F6).patch_asm(&buf)?;
 
         // mov al, byte ptr ds:[esi + {CHARS_MEM_PTR} + 1]
         // nop
         let mut buf = vec![0x8A, 0x86];
         buf.extend_from_slice(&chars_mem_ptr.add(1).to_le_bytes());
         buf.push(0x90);
-        write_asm(module_addr.add(0x98F4), &buf).unwrap();
+        module_addr.add(0x98F4).patch_asm(&buf)?;
     }
+    Ok(())
 }
 
-fn patch_mozu(module_addr: *mut u8) {
+fn patch_mozu(module_addr: *mut u8) -> crate::Result<()> {
     unsafe {
         let chars_mem_ptr = CHARS.as_ptr() as u32;
 
@@ -143,22 +144,23 @@ fn patch_mozu(module_addr: *mut u8) {
         buf9.extend_from_slice(&chars_mem_ptr.add(1).to_le_bytes());
         buf9.push(0x90);
 
-        write_asm(module_addr.add(0xA350), &buf4).unwrap();
-        write_asm(module_addr.add(0xA360), &buf9).unwrap();
+        module_addr.add(0xA350).patch_asm(&buf4)?;
+        module_addr.add(0xA360).patch_asm(&buf9)?;
 
-        write_asm(module_addr.add(0xB7FE), &buf2).unwrap();
-        write_asm(module_addr.add(0xB812), &buf3).unwrap();
+        module_addr.add(0xB7FE).patch_asm(&buf2)?;
+        module_addr.add(0xB812).patch_asm(&buf3)?;
 
-        write_asm(module_addr.add(0xC77C), &buf4).unwrap();
-        write_asm(module_addr.add(0xC787), &buf5).unwrap();
+        module_addr.add(0xC77C).patch_asm(&buf4)?;
+        module_addr.add(0xC787).patch_asm(&buf5)?;
 
-        write_asm(module_addr.add(0xDE11), &buf6).unwrap();
-        write_asm(module_addr.add(0xDE1D), &buf7).unwrap();
+        module_addr.add(0xDE11).patch_asm(&buf6)?;
+        module_addr.add(0xDE1D).patch_asm(&buf7)?;
 
-        write_asm(module_addr.add(0xF092), &buf6).unwrap();
-        write_asm(module_addr.add(0xF09D), &buf8).unwrap();
+        module_addr.add(0xF092).patch_asm(&buf6)?;
+        module_addr.add(0xF09D).patch_asm(&buf8)?;
 
-        write_asm(module_addr.add(0xF0EB), &buf6).unwrap();
-        write_asm(module_addr.add(0xF0F6), &buf8).unwrap();
+        module_addr.add(0xF0EB).patch_asm(&buf6)?;
+        module_addr.add(0xF0F6).patch_asm(&buf8)?;
     }
+    Ok(())
 }
