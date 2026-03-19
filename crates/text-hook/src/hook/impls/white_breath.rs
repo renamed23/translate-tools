@@ -1,8 +1,10 @@
 use translate_macros::{byte_slice, ffi_catch_unwind};
 use windows_sys::w;
 
-use crate::debug;
-use crate::utils::exts::ptr_ext::PtrWriteExt;
+use crate::{
+    debug,
+    utils::exts::ptr_ext::{PtrExt, PtrWriteExt},
+};
 
 #[ffi_catch_unwind]
 #[unsafe(no_mangle)]
@@ -35,12 +37,16 @@ pub unsafe extern "system" fn patch_asm() {
 #[ffi_catch_unwind]
 pub unsafe extern "system" fn replace_script(ptr: *mut u8) {
     unsafe {
-        if !crate::utils::mem::quick_memory_check(ptr, 0x18) {
+        use crate::utils::exts::slice_ext::ByteSliceExt;
+
+        if crate::utils::mem::quick_memory_check(ptr, 0x18).is_err() {
             return;
         }
 
         // 读取 ptr + 0x14上的u32小端
         let len = core::ptr::read_unaligned(ptr.add(0x14) as *const u32) as usize;
-        crate::patch::process_buffer(ptr, len);
+        if let Ok(Some(patch)) = ptr.to_slice_mut(len).get_patch_or_extract() {
+            ptr.to_slice_mut(len).copy_from_slice(patch);
+        }
     }
 }

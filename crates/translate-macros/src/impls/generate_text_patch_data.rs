@@ -1,7 +1,9 @@
 use proc_macro2::{Literal, TokenStream};
 use quote::quote;
-use syn::parse::{Parse, ParseStream};
-use syn::{LitStr, Token};
+use syn::{
+    LitStr, Token,
+    parse::{Parse, ParseStream},
+};
 
 use crate::impls::utils::get_full_path_by_manifest;
 

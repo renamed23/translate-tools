@@ -1,8 +1,11 @@
 use std::{marker::PhantomData, sync::atomic::AtomicBool};
 
-use windows_sys::Win32::Foundation::HMODULE;
-use windows_sys::Win32::System::Diagnostics::Debug::IMAGE_DIRECTORY_ENTRY_IMPORT;
-use windows_sys::Win32::System::SystemServices::IMAGE_IMPORT_DESCRIPTOR;
+use windows_sys::Win32::{
+    Foundation::HMODULE,
+    System::{
+        Diagnostics::Debug::IMAGE_DIRECTORY_ENTRY_IMPORT, SystemServices::IMAGE_IMPORT_DESCRIPTOR,
+    },
+};
 
 use crate::utils::{exts::ptr_ext::PtrWriteExt, mem::patch::get_dos_and_nt_headers};
 

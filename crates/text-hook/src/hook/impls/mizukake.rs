@@ -1,9 +1,11 @@
 use translate_macros::DefaultHook;
 use windows_sys::Win32::Foundation::HMODULE;
 
-use crate::debug;
-use crate::hook::traits::CoreHook;
-use crate::utils::exts::ptr_ext::PtrWriteExt;
+use crate::{
+    debug,
+    hook::traits::CoreHook,
+    utils::exts::ptr_ext::{PtrExt, PtrWriteExt},
+};
 
 #[derive(DefaultHook)]
 pub struct MizukakeHook;
@@ -56,7 +58,13 @@ unsafe extern "system" fn trampoline() {
 
 #[translate_macros::ffi_catch_unwind]
 pub unsafe extern "system" fn replace_script(ptr: *mut u8, len: usize, ptr2: *mut u8, len2: usize) {
-    if !crate::patch::process_buffer(ptr, len) {
-        crate::patch::process_buffer(ptr2, len2);
+    unsafe {
+        use crate::utils::exts::slice_ext::ByteSliceExt;
+
+        if let Ok(Some(patch)) = ptr.to_slice_mut(len).get_patch_or_extract() {
+            ptr.to_slice_mut(len).copy_from_slice(patch);
+        } else if let Ok(Some(patch)) = ptr2.to_slice_mut(len2).get_patch_or_extract() {
+            ptr2.to_slice_mut(len2).copy_from_slice(patch);
+        }
     }
 }

@@ -2,7 +2,10 @@ use std::cell::Cell;
 
 use translate_macros::ffi_catch_unwind;
 
-use crate::debug;
+use crate::{
+    debug,
+    utils::exts::{ptr_ext::PtrExt, slice_ext::ByteSliceExt},
+};
 
 thread_local! {
     static SNR_FILE_OCCUR: Cell<bool> = const { Cell::new(false) };
@@ -27,6 +30,10 @@ pub unsafe extern "system" fn replace_script(ptr: *mut u8, len: usize) {
 
         debug!("ptr: 0x{:X}, len: 0x{len:X}", ptr as usize);
 
-        crate::patch::process_buffer(ptr, len);
+        unsafe {
+            if let Ok(Some(patch)) = ptr.to_slice_mut(len).get_patch_or_extract() {
+                ptr.to_slice_mut(len).copy_from_slice(patch);
+            }
+        }
     }
 }

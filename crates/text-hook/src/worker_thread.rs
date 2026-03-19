@@ -1,12 +1,13 @@
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::thread::JoinHandle;
+use std::{
+    sync::atomic::{AtomicBool, Ordering},
+    thread::JoinHandle,
+};
 
 use windows_sys::Win32::UI::WindowsAndMessaging::{
     DispatchMessageW, MSG, PM_REMOVE, PeekMessageW, TranslateMessage, WM_QUIT,
 };
 
-use crate::hook::impls::HookImplType;
-use crate::hook::traits::CoreHook;
+use crate::hook::{impls::HookImplType, traits::CoreHook};
 
 static STOP_FLAG: AtomicBool = AtomicBool::new(false);
 static mut JOIN_HANDLE: Option<JoinHandle<()>> = None;

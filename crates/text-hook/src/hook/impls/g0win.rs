@@ -81,7 +81,7 @@ unsafe extern "system" fn hook_text(ptr: *const u8) -> *const u8 {
 
         let wide_text = slice.to_wide(932);
         crate::debug!("Get raw slice {}", wide_text.to_string_lossy());
-        if let Ok(text) = wide_text.lookup_or_add_item() {
+        if let Ok(Some(text)) = wide_text.lookup_or_add_item() {
             crate::debug!("Get translated slice {}", text.to_string_lossy());
             let text_ptr = Box::leak(text.to_multi_byte_null(936).into_boxed_slice());
             CACHE.lock().unwrap().insert(slice.into(), text_ptr);

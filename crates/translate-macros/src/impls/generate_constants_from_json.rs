@@ -73,7 +73,8 @@ pub fn generate_constants_from_json(input: TokenStream) -> syn::Result<TokenStre
                     *value = match v {
                         ConfigEntry::Simple(sv) => Some(sv),
                         ConfigEntry::Complex { .. } => syn_bail2!(
-                            "User 配置不可以使用 Complex 类型覆盖默认配置已有的 Entry '{k}'，请使用 Simple 覆盖"
+                            "User 配置不可以使用 Complex 类型覆盖默认配置已有的 Entry \
+                             '{k}'，请使用 Simple 覆盖"
                         ),
                     };
                 }

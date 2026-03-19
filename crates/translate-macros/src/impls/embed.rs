@@ -1,8 +1,10 @@
 use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use std::path::PathBuf;
-use syn::parse::{Parse, ParseStream};
-use syn::{Ident, LitByteStr, LitStr, Token, Visibility};
+use syn::{
+    Ident, LitByteStr, LitStr, Token, Visibility,
+    parse::{Parse, ParseStream},
+};
 
 use crate::impls::utils::get_full_path_by_manifest;
 

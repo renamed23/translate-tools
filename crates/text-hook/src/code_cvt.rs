@@ -1,13 +1,17 @@
-use windows_sys::Win32::Globalization::{MultiByteToWideChar, WideCharToMultiByte};
-use windows_sys::Win32::Graphics::Gdi::{
-    ANSI_CHARSET, ARABIC_CHARSET, BALTIC_CHARSET, CHINESEBIG5_CHARSET, EASTEUROPE_CHARSET,
-    GB2312_CHARSET, GREEK_CHARSET, HANGUL_CHARSET, HEBREW_CHARSET, RUSSIAN_CHARSET,
-    SHIFTJIS_CHARSET, THAI_CHARSET, TURKISH_CHARSET, VIETNAMESE_CHARSET,
+use windows_sys::Win32::{
+    Globalization::{MultiByteToWideChar, WideCharToMultiByte},
+    Graphics::Gdi::{
+        ANSI_CHARSET, ARABIC_CHARSET, BALTIC_CHARSET, CHINESEBIG5_CHARSET, EASTEUROPE_CHARSET,
+        GB2312_CHARSET, GREEK_CHARSET, HANGUL_CHARSET, HEBREW_CHARSET, RUSSIAN_CHARSET,
+        SHIFTJIS_CHARSET, THAI_CHARSET, TURKISH_CHARSET, VIETNAMESE_CHARSET,
+    },
+    UI::WindowsAndMessaging::CharNextExA,
 };
-use windows_sys::Win32::UI::WindowsAndMessaging::CharNextExA;
 
-use crate::constant::{CHAR_FILTER, CHAR_SET};
-use crate::print_last_error_message;
+use crate::{
+    constant::{CHAR_FILTER, CHAR_SET},
+    print_last_error_message,
+};
 
 mod mapping_data {
     translate_macros::generate_mapping_data!("assets/mapping.json");

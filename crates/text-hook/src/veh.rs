@@ -75,7 +75,8 @@ pub fn request_set_hw_breakpoint_on_current_thread(
     reg: HwReg,
 ) {
     crate::debug!(
-        "Requesting to set HWBP on current thread: addr={addr:#x}, kind={kind:?}, len={len:?}, reg={reg:?}"
+        "Requesting to set HWBP on current thread: addr={addr:#x}, kind={kind:?}, len={len:?}, \
+         reg={reg:?}"
     );
 
     let args = [addr, kind as usize, len as usize, reg as usize];
@@ -170,15 +171,15 @@ unsafe extern "system" fn veh_handler(exception_info: *mut EXCEPTION_POINTERS) -
             let hit_bit = 1usize << i;
             if (dr6 & hit_bit) != 0 {
                 let reg: HwReg = unsafe { core::mem::transmute(i) };
-                /* * 【重要风险警告 - 必读】
-                 * 此处是你进行后续处理（如创建线程、分配内存、打印日志）的地方。
-                 * * 事实风险：
-                 * 虽然此时你已经从 Context 中删除了断点，但你依然处于 VEH 的异常上下文中。
-                 * 如果触发断点的线程在进入 VEH 前已经持有了“堆锁”（Heap Lock），
-                 * 而你在下面的逻辑中尝试分配内存（如 String/Vec/format!）或创建线程，
-                 * 那么程序将会有极高概率发生【死锁】，且无法通过删除断点来解除。
-                 * * 建议：出问题后，请将此处逻辑改为无锁信号通知模式。
-                 */
+
+                // * 【重要风险警告 - 必读】
+                // 此处是你进行后续处理（如创建线程、分配内存、打印日志）的地方。
+                // * 事实风险：
+                // 虽然此时你已经从 Context 中删除了断点，但你依然处于 VEH 的异常上下文中。
+                // 如果触发断点的线程在进入 VEH 前已经持有了“堆锁”（Heap Lock），
+                // 而你在下面的逻辑中尝试分配内存（如 String/Vec/format!）或创建线程，
+                // 那么程序将会有极高概率发生【死锁】，且无法通过删除断点来解除。
+                // * 建议：出问题后，请将此处逻辑改为无锁信号通知模式。
 
                 // 用户回调：返回 Ok(true) 则清除断点
                 match HookImplType::on_hwbp_hit(context, reg) {

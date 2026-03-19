@@ -64,7 +64,7 @@ pub unsafe extern "system" fn extract_script(ptr: *mut u8, len: usize, filename:
         let filename = filename
             .to_slice_until_null(MAX_PATH as _)
             .to_string_lossy();
-        if crate::patch::try_extracting(ptr, len) {
+        if ptr.to_slice_mut(len).extract_to_file().is_ok() {
             let new_filename = format!("{filename}.isf");
 
             // 读取cwd的`raw/filenames.txt`，如果没有就创建，然后在末尾添加`{new_filename}\n`

@@ -4,8 +4,8 @@ use windows_sys::Win32::{
 };
 
 use crate::{
-    constant::ENUM_FONT_PROC_CHAR_SET, constant::ENUM_FONT_PROC_OUT_PRECISION,
-    constant::ENUM_FONT_PROC_PITCH, debug,
+    constant::{ENUM_FONT_PROC_CHAR_SET, ENUM_FONT_PROC_OUT_PRECISION, ENUM_FONT_PROC_PITCH},
+    debug,
 };
 
 #[cfg(feature = "debug_output")]

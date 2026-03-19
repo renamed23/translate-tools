@@ -1,5 +1,7 @@
-use windows_sys::Win32::Foundation::{HMODULE, HWND, LPARAM, LRESULT, WPARAM};
-use windows_sys::Win32::System::Diagnostics::Debug::CONTEXT;
+use windows_sys::Win32::{
+    Foundation::{HMODULE, HWND, LPARAM, LRESULT, WPARAM},
+    System::Diagnostics::Debug::CONTEXT,
+};
 
 #[cfg(feature = "overlay")]
 use crate::overlay::OverlayContext;

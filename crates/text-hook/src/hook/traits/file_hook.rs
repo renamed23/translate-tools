@@ -46,7 +46,8 @@ pub trait FileHook: Send + Sync + 'static {
                 ) && tail.eq_ignore_ascii_case(REDIRECTION_SRC_PATH.as_bytes())
                 {
                     crate::debug!(
-                        "'{REDIRECTION_SRC_PATH}' file hooked, replace to '{REDIRECTION_TARGET_PATH}'"
+                        "'{REDIRECTION_SRC_PATH}' file hooked, replace to \
+                         '{REDIRECTION_TARGET_PATH}'"
                     );
                     let mut new_path = filename_bytes
                         [..filename_bytes.len() - REDIRECTION_SRC_PATH.len()]
@@ -188,7 +189,11 @@ pub trait FileHook: Send + Sync + 'static {
                 return result;
             };
 
-            crate::patch::process_buffer(_lp_buffer, len);
+            use crate::utils::exts::slice_ext::ByteSliceExt;
+
+            if let Ok(Some(patch)) = _lp_buffer.to_slice_mut(len).get_patch_or_extract() {
+                _lp_buffer.to_slice_mut(len).copy_from_slice(patch);
+            }
             result
         }
     }

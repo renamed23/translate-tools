@@ -2,8 +2,10 @@ use proc_macro2::{Ident, Literal, Span, TokenStream};
 use quote::quote;
 use sha2::{Digest, Sha256};
 use std::{collections::HashSet, path::PathBuf};
-use syn::parse::{Parse, ParseStream};
-use syn::{LitStr, Token};
+use syn::{
+    LitStr, Token,
+    parse::{Parse, ParseStream},
+};
 
 use crate::impls::utils::get_full_path_by_manifest;
 

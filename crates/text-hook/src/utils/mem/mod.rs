@@ -14,8 +14,8 @@ where
     T: PartialEq + Copy + Default,
 {
     unsafe {
-        if max_len == 0 || !quick_memory_check(ptr as *const u8, max_len * size_of::<T>()) {
-            return &mut [];
+        if max_len == 0 || quick_memory_check(ptr as *const u8, max_len * size_of::<T>()).is_err() {
+            return &[];
         }
 
         let zero = T::default();
@@ -46,7 +46,7 @@ where
     unsafe {
         // 如果是非法指针，返回空切片（注意：从任意指针构造 0 长度切片是允许的）
         // 或者长度为 0 的情况直接返回空切片
-        if max_len == 0 || !quick_memory_check(ptr as *mut u8, max_len * size_of::<T>()) {
+        if max_len == 0 || quick_memory_check(ptr as *const u8, max_len * size_of::<T>()).is_err() {
             return &mut [];
         }
 
@@ -83,7 +83,7 @@ where
 {
     unsafe {
         // 长度为 0 或者非法指针时直接返回空切片
-        if len == 0 || !quick_memory_check(ptr as *mut u8, len * core::mem::size_of::<T>()) {
+        if len == 0 || quick_memory_check(ptr as *const u8, len * size_of::<T>()).is_err() {
             return &[];
         }
 
@@ -111,7 +111,7 @@ where
 {
     unsafe {
         // 长度为 0 或者非法指针时直接返回空切片
-        if len == 0 || !quick_memory_check(ptr as *mut u8, len * core::mem::size_of::<T>()) {
+        if len == 0 || quick_memory_check(ptr as *const u8, len * size_of::<T>()).is_err() {
             return &mut [];
         }
 
@@ -121,32 +121,37 @@ where
 }
 
 /// Windows 平台上的简单内存访问检查
-pub fn quick_memory_check(ptr: *const u8, len: usize) -> bool {
+pub fn quick_memory_check(ptr: *const u8, len: usize) -> crate::Result<()> {
     if len == 0 {
-        return true;
+        return Ok(());
     }
+
     let addr = ptr as usize;
 
     // 1. 基础范围检查：避开 Null Page (0 - 64KB)
     if addr < 0x10000 {
-        return false;
+        crate::bail!("Pointer address {:#X} is within null page range", addr);
     }
 
     // 2. 根据架构检查用户空间上限
     #[cfg(target_arch = "x86")]
-    let user_space_limit = 0x7FFEFFFF; // 典型的 32 位用户空间上限（3GB/4GB 模式下会有变动，但这是安全值）
+    let user_space_limit = 0x7FFEFFFF;
 
     #[cfg(target_arch = "x86_64")]
-    let user_space_limit = 0x00007FFFFFFFFFFF; // 64 位用户空间上限
+    let user_space_limit = 0x00007FFFFFFFFFFF;
 
     // 3. 边界与溢出检查
     if addr > user_space_limit {
-        return false;
+        crate::bail!("Address {:#X} exceeds user space limit", addr);
     }
 
-    if addr.saturating_add(len - 1) > user_space_limit {
-        return false;
+    let end_addr = addr
+        .checked_add(len)
+        .ok_or_else(|| crate::anyhow!("Memory range overflow: addr {:#X}, len {}", addr, len))?;
+
+    if end_addr > user_space_limit {
+        crate::bail!("Memory range end {:#X} exceeds user space limit", end_addr);
     }
 
-    true
+    Ok(())
 }

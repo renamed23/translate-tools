@@ -124,7 +124,7 @@ macro_rules! print_last_error_message {
             }
         }
     }};
-    (ec $ec: expr) => {{
+    (ec $ec:expr) => {{
         #[cfg(feature = "debug_output")]
         {
             if let Some(msg) = $crate::debug_output::debug_impl::get_last_error_message_from_ec($ec)
@@ -133,7 +133,7 @@ macro_rules! print_last_error_message {
             }
         }
     }};
-    (nt $ntstatus: expr) => {{
+    (nt $ntstatus:expr) => {{
         #[cfg(feature = "debug_output")]
         {
             if let Some(msg) =

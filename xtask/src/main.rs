@@ -1,6 +1,8 @@
-use std::collections::BTreeSet;
-use std::path::{Path, PathBuf};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::{
+    collections::BTreeSet,
+    path::{Path, PathBuf},
+    time::{SystemTime, UNIX_EPOCH},
+};
 
 use anyhow::{Context, anyhow, bail};
 use fs_extra::dir::{CopyOptions, copy as copy_dir, remove as remove_dir};
@@ -359,7 +361,6 @@ fn build_scenarios() -> Vec<Scenario> {
 
     // 其余 impl: 只跑 x86
     let game_impls = [
-        "bruns",
         "c4",
         "complets",
         "love_bind",
@@ -381,7 +382,7 @@ fn build_scenarios() -> Vec<Scenario> {
     }
 
     // 非 default_impl 的特例补测
-    for imp in ["bruns", "c4", "mizukake", "white_breath"] {
+    for imp in ["c4", "mizukake", "white_breath"] {
         scenarios.push(Scenario {
             name: format!("{imp}/patch_extracting"),
             features: feature_set(all_functional_impl_base(), &[imp, "patch_extracting"], &[]),
@@ -430,7 +431,6 @@ fn all_functional_impl_base<'a>() -> &'a [&'a str] {
         "text_patch",
         "patch",
         "read_file_patch_impl",
-        "export_patch_process_fn",
         "custom_font",
         "export_default_dll_main",
         "locale_emulator",

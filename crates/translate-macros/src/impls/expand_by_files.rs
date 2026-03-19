@@ -1,11 +1,12 @@
 use convert_case::{Case, Casing};
 use proc_macro2::{Group, Ident, Literal, Span, TokenStream, TokenTree};
 use quote::{ToTokens, TokenStreamExt};
-use std::collections::HashSet;
-use std::fs;
-use syn::parse::{Parse, ParseStream};
-use syn::punctuated::Punctuated;
-use syn::{Block, LitStr, Token};
+use std::{collections::HashSet, fs};
+use syn::{
+    Block, LitStr, Token,
+    parse::{Parse, ParseStream},
+    punctuated::Punctuated,
+};
 
 use crate::impls::utils::get_full_path_by_manifest;
 

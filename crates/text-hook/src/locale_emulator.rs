@@ -1,21 +1,26 @@
 use core::ffi::c_void;
 
-use windows_sys::Win32::Foundation::{ERROR_SUCCESS, SYSTEMTIME};
-use windows_sys::Win32::Globalization::GetACP;
-use windows_sys::Win32::Graphics::Gdi::LF_FACESIZE;
-use windows_sys::Win32::System::Environment::GetCommandLineW;
-use windows_sys::Win32::System::Registry::{
-    HKEY, HKEY_LOCAL_MACHINE, KEY_READ, REG_BINARY, REG_SZ, RegCloseKey, RegOpenKeyExW,
-    RegQueryValueExW,
+use windows_sys::{
+    Win32::{
+        Foundation::{ERROR_SUCCESS, SYSTEMTIME},
+        Globalization::GetACP,
+        Graphics::Gdi::LF_FACESIZE,
+        System::{
+            Environment::GetCommandLineW,
+            Registry::{
+                HKEY, HKEY_LOCAL_MACHINE, KEY_READ, REG_BINARY, REG_SZ, RegCloseKey, RegOpenKeyExW,
+                RegQueryValueExW,
+            },
+            Threading::{
+                ExitProcess, INFINITE, PROCESS_INFORMATION, STARTUPINFOW, WaitForSingleObject,
+            },
+        },
+    },
+    core::PCWSTR,
+    s, w,
 };
-use windows_sys::Win32::System::Threading::{
-    ExitProcess, INFINITE, PROCESS_INFORMATION, STARTUPINFOW, WaitForSingleObject,
-};
-use windows_sys::core::PCWSTR;
-use windows_sys::{s, w};
 
-use crate::debug;
-use crate::utils::exts::slice_ext::ByteSliceExt;
+use crate::{debug, utils::exts::slice_ext::ByteSliceExt};
 
 #[repr(C)]
 #[derive(Clone, Copy, Default)]

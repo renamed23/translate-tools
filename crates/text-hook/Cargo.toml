@@ -68,8 +68,6 @@ patch = []
 patch_extracting = ["patch"]
 # 截获ReadFile来实现patch
 read_file_patch_impl = ["patch", "file_hook"]
-# 导出patch的处理函数，可以用于外部汇编进行IAT调用
-export_patch_process_fn = ["patch"]
 # 当该feature开启时，create_font系列函数不再固定字体
 enum_font_families = []
 # 嵌入`assets/font`的自定义字体，会使用`AddFontMemResourceEx`让GDI识别
@@ -113,12 +111,6 @@ debug_file_impl = ["debug_output", "export_default_dll_main", "file_hook"]
 default_impl = ["export_default_dll_main"]
 
 # 针对特定游戏的impl-------------------------------------------
-bruns = [
-    "export_default_dll_main",
-    "text_hook",
-    "override_window_title",
-    "patch",
-]
 # 非C社的c4
 c4 = ["patch", "default_impl", "enum_font_families", "text_hook"]
 complets = [
@@ -185,6 +177,7 @@ path-clean = "1"
 ruzstd = "0.8"
 glow = "0.17"
 bytemuck = { version = "1.25", features = ["derive"] }
+cfg-if = "1.0"
 
 [build-dependencies]
 anyhow.workspace = true

@@ -1,6 +1,7 @@
-use ntapi::ntpebteb::PEB;
-use ntapi::ntpsapi::PROCESS_BASIC_INFORMATION;
-use ntapi::ntpsapi::{NtQueryInformationProcess, ProcessBasicInformation};
+use ntapi::{
+    ntpebteb::PEB,
+    ntpsapi::{NtQueryInformationProcess, PROCESS_BASIC_INFORMATION, ProcessBasicInformation},
+};
 use windows_sys::Win32::System::Threading::GetCurrentProcess;
 
 use crate::print_last_error_message;

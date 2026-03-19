@@ -2,9 +2,7 @@ use std::ops::Add;
 use translate_macros::DefaultHook;
 use windows_sys::Win32::Foundation::HMODULE;
 
-use crate::constant::ARG_PATCH_TYPE;
-use crate::hook::traits::CoreHook;
-use crate::utils::exts::ptr_ext::PtrWriteExt;
+use crate::{constant::ARG_PATCH_TYPE, hook::traits::CoreHook, utils::exts::ptr_ext::PtrWriteExt};
 
 #[derive(DefaultHook)]
 pub struct NatsuNatsuHook;

@@ -1,11 +1,13 @@
 use translate_macros::detour_trait;
-use windows_sys::Win32::{
-    Foundation::{HWND, LPARAM, LRESULT, WPARAM},
-    UI::WindowsAndMessaging::{
-        CREATESTRUCTA, CREATESTRUCTW, GetParent, HMENU, WM_NCCREATE, WM_SETTEXT,
+use windows_sys::{
+    Win32::{
+        Foundation::{HWND, LPARAM, LRESULT, WPARAM},
+        UI::WindowsAndMessaging::{
+            CREATESTRUCTA, CREATESTRUCTW, GetParent, HMENU, WM_NCCREATE, WM_SETTEXT,
+        },
     },
+    core::BOOL,
 };
-use windows_sys::core::BOOL;
 
 use crate::{
     debug,
@@ -207,7 +209,7 @@ pub trait WindowHook: Send + Sync + 'static {
                 let _opt_trans_msg = text_slice.to_wide_ansi().lookup_or_add_item_null();
 
                 #[cfg(not(feature = "text_extracting"))]
-                if let Ok(trans_msg) = _opt_trans_msg {
+                if let Ok(Some(trans_msg)) = _opt_trans_msg {
                     use windows_sys::Win32::UI::WindowsAndMessaging::ModifyMenuW;
                     return ModifyMenuW(
                         h_menu,
@@ -265,9 +267,14 @@ pub trait WindowHook: Send + Sync + 'static {
 
             #[cfg(not(feature = "text_extracting"))]
             if _opt_wide_text.is_ok() || _opt_wide_caption.is_ok() {
-                let wide_text = _opt_wide_text.unwrap_or_else(|_| text_slice.to_wide_null_ansi());
-                let wide_caption =
-                    _opt_wide_caption.unwrap_or_else(|_| cap_slice.to_wide_null_ansi());
+                let wide_text = _opt_wide_text
+                    .ok()
+                    .flatten()
+                    .unwrap_or_else(|| text_slice.to_wide_null_ansi());
+                let wide_caption = _opt_wide_caption
+                    .ok()
+                    .flatten()
+                    .unwrap_or_else(|| cap_slice.to_wide_null_ansi());
 
                 let wide_text_ptr = if wide_text.len() == 1 {
                     core::ptr::null()
@@ -305,10 +312,14 @@ pub trait WindowHook: Send + Sync + 'static {
                 debug!("Get SetDlgItemTextA text: {raw_text}");
             }
 
-            let _opt_trans_msg = text_slice.to_wide_ansi().lookup_or_add_item_null();
+            let _opt_trans_msg = text_slice
+                .to_wide_ansi()
+                .lookup_or_add_item_null()
+                .ok()
+                .flatten();
 
             #[cfg(not(feature = "text_extracting"))]
-            if let Ok(trans_msg) = _opt_trans_msg {
+            if let Some(trans_msg) = _opt_trans_msg {
                 use windows_sys::Win32::UI::WindowsAndMessaging::SetDlgItemTextW;
                 return SetDlgItemTextW(h_dlg, n_id_dlg_item, trans_msg.as_ptr());
             }
@@ -333,10 +344,14 @@ pub trait WindowHook: Send + Sync + 'static {
                 debug!("Get SetWindowTextA text: {raw_text}");
             }
 
-            let _opt_trans_msg = text_slice.to_wide_ansi().lookup_or_add_item_null();
+            let _opt_trans_msg = text_slice
+                .to_wide_ansi()
+                .lookup_or_add_item_null()
+                .ok()
+                .flatten();
 
             #[cfg(not(feature = "text_extracting"))]
-            if let Ok(trans_msg) = _opt_trans_msg {
+            if let Some(trans_msg) = _opt_trans_msg {
                 use windows_sys::Win32::UI::WindowsAndMessaging::SetWindowTextW;
                 return SetWindowTextW(h_wnd, trans_msg.as_ptr());
             }
@@ -358,10 +373,14 @@ pub trait WindowHook: Send + Sync + 'static {
                     debug!("Get SendMessageA (msg={msg:#x}) text: {raw_text}");
                 }
 
-                let _opt_trans_msg = text_slice.to_wide_ansi().lookup_or_add_item_null();
+                let _opt_trans_msg = text_slice
+                    .to_wide_ansi()
+                    .lookup_or_add_item_null()
+                    .ok()
+                    .flatten();
 
                 #[cfg(not(feature = "text_extracting"))]
-                if let Ok(trans_msg) = _opt_trans_msg {
+                if let Some(trans_msg) = _opt_trans_msg {
                     use windows_sys::Win32::UI::WindowsAndMessaging::SendMessageW;
                     return SendMessageW(h_wnd, msg, w_param, trans_msg.as_ptr() as LPARAM);
                 }
@@ -397,10 +416,12 @@ pub trait WindowHook: Send + Sync + 'static {
             let _opt_trans = caption_slice
                 .to_wide_ansi()
                 .lookup_or_add_item()
+                .ok()
+                .flatten()
                 .map(|s| s.to_multi_byte_null(0));
 
             #[cfg(not(feature = "text_extracting"))]
-            if let Ok(trans) = _opt_trans {
+            if let Some(trans) = _opt_trans {
                 use windows_sys::Win32::UI::Controls::PROPSHEETHEADERA_V2;
 
                 let dw_size = header.dwSize as usize;

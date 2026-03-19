@@ -1,7 +1,6 @@
 use proc_macro2::{Span, TokenStream};
 use quote::quote;
-use syn::{FnArg, Ident, ItemTrait, Pat, PatIdent, TraitItem, Type};
-use syn::{LitStr, TraitItemFn};
+use syn::{FnArg, Ident, ItemTrait, LitStr, Pat, PatIdent, TraitItem, TraitItemFn, Type};
 
 use crate::impls::detour::{DetourAttr, generate_detour_ident, parse_detour_attrs};
 

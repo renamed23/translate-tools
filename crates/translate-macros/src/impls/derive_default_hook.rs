@@ -1,7 +1,6 @@
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::punctuated::Punctuated;
-use syn::{Attribute, DeriveInput, Ident, Token};
+use syn::{Attribute, DeriveInput, Ident, Token, punctuated::Punctuated};
 
 pub fn derive_default_hook(input: TokenStream) -> syn::Result<TokenStream> {
     let input = syn::parse2::<DeriveInput>(input)?;

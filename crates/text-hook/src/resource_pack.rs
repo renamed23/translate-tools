@@ -3,15 +3,17 @@ use std::path::{Path, PathBuf};
 use crate::utils::exts::slice_ext::WideSliceExt;
 
 mod pack {
-    #[cfg(not(feature = "resource_pack_embedding"))]
-    translate_macros::generate_resource_pack!(
-        "assets/resource_pack",
-        "assets/config.json",
-        "assets/dist"
-    );
-
-    #[cfg(feature = "resource_pack_embedding")]
-    translate_macros::generate_resource_pack!("assets/resource_pack", "assets/config.json");
+    cfg_if::cfg_if! {
+        if #[cfg(feature = "resource_pack_embedding")] {
+            translate_macros::generate_resource_pack!("assets/resource_pack", "assets/config.json");
+        } else {
+            translate_macros::generate_resource_pack!(
+                "assets/resource_pack",
+                "assets/config.json",
+                "assets/dist"
+            );
+        }
+    }
 }
 
 /// 解压资源包到临时目录

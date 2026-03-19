@@ -33,11 +33,11 @@ impl ProtectGuard {
     ///
     /// # Safety
     /// 调用者必须确保地址和大小有效
-    pub unsafe fn new<T>(address: *mut T, size: usize, new_protect: u32) -> crate::Result<Self> {
+    pub unsafe fn new(address: *mut u8, size: usize, new_protect: u32) -> crate::Result<Self> {
         if size == 0 {
             crate::bail!("size must be > 0");
         }
-        if !crate::utils::mem::quick_memory_check(address as *mut u8, size) {
+        if crate::utils::mem::quick_memory_check(address, size).is_err() {
             crate::bail!("address is invalid: ({address:p};{size})");
         }
 

@@ -155,7 +155,7 @@ unsafe extern "system" fn hook_name(string_ptr: *mut MsvcString) {
 
         let wide_name = slice.to_wide_ansi();
         crate::debug!("Get raw slice {}", wide_name.to_string_lossy());
-        if let Ok(name) = wide_name.lookup_or_add_item() {
+        if let Ok(Some(name)) = wide_name.lookup_or_add_item() {
             crate::debug!("Get translated slice {}", name.to_string_lossy());
             let name_ptr = Box::leak(name.to_ansi_null().into_boxed_slice());
             CACHE.lock().unwrap().insert(slice.into(), name_ptr);
@@ -180,7 +180,7 @@ unsafe extern "system" fn hook_text(ptr: *const u8) -> *const u8 {
 
         let wide_text = invert(slice).to_wide_ansi();
         crate::debug!("Get raw slice {}", wide_text.to_string_lossy());
-        if let Ok(text) = wide_text.lookup_or_add_item() {
+        if let Ok(Some(text)) = wide_text.lookup_or_add_item() {
             crate::debug!("Get translated slice {}", text.to_string_lossy());
             let text_ptr = Box::leak(invert(&text.to_ansi()).with_null().into_boxed_slice());
             CACHE.lock().unwrap().insert(slice.into(), text_ptr);
