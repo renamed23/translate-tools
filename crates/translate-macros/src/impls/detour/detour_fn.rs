@@ -38,6 +38,17 @@ pub fn detour_fn(attr: TokenStream, item: TokenStream) -> syn::Result<TokenStrea
 
     let fn_ty_tokens = quote! {#unsafety #abi fn(#inputs) #output};
 
+    let call_args = item_fn.sig.inputs.iter().filter_map(|arg| match arg {
+        syn::FnArg::Receiver(_) => None,
+        syn::FnArg::Typed(pt) => Some(match &*pt.pat {
+            syn::Pat::Ident(pat_ident) => {
+                let ident = &pat_ident.ident;
+                quote! { #ident }
+            }
+            pat => quote! { #pat },
+        }),
+    });
+
     // fallback：若 attr 给出就用它，否则 Default::default()
     let fallback_tokens = if let Some(expr) = fallback {
         quote! { #expr }
@@ -54,7 +65,10 @@ pub fn detour_fn(attr: TokenStream, item: TokenStream) -> syn::Result<TokenStrea
 
     Ok(quote! {
         // 原函数
-        #[translate_macros::ffi_guard(on_err_or_panic = #fallback_tokens)]
+        #[translate_macros::ffi_guard(
+            on_panic = #fallback_tokens,
+            on_err = unsafe {crate::call!(#static_ident, #(#call_args),*)}
+        )]
         #[cfg_attr(feature = "export_hooks", unsafe(no_mangle))]
         #item_fn
 

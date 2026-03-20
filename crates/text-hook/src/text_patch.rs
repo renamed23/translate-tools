@@ -27,14 +27,46 @@ cfg_if! {
             Ok(())
         }
     } else {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+
         mod text_patch_data {
             translate_macros::generated_text_patch_data!("assets/raw_text" => "assets/translated_text");
+        }
+
+        static LAST_LOOKUP_INDEX: AtomicUsize = AtomicUsize::new(usize::MAX);
+
+        #[derive(Clone, Copy)]
+        pub struct LookupResult {
+            pub translated: &'static str,
+            pub matched_index: Option<usize>,
+        }
+
+        fn get_last_lookup_index() -> Option<usize> {
+            let index = LAST_LOOKUP_INDEX.load(Ordering::Relaxed);
+            (index != usize::MAX).then_some(index)
+        }
+
+        fn set_last_lookup_index(index: usize) {
+            LAST_LOOKUP_INDEX.store(index, Ordering::Relaxed);
+        }
+
+        /// 获取与原文对应的译文及其命中的文本索引信息。
+        #[allow(dead_code)]
+        pub fn lookup_result(original_message: &str) -> Option<LookupResult> {
+            let result = text_patch_data::lookup_result(original_message, get_last_lookup_index())?;
+            if let Some(index) = result.matched_index {
+                set_last_lookup_index(index);
+            }
+            Some(LookupResult {
+                translated: result.translated,
+                matched_index: result.matched_index,
+            })
         }
 
         /// 获取与原文对应的译文
         #[allow(dead_code)]
         pub fn lookup(original_message: &str) -> Option<&'static str> {
-            text_patch_data::lookup(original_message)
+            lookup_result(original_message).map(|result| result.translated)
         }
     }
 }

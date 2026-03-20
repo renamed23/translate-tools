@@ -66,7 +66,8 @@ pub fn byte_slice(input: TokenStream) -> TokenStream {
 ///
 /// 1. 一个 `pub unsafe extern "system" fn <export_name>(...) -> Ret` 的 C-ABI 风格 wrapper（导出函数），
 ///    wrapper 内部通过 `crate::hook::impls::HookImplType::<method>(...)` 转发到当前的 Hook 实现，并使用 `ffi_guard`
-///    或等价保护来在 panic/unwind/err 时返回 `fallback` 指定的值；
+///    或等价保护在 panic/unwind 时返回 `fallback` 指定的值；若内部返回 `Err(...)`，则自动回退到
+///    `crate::call!(HOOK_<METHOD>, ...)` 调用原始 HOOK；
 /// 2. 一个名为 `HOOK_<METHOD_UPPER>` 的 `pub static` 变量，类型为
 ///    `std::sync::LazyLock<retour::GenericDetour<unsafe extern "system" fn(...) -> Ret>>`，
 ///    该静态在首次访问时会查找 `dll` 的 `symbol` 地址并尝试注册 detour（使用 `retour::GenericDetour::new`）。
@@ -83,7 +84,7 @@ pub fn byte_slice(input: TokenStream) -> TokenStream {
 ///         dll = "gdi32.dll",                              // 必需，目标动态库名（字符串字面量）
 ///         symbol = "TextOutA",                            // 必需，目标导出符号名（字符串字面量）
 ///         export = "text_out",                            // 可选，生成的 wrapper 导出名（字符串字面量），默认使用 trait 方法名
-///         fallback = "FALSE"                              // 可选，捕获 panic/unwind/err 时的回退值（字符串字面量，内部会解析为 Rust 表达式）
+///         fallback = "FALSE"                              // 可选，仅在 panic/unwind 时使用的回退值（字符串字面量，内部会解析为 Rust 表达式）
 ///         calling_convention = "system"                   // 可选，调用约定（字符串字面量），默认 "system"
 ///     )]
 ///     unsafe fn text_out(hdc: HDC, x: c_int, y: c_int, lp: LPCSTR, c: c_int) -> BOOL;
@@ -108,7 +109,7 @@ pub fn detour_trait(attr: TokenStream, item: TokenStream) -> TokenStream {
 /// #[detour_fn(
 ///     dll = "gdi32.dll",                              // 必需，目标动态库名（字符串字面量）
 ///     symbol = "TextOutA",                            // 必需，目标导出符号名（字符串字面量）
-///     fallback = "FALSE"                              // 可选，捕获 panic/unwind/err 时的回退值（字符串字面量，内部会解析为 Rust 表达式）
+///     fallback = "FALSE"                              // 可选，仅在 panic/unwind 时使用的回退值（字符串字面量，内部会解析为 Rust 表达式）
 /// )]
 /// unsafe extern "system" fn text_out(hdc: HDC, x: c_int, y: c_int, lp: LPCSTR, c: c_int) -> BOOL;
 /// ```
@@ -117,7 +118,8 @@ pub fn detour_trait(attr: TokenStream, item: TokenStream) -> TokenStream {
 ///
 /// * `dll`：**必需**。目标模块名称（字符串字面量），用于运行时查找符号地址，例如 `"gdi32.dll"`。
 /// * `symbol`：**必需**。目标导出符号名（字符串字面量），例如 `"TextOutA"`。
-/// * `fallback`：可选。字符串字面量，内容将被解析为 Rust 表达式作为 wrapper 在捕获 panic/unwind/err 时的返回值。
+/// * `fallback`：可选。字符串字面量，内容将被解析为 Rust 表达式作为 wrapper 在捕获 panic/unwind 时的返回值。
+///   若函数内部返回 `Err(...)`，则会自动回退到 `crate::call!(HOOK_<FN>, ...)` 调用原始 HOOK。
 ///   建议显式提供 `fallback`；若不提供，宏默认用 `Default::default()`，但当返回类型不实现 `Default` 时会导致编译错误。
 #[proc_macro_attribute]
 pub fn detour_fn(attr: TokenStream, item: TokenStream) -> TokenStream {
@@ -637,25 +639,32 @@ pub fn generated_exports_from_hijacked_dll(input: TokenStream) -> TokenStream {
 ///   ```
 ///
 /// # 输入文件格式
-/// 每个JSON文件应为数组格式，每个元素包含可选的"name"和"message"字段：
+/// 每个JSON文件应为数组格式，运行时只关注 `message`、`is_name`、`is_dict`：
 /// ```json
 /// [
-///     {"name": "原始名字", "message": "原始消息"},
-///     {"name": "另一个名字", "message": "另一条消息"}
+///     {"message": "原始消息"},
+///     {"message": "另一条消息", "is_dict": true},
+///     {"message": "角色名", "is_name": true}
 /// ]
 /// ```
 ///
-/// # 生成内容
+/// 生成内容
 /// 宏展开后会生成以下内容：
-/// - `TEXT_PHF` - 静态PHF映射表，用于翻译 (原句 -> 译句)
-/// - `lookup(original: &str) -> Option<&'static str>` - 查找函数
+/// - `DICT_PHF` - 上下文无关的静态 PHF 映射表 (原句 -> 译句)
+/// - `TEXT_SINGLE_PHF` - 无歧义正文的静态 PHF 映射表 (原句 -> `(索引, 译句)`)
+/// - `TEXT_MULTI_PHF` - 多候选正文的静态 PHF 映射表 (原句 -> `[(索引, 译句)]`)
+/// - `lookup_result(original, last_index)` - 带上下文的查找函数
+/// - `lookup(original)` - 无上下文的兼容查找函数
 ///
 /// # 处理规则
 /// - 自动处理路径解析（相对于 `CARGO_MANIFEST_DIR`）
 /// - 验证原始JSON和翻译JSON的数组长度必须相等（针对每个对应的文件对）
-/// - 对名字和消息进行全局去重处理（跨所有文件）
+/// - `is_name == true` 或 `is_dict == true` 的条目写入 `DICT_PHF`，不会参与上下文推进
+/// - 其余 `message` 条目视为正文，都会按遍历顺序分配稳定索引
+/// - 同一原文的正文条目不会去重；即使译文文本相同，也会保留各自独立的上下文索引
+/// - 正文唯一映射会进入 `TEXT_SINGLE_PHF`，并在运行时命中后推进上下文索引
 /// - 跳过空字符串的条目
-/// - 使用PHF实现O(1)时间复杂度的查找
+/// - 查找顺序为：`DICT_PHF` -> `TEXT_SINGLE_PHF` -> `TEXT_MULTI_PHF`
 /// - 如果翻译文件夹中缺少对应的JSON文件，会报错
 ///
 /// # 示例

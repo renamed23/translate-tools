@@ -67,18 +67,24 @@ unsafe extern "system" fn trampoline() {
 }
 
 #[allow(clippy::type_complexity)]
-static CACHE: LazyLock<Mutex<HashMap<Box<[u8]>, &'static [u8]>>> =
+static TEXT_CACHE: LazyLock<Mutex<HashMap<Box<[u8]>, &'static [u8]>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
+
+fn intern_bytes(bytes: Vec<u8>) -> &'static [u8] {
+    if let Some(&cached) = TEXT_CACHE.lock().unwrap().get(bytes.as_slice()) {
+        return cached;
+    }
+
+    let leaked = Box::leak(bytes.into_boxed_slice()) as &'static mut [u8];
+    let leaked = leaked as &'static [u8];
+    TEXT_CACHE.lock().unwrap().insert(leaked.into(), leaked);
+    leaked
+}
 
 #[translate_macros::ffi_guard(on_err_or_panic = ptr)]
 unsafe extern "system" fn hook_text(ptr: *const u8) -> crate::Result<*const u8> {
     unsafe {
         let slice = ptr.to_slice_until_null(8192 * 50);
-        if let Some(&text) = CACHE.lock().unwrap().get(slice) {
-            crate::debug!("Get cached slice {}", text.to_wide_ansi().to_string_lossy());
-            return Ok(text.as_ptr());
-        }
-
         let wide_text = slice.try_to_wide(932)?;
 
         crate::debug!("Get raw slice {}", wide_text.to_string_lossy());
@@ -86,8 +92,7 @@ unsafe extern "system" fn hook_text(ptr: *const u8) -> crate::Result<*const u8> 
             crate::debug!("Get translated slice {}", text.to_string_lossy());
             let translated_bytes = text.try_to_multi_byte_null(936)?;
 
-            let text_ptr = Box::leak(translated_bytes.into_boxed_slice());
-            CACHE.lock().unwrap().insert(slice.into(), text_ptr);
+            let text_ptr = intern_bytes(translated_bytes);
             return Ok(text_ptr.as_ptr());
         }
         Ok(ptr)

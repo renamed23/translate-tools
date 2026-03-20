@@ -86,7 +86,8 @@ pub fn detour_trait(_attr: TokenStream, item: TokenStream) -> syn::Result<TokenS
             let dll_lit = LitStr::new(&dll, Span::call_site());
             let symbol_lit = LitStr::new(&symbol, Span::call_site());
 
-            let call_args_iter = arg_idents.iter();
+            let call_args_tokens: Vec<TokenStream> =
+                arg_idents.iter().map(|ident| quote! { #ident }).collect();
             let param_pairs_iter = param_pairs_tokens.iter();
 
             let static_ident = generate_detour_ident(&method_ident);
@@ -94,11 +95,14 @@ pub fn detour_trait(_attr: TokenStream, item: TokenStream) -> syn::Result<TokenS
             // 生成 wrapper + static
             generated.extend(quote! {
                     // 自动生成：导出 wrapper
-                    #[translate_macros::ffi_guard(on_err_or_panic = #fallback_tokens)]
+                    #[translate_macros::ffi_guard(
+                        on_panic = #fallback_tokens,
+                        on_err = unsafe {crate::call!(#static_ident, #(#call_args_tokens),*)}
+                    )]
                     #[cfg_attr(feature = "export_hooks", unsafe(no_mangle))]
                     pub unsafe extern #calling_convention fn #export_ident( #(#param_pairs_iter),* ) #output {
                        unsafe {
-                            crate::hook::impls::HookImplType::#method_ident( #(#call_args_iter),* )
+                            crate::hook::impls::HookImplType::#method_ident( #(#call_args_tokens),* )
                         }
                     }
 
