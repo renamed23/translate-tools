@@ -2,23 +2,9 @@ use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use serde::Deserialize;
 use std::collections::HashMap;
-use syn::{
-    LitInt, LitStr,
-    parse::{Parse, ParseStream},
-};
+use syn::LitInt;
 
-use crate::impls::utils::get_full_path_by_manifest;
-
-struct PathInput {
-    mapping: LitStr,
-}
-
-impl Parse for PathInput {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
-        let mapping: LitStr = input.parse()?;
-        Ok(PathInput { mapping })
-    }
-}
+use crate::impls::utils::{SinglePathInput, read_json_file, resolve_manifest_path};
 
 #[derive(Deserialize)]
 struct MappingConfig {
@@ -38,15 +24,10 @@ fn get_code_page_from_src_encoding(src_encoding: &str) -> syn::Result<u32> {
 }
 
 pub fn generate_mapping_data(input: TokenStream) -> syn::Result<TokenStream> {
-    let parsed = syn::parse2::<PathInput>(input)?;
+    let parsed = syn::parse2::<SinglePathInput>(input)?;
 
-    let mapping_path = get_full_path_by_manifest(parsed.mapping.value())?;
-
-    let mapping_str = std::fs::read_to_string(&mapping_path)
-        .map_err(|e| syn_err2!("无法读取 {}: {}", mapping_path.display(), e))?;
-
-    let config: MappingConfig = serde_json::from_str(&mapping_str)
-        .map_err(|e| syn_err2!("解析 {} 失败: {}", mapping_path.display(), e))?;
+    let mapping_path = resolve_manifest_path(&parsed.path)?;
+    let config: MappingConfig = read_json_file(&mapping_path)?;
 
     // 确定代码页
     let code_page = if let Some(cp) = config.code_page {

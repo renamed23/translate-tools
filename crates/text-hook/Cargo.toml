@@ -120,19 +120,8 @@ complets = [
     "enum_font_families",
     "text_out_arg_c_is_bytes",
 ]
-love_bind = ["export_default_dll_main", "enum_font_families", "text_hook"]
-mizukake = [
-    "patch",
-    "export_default_dll_main",
-    "text_hook",
-    "dll_hijacking",
-    "no_text_mapping",
-]
 natsu_natsu = ["export_default_dll_main", "enum_font_families", "text_hook"]
 seraph = ["export_default_dll_main"]
-# 提取脚本需要`patch_extracting`
-uminom = ["export_default_dll_main", "text_hook", "window_hook"]
-white_breath = ["default_impl", "patch", "text_hook"]
 g0win = ["export_default_dll_main", "text_patch"]
 hitocos2 = ["export_default_dll_main", "text_patch"]
 

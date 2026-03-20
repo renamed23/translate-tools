@@ -1,49 +1,23 @@
+use crate::impls::utils::{
+    ArrowSeparatedPaths, collect_files_in_dir, read_file_bytes, resolve_manifest_path,
+};
 use proc_macro2::{Ident, Literal, Span, TokenStream};
 use quote::quote;
 use sha2::{Digest, Sha256};
 use std::{collections::HashSet, path::PathBuf};
-use syn::{
-    LitStr, Token,
-    parse::{Parse, ParseStream},
-};
-
-use crate::impls::utils::get_full_path_by_manifest;
-
-struct PathsInput {
-    raw: LitStr,
-    translated: LitStr,
-}
-
-impl Parse for PathsInput {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
-        let raw: LitStr = input.parse()?;
-        let _arrow: Token![=>] = input.parse()?;
-        let translated: LitStr = input.parse()?;
-        Ok(PathsInput { raw, translated })
-    }
-}
 
 pub fn generate_patch_data(input: TokenStream) -> syn::Result<TokenStream> {
-    let parsed = syn::parse2::<PathsInput>(input)?;
+    let parsed = syn::parse2::<ArrowSeparatedPaths>(input)?;
 
-    let raw_dir = get_full_path_by_manifest(parsed.raw.value())?;
-    let translated_dir = get_full_path_by_manifest(parsed.translated.value())?;
+    let raw_dir = resolve_manifest_path(&parsed.left)?;
+    let translated_dir = resolve_manifest_path(&parsed.right)?;
 
-    let mut raw_files: Vec<PathBuf> = Vec::new();
-    if raw_dir.exists() && raw_dir.is_dir() {
-        match std::fs::read_dir(&raw_dir) {
-            Ok(rd) => {
-                for e in rd.filter_map(|r| r.ok()) {
-                    if e.file_type().map(|t| t.is_file()).unwrap_or(false) {
-                        raw_files.push(e.path());
-                    }
-                }
-            }
-            Err(e) => syn_bail!(parsed.raw, "无法读取目录 {}: {}", raw_dir.display(), e),
-        }
-    }
-
-    raw_files.sort_by_key(|p| p.file_name().map(|n| n.to_os_string()).unwrap_or_default());
+    let raw_files: Vec<PathBuf> = if raw_dir.exists() && raw_dir.is_dir() {
+        collect_files_in_dir(&raw_dir)
+            .map_err(|e| syn_err!(&parsed.left, "无法读取目录 {}: {e}", raw_dir.display()))?
+    } else {
+        Vec::new()
+    };
 
     struct FileEntry {
         translated_path: PathBuf,
@@ -63,7 +37,7 @@ pub fn generate_patch_data(input: TokenStream) -> syn::Result<TokenStream> {
             continue;
         }
 
-        let raw_data = match std::fs::read(raw_path) {
+        let raw_data = match read_file_bytes(raw_path) {
             Ok(b) => b,
             Err(e) => {
                 errors.push(format!("无法读取原始文件 {}: {}", raw_path.display(), e));
@@ -71,7 +45,7 @@ pub fn generate_patch_data(input: TokenStream) -> syn::Result<TokenStream> {
             }
         };
 
-        let translated_data = match std::fs::read(&translated_path) {
+        let translated_data = match read_file_bytes(&translated_path) {
             Ok(b) => b,
             Err(e) => {
                 errors.push(format!(

@@ -11,8 +11,14 @@ pub trait ByteSliceExt {
     /// 根据指定的 `code_page` 将字节序列转换为宽字符向量。
     fn to_wide(&self, code_page: u32) -> Vec<u16>;
 
+    /// 根据指定的 `code_page` 将字节序列转换为宽字符向量，保留错误信息。
+    fn try_to_wide(&self, code_page: u32) -> crate::Result<Vec<u16>>;
+
     /// 根据指定的 `code_page` 将字节序列转换为以 null 结尾的宽字符向量。
     fn to_wide_null(&self, code_page: u32) -> Vec<u16>;
+
+    /// 根据指定的 `code_page` 将字节序列转换为以 null 结尾的宽字符向量，保留错误信息。
+    fn try_to_wide_null(&self, code_page: u32) -> crate::Result<Vec<u16>>;
 
     /// 转换为 UTF-16 编码的宽字符。
     fn to_wide_utf8(&self) -> Vec<u16> {
@@ -58,11 +64,19 @@ pub trait ByteSliceExt {
 
 impl ByteSliceExt for [u8] {
     fn to_wide(&self, code_page: u32) -> Vec<u16> {
-        multi_byte_to_wide_char_impl(self, code_page, false).unwrap_or_default()
+        self.try_to_wide(code_page).unwrap_or_default()
+    }
+
+    fn try_to_wide(&self, code_page: u32) -> crate::Result<Vec<u16>> {
+        multi_byte_to_wide_char_impl(self, code_page, false)
     }
 
     fn to_wide_null(&self, code_page: u32) -> Vec<u16> {
-        multi_byte_to_wide_char_impl(self, code_page, true).unwrap_or_default()
+        self.try_to_wide_null(code_page).unwrap_or_default()
+    }
+
+    fn try_to_wide_null(&self, code_page: u32) -> crate::Result<Vec<u16>> {
+        multi_byte_to_wide_char_impl(self, code_page, true)
     }
 
     fn to_str(&self) -> crate::Result<&str> {
@@ -100,8 +114,14 @@ pub trait WideSliceExt {
     /// 根据指定的 `code_page` 将宽字符转换为多字节字节向量。
     fn to_multi_byte(&self, code_page: u32) -> Vec<u8>;
 
+    /// 根据指定的 `code_page` 将宽字符转换为多字节字节向量，保留错误信息。
+    fn try_to_multi_byte(&self, code_page: u32) -> crate::Result<Vec<u8>>;
+
     /// 根据指定的 `code_page` 将宽字符转换为以 null 结尾的多字节字节向量。
     fn to_multi_byte_null(&self, code_page: u32) -> Vec<u8>;
+
+    /// 根据指定的 `code_page` 将宽字符转换为以 null 结尾的多字节字节向量，保留错误信息。
+    fn try_to_multi_byte_null(&self, code_page: u32) -> crate::Result<Vec<u8>>;
 
     /// 转换为 UTF-8 编码的字节向量。
     fn to_utf8(&self) -> Vec<u8> {
@@ -166,11 +186,19 @@ pub trait WideSliceExt {
 
 impl WideSliceExt for [u16] {
     fn to_multi_byte(&self, code_page: u32) -> Vec<u8> {
-        wide_char_to_multi_byte_impl(self, code_page, false).unwrap_or_default()
+        self.try_to_multi_byte(code_page).unwrap_or_default()
+    }
+
+    fn try_to_multi_byte(&self, code_page: u32) -> crate::Result<Vec<u8>> {
+        wide_char_to_multi_byte_impl(self, code_page, false)
     }
 
     fn to_multi_byte_null(&self, code_page: u32) -> Vec<u8> {
-        wide_char_to_multi_byte_impl(self, code_page, true).unwrap_or_default()
+        self.try_to_multi_byte_null(code_page).unwrap_or_default()
+    }
+
+    fn try_to_multi_byte_null(&self, code_page: u32) -> crate::Result<Vec<u8>> {
+        wide_char_to_multi_byte_impl(self, code_page, true)
     }
 
     fn mapping(&self) -> Vec<u16> {

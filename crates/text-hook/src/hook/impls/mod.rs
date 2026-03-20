@@ -13,13 +13,13 @@ translate_macros::expand_by_files!("src/hook/impls" => {
 });
 
 #[cfg(feature = "export_default_dll_main")]
-#[translate_macros::ffi_catch_unwind(FALSE)]
+#[translate_macros::ffi_guard(on_err_or_panic = FALSE)]
 #[unsafe(no_mangle)]
 pub unsafe extern "system" fn DllMain(
     _hinst_dll: HMODULE,
     fdw_reason: u32,
     _lpv_reserved: *mut core::ffi::c_void,
-) -> BOOL {
+) -> crate::Result<BOOL> {
     default_dll_main(_hinst_dll, fdw_reason, _lpv_reserved)
 }
 
@@ -32,7 +32,7 @@ pub fn default_dll_main(
     hinst_dll: HMODULE,
     fdw_reason: u32,
     _lpv_reserved: *mut core::ffi::c_void,
-) -> BOOL {
+) -> crate::Result<BOOL> {
     const PROCESS_ATTACH: u32 = 1;
     const PROCESS_DETACH: u32 = 0;
     const THREAD_ATTACH: u32 = 2;
@@ -102,7 +102,7 @@ pub fn default_dll_main(
         _ => {}
     }
 
-    TRUE
+    Ok(TRUE)
 }
 
 /// 对应于 PROCESS_ATTACH 阶段的清理操作。

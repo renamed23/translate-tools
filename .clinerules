@@ -10,3 +10,7 @@
     - 优先使用crate提供的`utils/exts`里提供的拓展trait，优先使用链式调用，而不是直接调用函数
 - **依赖版本管理**：如果需要引入新的 crate 且我没有指定版本，**必须先查阅该 crate 的最新版本英文文档**，默认使用最新版。
 - **rust版本**: 默认为最新版
+
+## 3. 测试与脚本调用
+- 如果需要运行py脚本，请使用`uv python`，而不是`python`
+- 如果需要测试代码，请使用`cargo check --features default_impl`，或者其他`impl`

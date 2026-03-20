@@ -121,12 +121,11 @@ fn invert(bytes: &[u8]) -> Vec<u8> {
 static CACHE: LazyLock<Mutex<HashMap<Box<[u8]>, &'static [u8]>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
 
-#[translate_macros::ffi_catch_unwind]
-unsafe extern "system" fn hook_name(string_ptr: *mut MsvcString) {
+#[translate_macros::ffi_guard(on_err_or_panic = ())]
+unsafe extern "system" fn hook_name(string_ptr: *mut MsvcString) -> crate::Result<()> {
     unsafe {
         if string_ptr.is_null() {
-            crate::debug!("Hook name but string is null");
-            return;
+            crate::bail!("Hook name but string is null");
         }
         let string = { &*string_ptr };
 
@@ -150,22 +149,24 @@ unsafe extern "system" fn hook_name(string_ptr: *mut MsvcString) {
                     .to_string_lossy()
             );
             sub_402b70(string_ptr, 0, text.as_ptr() as _, text.len() as _);
-            return;
+            return Ok(());
         }
 
         let wide_name = slice.to_wide_ansi();
         crate::debug!("Get raw slice {}", wide_name.to_string_lossy());
-        if let Ok(Some(name)) = wide_name.lookup_or_add_item() {
+        if let Some(name) = wide_name.lookup_or_add_item()? {
             crate::debug!("Get translated slice {}", name.to_string_lossy());
             let name_ptr = Box::leak(name.to_ansi_null().into_boxed_slice());
             CACHE.lock().unwrap().insert(slice.into(), name_ptr);
             sub_402b70(string_ptr, 0, name_ptr.as_ptr() as _, name_ptr.len() as _);
         }
+
+        Ok(())
     }
 }
 
-#[translate_macros::ffi_catch_unwind(ptr)]
-unsafe extern "system" fn hook_text(ptr: *const u8) -> *const u8 {
+#[translate_macros::ffi_guard(on_err_or_panic = ptr)]
+unsafe extern "system" fn hook_text(ptr: *const u8) -> crate::Result<*const u8> {
     unsafe {
         let slice = ptr.to_slice_until_null(8192 * 50);
         if let Some(&text) = CACHE.lock().unwrap().get(slice) {
@@ -175,17 +176,17 @@ unsafe extern "system" fn hook_text(ptr: *const u8) -> *const u8 {
                     .to_wide_ansi()
                     .to_string_lossy()
             );
-            return text.as_ptr();
+            return Ok(text.as_ptr());
         }
 
         let wide_text = invert(slice).to_wide_ansi();
         crate::debug!("Get raw slice {}", wide_text.to_string_lossy());
-        if let Ok(Some(text)) = wide_text.lookup_or_add_item() {
+        if let Some(text) = wide_text.lookup_or_add_item()? {
             crate::debug!("Get translated slice {}", text.to_string_lossy());
             let text_ptr = Box::leak(invert(&text.to_ansi()).with_null().into_boxed_slice());
             CACHE.lock().unwrap().insert(slice.into(), text_ptr);
-            return text_ptr.as_ptr();
+            return Ok(text_ptr.as_ptr());
         }
-        ptr
+        Ok(ptr)
     }
 }

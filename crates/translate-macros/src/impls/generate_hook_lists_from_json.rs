@@ -2,28 +2,13 @@ use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
-use syn::{
-    LitStr, Token,
-    parse::{Parse, ParseStream},
+
+use crate::impls::{
+    detour::generate_detour_ident,
+    utils::{CommaSeparatedPaths, read_json_file, read_optional_json_file, resolve_manifest_path},
 };
 
-use crate::impls::{detour::generate_detour_ident, utils::get_full_path_by_manifest};
-
-struct PathsInput {
-    featured: LitStr,
-    user: LitStr,
-}
-
-impl Parse for PathsInput {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
-        let featured: LitStr = input.parse()?;
-        let _comma: Token![,] = input.parse()?;
-        let user: LitStr = input.parse()?;
-        Ok(PathsInput { featured, user })
-    }
-}
-
-#[derive(Deserialize)]
+#[derive(Default, Deserialize)]
 pub struct UserHookLists {
     #[serde(default)]
     pub enable: Vec<String>,
@@ -36,26 +21,16 @@ pub struct UserHookLists {
 pub struct FeaturedHookLists(#[serde(default)] HashMap<String, Vec<String>>);
 
 pub fn generate_hook_lists_from_json(input: TokenStream) -> syn::Result<TokenStream> {
-    let parsed = syn::parse2::<PathsInput>(input)?;
+    let parsed = syn::parse2::<CommaSeparatedPaths>(input)?;
 
-    let featured_path = get_full_path_by_manifest(parsed.featured.value())?;
-    let user_path = get_full_path_by_manifest(parsed.user.value())?;
+    let featured_path = resolve_manifest_path(&parsed.left)?;
+    let user_path = resolve_manifest_path(&parsed.right)?;
 
     // 读取并解析特性化钩子列表json文件
-    let featured_str = std::fs::read_to_string(&featured_path)
-        .map_err(|e| syn_err2!("无法读取特性化钩子列表 {}: {}", featured_path.display(), e))?;
-    let featured: FeaturedHookLists = serde_json::from_str(&featured_str).map_err(|e| {
-        syn_err2!(
-            "解析特性化钩子列表失败 ({}): {}",
-            featured_path.display(),
-            e
-        )
-    })?;
+    let featured: FeaturedHookLists = read_json_file(&featured_path)?;
 
     // 读取并解析用户钩子列表（如果存在）
-    let user_json: UserHookLists =
-        serde_json::from_str(&std::fs::read_to_string(&user_path).unwrap_or("{}".to_string()))
-            .map_err(|e| syn_err2!("解析用户钩子列表失败 ({}): {}", user_path.display(), e))?;
+    let user_json: UserHookLists = read_optional_json_file(&user_path)?;
 
     // 使用 HashSet 记录所有被强制设定的钩子（包括 enable 和 disable）
     let mut user_hook_set: HashSet<String> = HashSet::new();

@@ -2,7 +2,10 @@ use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use syn::{FnArg, Ident, ItemTrait, LitStr, Pat, PatIdent, TraitItem, TraitItemFn, Type};
 
-use crate::impls::detour::{DetourAttr, generate_detour_ident, parse_detour_attrs};
+use crate::impls::{
+    detour::{DetourAttr, generate_detour_ident, parse_detour_attrs},
+    utils::ReturnKind,
+};
 
 pub fn detour_trait(_attr: TokenStream, item: TokenStream) -> syn::Result<TokenStream> {
     let mut input = syn::parse2::<ItemTrait>(item)?;
@@ -62,12 +65,13 @@ pub fn detour_trait(_attr: TokenStream, item: TokenStream) -> syn::Result<TokenS
             }
 
             let output = sig.output.clone();
+            let real_output = ReturnKind::flatten_result(output.clone());
 
             // 构造函数签名
             let fn_ty_tokens = {
                 let arg_iters = arg_types.iter();
                 quote! {
-                    unsafe extern #calling_convention fn( #(#arg_iters),* ) #output
+                    unsafe extern #calling_convention fn( #(#arg_iters),* ) #real_output
                 }
             };
 
@@ -90,7 +94,7 @@ pub fn detour_trait(_attr: TokenStream, item: TokenStream) -> syn::Result<TokenS
             // 生成 wrapper + static
             generated.extend(quote! {
                     // 自动生成：导出 wrapper
-                    #[translate_macros::ffi_catch_unwind(#fallback_tokens)]
+                    #[translate_macros::ffi_guard(on_err_or_panic = #fallback_tokens)]
                     #[cfg_attr(feature = "export_hooks", unsafe(no_mangle))]
                     pub unsafe extern #calling_convention fn #export_ident( #(#param_pairs_iter),* ) #output {
                        unsafe {

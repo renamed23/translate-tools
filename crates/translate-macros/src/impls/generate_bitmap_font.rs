@@ -2,23 +2,11 @@ use proc_macro2::{Literal, TokenStream};
 use quote::quote;
 use serde::Deserialize;
 use std::collections::HashSet;
-use syn::{
-    LitStr,
-    parse::{Parse, ParseStream},
+
+use crate::impls::utils::{
+    SinglePathInput, get_full_path_by_manifest, read_file_bytes, read_json_file,
+    resolve_manifest_path,
 };
-
-use crate::impls::utils::get_full_path_by_manifest;
-
-struct PathInput {
-    path: LitStr,
-}
-
-impl Parse for PathInput {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
-        let path: LitStr = input.parse()?;
-        Ok(PathInput { path })
-    }
-}
 
 #[derive(Deserialize)]
 pub struct FontConfig {
@@ -45,16 +33,13 @@ mod defaults {
 }
 
 pub fn generate_bitmap_font(input: TokenStream) -> syn::Result<TokenStream> {
-    let parsed = syn::parse2::<PathInput>(input)?;
+    let parsed = syn::parse2::<SinglePathInput>(input)?;
 
-    let path = get_full_path_by_manifest(parsed.path.value())?;
-    let json_str = std::fs::read_to_string(&path)
-        .map_err(|e| syn_err2!("无法读取配置 {}: {}", path.display(), e))?;
+    let path = resolve_manifest_path(&parsed.path)?;
+    let font_config: FontConfig = read_json_file(&path)?;
 
-    let font_config: FontConfig = serde_json::from_str(&json_str)
-        .map_err(|e| syn_err2!("解析默认配置 JSON 失败 ({}): {}", path.display(), e))?;
-
-    let font_data = std::fs::read(get_full_path_by_manifest(&font_config.font_path)?)
+    let font_path = get_full_path_by_manifest(&font_config.font_path)?;
+    let font_data = read_file_bytes(&font_path)
         .map_err(|e| syn_err2!("读取字体文件 '{}' 得到错误 {e}", font_config.font_path))?;
 
     let font = fontdue::Font::from_bytes(font_data, fontdue::FontSettings::default())

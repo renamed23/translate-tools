@@ -2,7 +2,10 @@ use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use syn::{Attribute, ItemFn, LitStr, parse_quote};
 
-use crate::impls::detour::{DetourAttr, generate_detour_ident, parse_detour_attr};
+use crate::impls::{
+    detour::{DetourAttr, generate_detour_ident, parse_detour_attr},
+    utils::ReturnKind,
+};
 
 pub fn detour_fn(attr: TokenStream, item: TokenStream) -> syn::Result<TokenStream> {
     let attr: Attribute = parse_quote! {
@@ -31,7 +34,7 @@ pub fn detour_fn(attr: TokenStream, item: TokenStream) -> syn::Result<TokenStrea
     let unsafety = item_fn.sig.unsafety;
     let abi = item_fn.sig.abi.clone();
     let inputs = item_fn.sig.inputs.clone();
-    let output = item_fn.sig.output.clone();
+    let output = ReturnKind::flatten_result(item_fn.sig.output.clone());
 
     let fn_ty_tokens = quote! {#unsafety #abi fn(#inputs) #output};
 
@@ -51,7 +54,7 @@ pub fn detour_fn(attr: TokenStream, item: TokenStream) -> syn::Result<TokenStrea
 
     Ok(quote! {
         // 原函数
-        #[translate_macros::ffi_catch_unwind(#fallback_tokens)]
+        #[translate_macros::ffi_guard(on_err_or_panic = #fallback_tokens)]
         #[cfg_attr(feature = "export_hooks", unsafe(no_mangle))]
         #item_fn
 

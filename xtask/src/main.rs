@@ -363,12 +363,8 @@ fn build_scenarios() -> Vec<Scenario> {
     let game_impls = [
         "c4",
         "complets",
-        "love_bind",
-        "mizukake",
         "natsu_natsu",
         "seraph",
-        "uminom",
-        "white_breath",
         "g0win",
         "hitocos2",
     ];
@@ -382,7 +378,8 @@ fn build_scenarios() -> Vec<Scenario> {
     }
 
     // 非 default_impl 的特例补测
-    for imp in ["c4", "mizukake", "white_breath"] {
+    #[allow(clippy::single_element_loop)]
+    for imp in ["c4"] {
         scenarios.push(Scenario {
             name: format!("{imp}/patch_extracting"),
             features: feature_set(all_functional_impl_base(), &[imp, "patch_extracting"], &[]),

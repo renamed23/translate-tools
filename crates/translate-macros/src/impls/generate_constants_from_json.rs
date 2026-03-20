@@ -3,26 +3,8 @@ use quote::{format_ident, quote};
 use serde::Deserialize;
 use serde_json::Value as JsonValue;
 use std::collections::HashMap;
-use syn::{
-    LitStr, Token,
-    parse::{Parse, ParseStream},
-};
 
-use crate::impls::utils::get_full_path_by_manifest;
-
-struct PathsInput {
-    default: LitStr,
-    user: LitStr,
-}
-
-impl Parse for PathsInput {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
-        let default: LitStr = input.parse()?;
-        let _comma: Token![,] = input.parse()?;
-        let user: LitStr = input.parse()?;
-        Ok(PathsInput { default, user })
-    }
-}
+use crate::impls::utils::{CommaSeparatedPaths, read_json_file, resolve_manifest_path};
 
 #[derive(Deserialize)]
 #[serde(untagged)]
@@ -46,25 +28,18 @@ pub enum ConfigEntry {
 pub struct ConstantConfig(pub HashMap<String, ConfigEntry>);
 
 pub fn generate_constants_from_json(input: TokenStream) -> syn::Result<TokenStream> {
-    let parsed = syn::parse2::<PathsInput>(input)?;
+    let parsed = syn::parse2::<CommaSeparatedPaths>(input)?;
 
     // 读取 default 配置作为锚点
-    let default_path = get_full_path_by_manifest(parsed.default.value())?;
-    let default_cfg: ConstantConfig = serde_json::from_str(
-        &std::fs::read_to_string(&default_path)
-            .map_err(|e| syn_err2!("读取 default 失败: {}", e))?,
-    )
-    .map_err(|e| syn_err2!("解析 default 失败: {}", e))?;
+    let default_path = resolve_manifest_path(&parsed.left)?;
+    let default_cfg: ConstantConfig = read_json_file(&default_path)?;
 
     let mut merged = default_cfg.0;
 
     // 读取 user 配置
-    let user_path = get_full_path_by_manifest(parsed.user.value())?;
+    let user_path = resolve_manifest_path(&parsed.right)?;
     if user_path.is_file() {
-        let user_cfg: ConstantConfig = serde_json::from_str(
-            &std::fs::read_to_string(&user_path).map_err(|e| syn_err2!("读取 user 失败: {}", e))?,
-        )
-        .map_err(|e| syn_err2!("解析 user 失败: {}", e))?;
+        let user_cfg: ConstantConfig = read_json_file(&user_path)?;
 
         for (k, v) in user_cfg.0 {
             match merged.get_mut(&k) {

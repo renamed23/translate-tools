@@ -65,8 +65,8 @@ pub fn byte_slice(input: TokenStream) -> TokenStream {
 /// 宏会基于方法签名自动生成两类项：
 ///
 /// 1. 一个 `pub unsafe extern "system" fn <export_name>(...) -> Ret` 的 C-ABI 风格 wrapper（导出函数），
-///    wrapper 内部通过 `crate::hook::impls::HookImplType::<method>(...)` 转发到当前的 Hook 实现，并使用 `ffi_catch_unwind`
-///    或等价保护来在 panic/unwind 时返回 `fallback` 指定的值；
+///    wrapper 内部通过 `crate::hook::impls::HookImplType::<method>(...)` 转发到当前的 Hook 实现，并使用 `ffi_guard`
+///    或等价保护来在 panic/unwind/err 时返回 `fallback` 指定的值；
 /// 2. 一个名为 `HOOK_<METHOD_UPPER>` 的 `pub static` 变量，类型为
 ///    `std::sync::LazyLock<retour::GenericDetour<unsafe extern "system" fn(...) -> Ret>>`，
 ///    该静态在首次访问时会查找 `dll` 的 `symbol` 地址并尝试注册 detour（使用 `retour::GenericDetour::new`）。
@@ -83,7 +83,7 @@ pub fn byte_slice(input: TokenStream) -> TokenStream {
 ///         dll = "gdi32.dll",                              // 必需，目标动态库名（字符串字面量）
 ///         symbol = "TextOutA",                            // 必需，目标导出符号名（字符串字面量）
 ///         export = "text_out",                            // 可选，生成的 wrapper 导出名（字符串字面量），默认使用 trait 方法名
-///         fallback = "FALSE"                              // 可选，捕获 panic/unwind 时的回退值（字符串字面量，内部会解析为 Rust 表达式）
+///         fallback = "FALSE"                              // 可选，捕获 panic/unwind/err 时的回退值（字符串字面量，内部会解析为 Rust 表达式）
 ///         calling_convention = "system"                   // 可选，调用约定（字符串字面量），默认 "system"
 ///     )]
 ///     unsafe fn text_out(hdc: HDC, x: c_int, y: c_int, lp: LPCSTR, c: c_int) -> BOOL;
@@ -108,7 +108,7 @@ pub fn detour_trait(attr: TokenStream, item: TokenStream) -> TokenStream {
 /// #[detour_fn(
 ///     dll = "gdi32.dll",                              // 必需，目标动态库名（字符串字面量）
 ///     symbol = "TextOutA",                            // 必需，目标导出符号名（字符串字面量）
-///     fallback = "FALSE"                              // 可选，捕获 panic/unwind 时的回退值（字符串字面量，内部会解析为 Rust 表达式）
+///     fallback = "FALSE"                              // 可选，捕获 panic/unwind/err 时的回退值（字符串字面量，内部会解析为 Rust 表达式）
 /// )]
 /// unsafe extern "system" fn text_out(hdc: HDC, x: c_int, y: c_int, lp: LPCSTR, c: c_int) -> BOOL;
 /// ```
@@ -117,7 +117,7 @@ pub fn detour_trait(attr: TokenStream, item: TokenStream) -> TokenStream {
 ///
 /// * `dll`：**必需**。目标模块名称（字符串字面量），用于运行时查找符号地址，例如 `"gdi32.dll"`。
 /// * `symbol`：**必需**。目标导出符号名（字符串字面量），例如 `"TextOutA"`。
-/// * `fallback`：可选。字符串字面量，内容将被解析为 Rust 表达式作为 wrapper 在捕获 panic/unwind 时的返回值。
+/// * `fallback`：可选。字符串字面量，内容将被解析为 Rust 表达式作为 wrapper 在捕获 panic/unwind/err 时的返回值。
 ///   建议显式提供 `fallback`；若不提供，宏默认用 `Default::default()`，但当返回类型不实现 `Default` 时会导致编译错误。
 #[proc_macro_attribute]
 pub fn detour_fn(attr: TokenStream, item: TokenStream) -> TokenStream {
@@ -127,28 +127,42 @@ pub fn detour_fn(attr: TokenStream, item: TokenStream) -> TokenStream {
     }
 }
 
-/// 为 FFI 导出的函数自动生成 panic 捕获包装的属性宏实现。
+/// 为 FFI 函数生成 panic / error 边界保护。
 ///
-/// # 用途
-/// 将这个属性应用到 `fn` 上后，函数体会被自动用 `std::panic::catch_unwind` 包裹，
-/// 当函数内部发生 panic 时不会让 panic 穿出 FFI 边界，而是返回用户在属性中指定的回退值（fallback）。
+/// 该属性会把目标函数体包裹进保护逻辑中：
+/// - 当启用 `panic = "unwind"` 时，使用 `std::panic::catch_unwind` 捕获 panic，防止 panic 穿过 FFI 边界；
+/// - 当函数返回 `Result<T, E>` 时，会自动把返回签名拍平为 `T`，并在出现 `Err(...)` 时返回用户指定的兜底值。
 ///
-/// # 属性语法
-/// - `#[ffi_catch_unwind]`：不带参数时默认回退值为 `()`（空元组）。
-/// - `#[ffi_catch_unwind(<fallback_expr>)]`：带一个表达式作为回退值，例如 `#[ffi_catch_unwind(FALSE)]`、`#[ffi_catch_unwind(0)]`、`#[ffi_catch_unwind(())]` 等。
+/// # 属性参数
 ///
-/// 回退值表达式必须与被修饰函数的返回类型兼容（可隐式或显式转换通过类型检查）。
+/// 支持以下键值对：
+///
+/// - `on_panic = <expr>`：**必需**。当函数内部 panic 时返回的值。
+/// - `on_err = <expr>`：可选。仅当函数返回 `Result<T, E>` 时有意义；当返回 `Err(...)` 时使用该值。
+/// - `on_err_or_panic = <expr>`：可选简写，同时作为 `on_panic` 与 `on_err` 的值。
+///
+/// 如果函数返回 `Result<T, E>`，则必须提供 `on_err` 或 `on_err_or_panic`。
+///
+/// # 行为说明
+///
+/// - 对普通返回值函数：仅拦截 panic，函数签名保持不变；
+/// - 对 `Result<T, E>` 函数：
+///   - 生成后的函数签名会从 `-> Result<T, E>` 变为 `-> T`；
+///   - `Ok(value)` 会被直接返回；
+///   - `Err(err)` 会记录调试日志并返回 `on_err` 指定的值；
+///   - panic 时返回 `on_panic` 指定的值。
 ///
 /// # 限制与注意事项
-/// - 这是一个属性宏（`#[proc_macro_attribute]`），只能应用于项（`fn`），不能用于任意表达式或局部块。
-/// - 属性宏需定义在 `proc-macro` crate 中并作为依赖引入，被修饰函数通常位于另一个 crate（proc macros 不能在同一 crate 内定义并使用）。
-/// - 请确保回退值类型与函数返回类型兼容，否则会在编译期报错（这实际上是安全检查的一部分）。
-/// - 保留并不改变函数签名（`extern "C"` / `extern "system"` / `#[no_mangle]` 等仍然有效）。
+///
+/// - 这是属性宏（`#[proc_macro_attribute]`），只能用于函数项。
+/// - 请确保 `on_panic` / `on_err` 表达式与最终函数返回类型兼容，否则会在编译期报错。
+/// - 宏不会移除或修改原函数上的 `extern "C"` / `extern "system"` / `#[no_mangle]` 等 ABI 相关声明。
 ///
 /// # 示例
+///
+/// ## 普通返回值函数
 /// ```rust
-/// // 在 proc-macro crate 中定义后，在使用处：
-/// #[ffi_catch_unwind(FALSE)]
+/// #[ffi_guard(on_panic = FALSE)]
 /// #[no_mangle]
 /// pub unsafe extern "system" fn DllMain(
 ///     _hinst_dll: HMODULE,
@@ -168,9 +182,22 @@ pub fn detour_fn(attr: TokenStream, item: TokenStream) -> TokenStream {
 ///     TRUE
 /// }
 /// ```
+///
+/// ## 返回 `Result` 的函数
+/// ```rust
+/// #[ffi_guard(on_err_or_panic = 0)]
+/// pub unsafe extern "system" fn do_work(arg: i32) -> crate::Result<i32> {
+///     if arg < 0 {
+///         crate::bail!("invalid arg");
+///     }
+///     Ok(arg + 1)
+/// }
+///
+/// // 展开后等价于返回 `i32`，发生 Err 或 panic 时返回 0。
+/// ```
 #[proc_macro_attribute]
-pub fn ffi_catch_unwind(attr: TokenStream, item: TokenStream) -> TokenStream {
-    match impls::ffi_catch_unwind::ffi_catch_unwind(attr.into(), item.into()) {
+pub fn ffi_guard(attr: TokenStream, item: TokenStream) -> TokenStream {
+    match impls::ffi_guard::ffi_guard(attr.into(), item.into()) {
         Ok(ts) => ts.into(),
         Err(err) => err.into_compile_error().into(),
     }

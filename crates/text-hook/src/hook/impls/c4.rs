@@ -1,6 +1,6 @@
 use std::cell::Cell;
 
-use translate_macros::ffi_catch_unwind;
+use translate_macros::ffi_guard;
 
 use crate::{
     debug,
@@ -11,7 +11,7 @@ thread_local! {
     static SNR_FILE_OCCUR: Cell<bool> = const { Cell::new(false) };
 }
 
-#[ffi_catch_unwind]
+#[ffi_guard(on_err_or_panic = ())]
 #[unsafe(no_mangle)]
 pub unsafe extern "system" fn prepare_for_replace() {
     #[cfg(feature = "debug_output")]
@@ -22,7 +22,7 @@ pub unsafe extern "system" fn prepare_for_replace() {
     SNR_FILE_OCCUR.set(true);
 }
 
-#[ffi_catch_unwind]
+#[ffi_guard(on_err_or_panic = ())]
 #[unsafe(no_mangle)]
 pub unsafe extern "system" fn replace_script(ptr: *mut u8, len: usize) {
     if SNR_FILE_OCCUR.get() {

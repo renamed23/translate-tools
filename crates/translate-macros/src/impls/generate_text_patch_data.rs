@@ -1,80 +1,53 @@
 use proc_macro2::{Literal, TokenStream};
 use quote::quote;
-use syn::{
-    LitStr, Token,
-    parse::{Parse, ParseStream},
+
+use crate::impls::utils::{
+    ArrowSeparatedPaths, collect_files_in_dir, ensure_dir, read_file_string, resolve_manifest_path,
 };
 
-use crate::impls::utils::get_full_path_by_manifest;
-
-struct PathsInput {
-    raw: LitStr,
-    translated: LitStr,
-}
-
-impl Parse for PathsInput {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
-        let raw: LitStr = input.parse()?;
-        let _arrow: Token![=>] = input.parse()?;
-        let translated: LitStr = input.parse()?;
-        Ok(PathsInput { raw, translated })
-    }
-}
-
 pub fn generate_text_patch_data(input: TokenStream) -> syn::Result<TokenStream> {
-    let parsed = syn::parse2::<PathsInput>(input)?;
+    let parsed = syn::parse2::<ArrowSeparatedPaths>(input)?;
 
-    let raw_dir = get_full_path_by_manifest(parsed.raw.value())
-        .map_err(|e| syn_err!(&parsed.raw, "解析原始文件夹路径失败: {e}"))?;
-    let translated_dir = get_full_path_by_manifest(parsed.translated.value())
-        .map_err(|e| syn_err!(&parsed.translated, "解析翻译文件夹路径失败: {e}"))?;
+    let raw_dir = resolve_manifest_path(&parsed.left)
+        .map_err(|e| syn_err!(&parsed.left, "解析原始文件夹路径失败: {e}"))?;
+    let translated_dir = resolve_manifest_path(&parsed.right)
+        .map_err(|e| syn_err!(&parsed.right, "解析翻译文件夹路径失败: {e}"))?;
 
-    if !raw_dir.is_dir() {
-        syn_bail!(&parsed.raw, "原始路径不是文件夹: {}", raw_dir.display());
-    }
-    if !translated_dir.is_dir() {
-        syn_bail!(
-            &parsed.translated,
-            "翻译路径不是文件夹: {}",
-            translated_dir.display()
-        );
-    }
+    ensure_dir(&raw_dir, &parsed.left)?;
+    ensure_dir(&translated_dir, &parsed.right)?;
 
-    let raw_entries = std::fs::read_dir(&raw_dir)
-        .map_err(|e| syn_err!(&parsed.raw, "读取原始文件夹失败: {e}"))?;
+    let raw_entries = collect_files_in_dir(&raw_dir)
+        .map_err(|e| syn_err!(&parsed.left, "读取原始文件夹失败: {e}"))?;
 
     let mut text_map = Vec::new();
     let mut seen = std::collections::HashSet::new();
 
-    for entry in raw_entries {
-        let entry = entry.map_err(|e| syn_err!(&parsed.raw, "读取文件夹条目失败: {e}"))?;
-        let raw_path = entry.path();
-
+    for raw_path in raw_entries {
         let file_name = raw_path
             .file_name()
-            .ok_or_else(|| syn_err!(&parsed.raw, "无法获取文件名"))?;
+            .ok_or_else(|| syn_err!(&parsed.left, "无法获取文件名"))?;
 
         let trans_path = translated_dir.join(file_name);
 
         if !trans_path.exists() {
             syn_bail!(
-                &parsed.raw,
+                &parsed.left,
                 "找不到对应的翻译文件: {}",
                 trans_path.display()
             );
         }
 
-        let raw_data = std::fs::read_to_string(&raw_path).map_err(|e| {
+        let raw_data = read_file_string(&raw_path).map_err(|e| {
             syn_err!(
-                &parsed.raw,
+                &parsed.left,
                 "读取原始JSON文件失败: {} - {e}",
                 raw_path.display()
             )
         })?;
 
-        let trans_data = std::fs::read_to_string(&trans_path).map_err(|e| {
+        let trans_data = read_file_string(&trans_path).map_err(|e| {
             syn_err!(
-                &parsed.translated,
+                &parsed.right,
                 "读取翻译JSON文件失败: {} - {e}",
                 trans_path.display()
             )
@@ -82,7 +55,7 @@ pub fn generate_text_patch_data(input: TokenStream) -> syn::Result<TokenStream> 
 
         let raw_vals: serde_json::Value = serde_json::from_str(&raw_data).map_err(|e| {
             syn_err!(
-                &parsed.raw,
+                &parsed.left,
                 "解析原始JSON数据失败: {} - {e}",
                 raw_path.display()
             )
@@ -90,19 +63,19 @@ pub fn generate_text_patch_data(input: TokenStream) -> syn::Result<TokenStream> 
 
         let trans_vals: serde_json::Value = serde_json::from_str(&trans_data).map_err(|e| {
             syn_err!(
-                &parsed.translated,
+                &parsed.right,
                 "解析翻译JSON数据失败: {} - {e}",
                 trans_path.display()
             )
         })?;
 
-        let raw_arr = raw_vals
-            .as_array()
-            .ok_or_else(|| syn_err!(&parsed.raw, "原始JSON应为数组格式: {}", raw_path.display()))?;
+        let raw_arr = raw_vals.as_array().ok_or_else(|| {
+            syn_err!(&parsed.left, "原始JSON应为数组格式: {}", raw_path.display())
+        })?;
 
         let trans_arr = trans_vals.as_array().ok_or_else(|| {
             syn_err!(
-                &parsed.translated,
+                &parsed.right,
                 "翻译JSON应为数组格式: {}",
                 trans_path.display()
             )
@@ -110,7 +83,7 @@ pub fn generate_text_patch_data(input: TokenStream) -> syn::Result<TokenStream> 
 
         if raw_arr.len() != trans_arr.len() {
             syn_bail!(
-                &parsed.raw,
+                &parsed.left,
                 "原文数组({})和译文数组({})数量不相等，文件: {}",
                 raw_arr.len(),
                 trans_arr.len(),
@@ -136,7 +109,7 @@ pub fn generate_text_patch_data(input: TokenStream) -> syn::Result<TokenStream> 
     }
 
     if text_map.is_empty() {
-        syn_bail!(&parsed.raw, "未找到任何JSON文件或文件内容为空");
+        syn_bail!(&parsed.left, "未找到任何JSON文件或文件内容为空");
     }
 
     let phf_entries = text_map.iter().map(|(k, v)| {
