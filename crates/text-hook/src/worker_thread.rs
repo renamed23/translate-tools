@@ -51,6 +51,7 @@ pub unsafe fn stop() -> crate::Result<()> {
     Ok(())
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum LoopAction {
     /// 继续运行，立即进入下一轮循环

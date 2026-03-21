@@ -97,6 +97,14 @@ macro_rules! debug {
                 format_args!($($arg)*)
             );
         }
+
+        #[cfg(not(feature = "debug_output"))]
+        {
+            #[allow(unreachable_code, clippy::let_unit_value)]
+            if false {
+                let _ = format_args!($($arg)*);
+            }
+        }
     }};
 
     ($($arg:tt)*) => {{
@@ -110,6 +118,14 @@ macro_rules! debug {
                     format_args!($($arg)*)
                 )
             );
+        }
+
+        #[cfg(not(feature = "debug_output"))]
+        {
+            #[allow(unreachable_code, clippy::let_unit_value)]
+            if false {
+                let _ = format_args!($($arg)*);
+            }
         }
     }};
 }

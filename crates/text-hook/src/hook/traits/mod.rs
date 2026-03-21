@@ -1,3 +1,4 @@
+#[allow(unused_imports)]
 use windows_sys::Win32::{
     Foundation::{HMODULE, HWND, LPARAM, LRESULT, WPARAM},
     System::Diagnostics::Debug::CONTEXT,

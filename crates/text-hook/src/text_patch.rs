@@ -35,6 +35,7 @@ cfg_if! {
 
         static LAST_LOOKUP_INDEX: AtomicUsize = AtomicUsize::new(usize::MAX);
 
+        #[allow(dead_code)]
         #[derive(Clone, Copy)]
         pub struct LookupResult {
             pub translated: &'static str,
@@ -51,7 +52,6 @@ cfg_if! {
         }
 
         /// 获取与原文对应的译文及其命中的文本索引信息。
-        #[allow(dead_code)]
         pub fn lookup_result(original_message: &str) -> Option<LookupResult> {
             let result = text_patch_data::lookup_result(original_message, get_last_lookup_index())?;
             if let Some(index) = result.matched_index {
