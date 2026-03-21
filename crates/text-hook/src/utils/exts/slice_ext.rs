@@ -171,17 +171,17 @@ pub trait WideSliceExt {
     #[cfg(all(feature = "text_patch", not(feature = "text_extracting")))]
     fn lookup(&self) -> crate::Result<Option<Vec<u16>>>;
 
-    /// 文本补丁：查找对应的文本，若不存在则添加。
+    /// 文本补丁：查找对应的文本，若不存在则存储。
     #[cfg(feature = "text_patch")]
-    fn lookup_or_add_item(&self) -> crate::Result<Option<Vec<u16>>>;
+    fn lookup_or_store(&self) -> crate::Result<Option<Vec<u16>>>;
 
     /// 文本补丁：查找并返回以 null 结尾的文本。
     #[cfg(all(feature = "text_patch", not(feature = "text_extracting")))]
     fn lookup_null(&self) -> crate::Result<Option<Vec<u16>>>;
 
-    /// 文本补丁：查找或添加并返回以 null 结尾的文本。
+    /// 文本补丁：查找或存储并返回以 null 结尾的文本。
     #[cfg(feature = "text_patch")]
-    fn lookup_or_add_item_null(&self) -> crate::Result<Option<Vec<u16>>>;
+    fn lookup_or_store_null(&self) -> crate::Result<Option<Vec<u16>>>;
 }
 
 impl WideSliceExt for [u16] {
@@ -250,11 +250,11 @@ impl WideSliceExt for [u16] {
     }
 
     #[cfg(feature = "text_patch")]
-    fn lookup_or_add_item(&self) -> crate::Result<Option<Vec<u16>>> {
+    fn lookup_or_store(&self) -> crate::Result<Option<Vec<u16>>> {
         use crate::utils::exts::str_ext::StrExt;
         Ok(self
             .to_string()?
-            .lookup_or_add_item()
+            .lookup_or_store()
             .map(|s| s.as_bytes().to_wide_utf8()))
     }
 
@@ -268,11 +268,11 @@ impl WideSliceExt for [u16] {
     }
 
     #[cfg(feature = "text_patch")]
-    fn lookup_or_add_item_null(&self) -> crate::Result<Option<Vec<u16>>> {
+    fn lookup_or_store_null(&self) -> crate::Result<Option<Vec<u16>>> {
         use crate::utils::exts::str_ext::StrExt;
         Ok(self
             .to_string()?
-            .lookup_or_add_item()
+            .lookup_or_store()
             .map(|s| s.as_bytes().to_wide_null_utf8()))
     }
 }

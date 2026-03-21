@@ -88,7 +88,7 @@ unsafe extern "system" fn hook_text(ptr: *const u8) -> crate::Result<*const u8> 
         let wide_text = slice.try_to_wide(932)?;
 
         crate::debug!("Get raw slice {}", wide_text.to_string_lossy());
-        if let Some(text) = wide_text.lookup_or_add_item()? {
+        if let Some(text) = wide_text.lookup_or_store()? {
             crate::debug!("Get translated slice {}", text.to_string_lossy());
             let translated_bytes = text.try_to_multi_byte_null(936)?;
 

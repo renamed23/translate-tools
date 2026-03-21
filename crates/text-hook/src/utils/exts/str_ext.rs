@@ -4,10 +4,10 @@ pub trait StrExt {
     #[cfg(all(feature = "text_patch", not(feature = "text_extracting")))]
     fn lookup(&self) -> Option<&'static str>;
 
-    /// 查找对应的文本补丁，如果数据库中不存在该项，则将其添加到待处理列表中。
+    /// 查找对应的文本补丁，如果数据库中不存在该项，则将其存储到待处理列表中。
     /// 通常用于开发阶段的文本自动提取。
     #[cfg(feature = "text_patch")]
-    fn lookup_or_add_item(&self) -> Option<&'static str>;
+    fn lookup_or_store(&self) -> Option<&'static str>;
 }
 
 impl StrExt for str {
@@ -17,7 +17,7 @@ impl StrExt for str {
     }
 
     #[cfg(feature = "text_patch")]
-    fn lookup_or_add_item(&self) -> Option<&'static str> {
-        crate::text_patch::lookup_or_add_item(self)
+    fn lookup_or_store(&self) -> Option<&'static str> {
+        crate::text_patch::lookup_or_store(self)
     }
 }

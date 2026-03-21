@@ -6,8 +6,8 @@ cfg_if! {
         static EXTRACTED_ITEMS: LazyLock<Mutex<indexmap::IndexSet<serde_json::Value>>> =
             LazyLock::new(|| Mutex::new(indexmap::IndexSet::new()));
 
-        /// 添加一项条目
-        pub fn add_item(item: serde_json::Value) {
+        /// 存储一项条目
+        pub fn store_item(item: serde_json::Value) {
             EXTRACTED_ITEMS.lock().unwrap().insert(item);
         }
 
@@ -57,6 +57,11 @@ cfg_if! {
             if let Some(index) = result.matched_index {
                 set_last_lookup_index(index);
             }
+            crate::debug!(raw
+                "Lookup '{original_message}', got '{}' ({:?})",
+                result.translated,
+                result.matched_index
+            );
             Some(LookupResult {
                 translated: result.translated,
                 matched_index: result.matched_index,
@@ -71,11 +76,11 @@ cfg_if! {
     }
 }
 
-/// 处理文本，`text_extracting` 特性开启时添加提取条目，否则返回译文（如果有）
-pub fn lookup_or_add_item(message: &str) -> Option<&'static str> {
+/// 处理文本，`text_extracting` 特性开启时存储提取条目，否则返回译文（如果有）
+pub fn lookup_or_store(message: &str) -> Option<&'static str> {
     cfg_if! {
         if #[cfg(feature = "text_extracting")] {
-            crate::text_patch::add_item(serde_json::json!({"message": message}));
+            crate::text_patch::store_item(serde_json::json!({"message": message}));
             crate::debug!("Added item for message: {message}");
             None
         } else {

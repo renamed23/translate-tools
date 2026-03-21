@@ -117,18 +117,11 @@ fn invert(bytes: &[u8]) -> Vec<u8> {
     bytes.iter().map(|&b| !b).collect()
 }
 
-#[allow(clippy::type_complexity)]
-static NAME_CACHE: LazyLock<Mutex<HashMap<Box<[u8]>, &'static [u8]>>> =
-    LazyLock::new(|| Mutex::new(HashMap::new()));
+type Cache = LazyLock<Mutex<HashMap<Box<[u8]>, &'static [u8]>>>;
+static NAME_CACHE: Cache = LazyLock::new(|| Mutex::new(HashMap::new()));
+static TEXT_CACHE: Cache = LazyLock::new(|| Mutex::new(HashMap::new()));
 
-#[allow(clippy::type_complexity)]
-static TEXT_CACHE: LazyLock<Mutex<HashMap<Box<[u8]>, &'static [u8]>>> =
-    LazyLock::new(|| Mutex::new(HashMap::new()));
-
-fn intern_bytes(
-    cache: &LazyLock<Mutex<HashMap<Box<[u8]>, &'static [u8]>>>,
-    bytes: Vec<u8>,
-) -> &'static [u8] {
+fn intern_bytes(cache: &Cache, bytes: Vec<u8>) -> &'static [u8] {
     if let Some(&cached) = cache.lock().unwrap().get(bytes.as_slice()) {
         return cached;
     }
@@ -160,7 +153,7 @@ unsafe extern "system" fn hook_name(string_ptr: *mut MsvcString) -> crate::Resul
 
         let wide_name = slice.to_wide_ansi();
         crate::debug!("Get raw slice {}", wide_name.to_string_lossy());
-        if let Some(name) = wide_name.lookup_or_add_item()? {
+        if let Some(name) = wide_name.lookup_or_store()? {
             crate::debug!("Get translated slice {}", name.to_string_lossy());
             let name_b = intern_bytes(&NAME_CACHE, name.to_ansi_null());
             sub_402b70(string_ptr, 0, name_b.as_ptr() as _, name_b.len() as _);
@@ -176,7 +169,7 @@ unsafe extern "system" fn hook_text(ptr: *const u8) -> crate::Result<*const u8> 
         let slice = ptr.to_slice_until_null(8192 * 50);
         let wide_text = invert(slice).to_wide_ansi();
         crate::debug!("Get raw slice {}", wide_text.to_string_lossy());
-        if let Some(text) = wide_text.lookup_or_add_item()? {
+        if let Some(text) = wide_text.lookup_or_store()? {
             crate::debug!("Get translated slice {}", text.to_string_lossy());
             let text_b = intern_bytes(&TEXT_CACHE, invert(&text.to_ansi()).with_null());
             return Ok(text_b.as_ptr());

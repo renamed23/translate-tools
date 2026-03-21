@@ -206,7 +206,7 @@ pub trait WindowHook: Send + Sync + 'static {
                     debug!("Get menu text: {raw_text}");
                 }
 
-                let _opt_trans_msg = text_slice.to_wide_ansi().lookup_or_add_item_null();
+                let _opt_trans_msg = text_slice.to_wide_ansi().lookup_or_store_null();
 
                 #[cfg(not(feature = "text_extracting"))]
                 if let Ok(Some(trans_msg)) = _opt_trans_msg {
@@ -262,8 +262,8 @@ pub trait WindowHook: Send + Sync + 'static {
                 }
             }
 
-            let _opt_wide_text = text_slice.to_wide_ansi().lookup_or_add_item_null();
-            let _opt_wide_caption = cap_slice.to_wide_ansi().lookup_or_add_item_null();
+            let _opt_wide_text = text_slice.to_wide_ansi().lookup_or_store_null();
+            let _opt_wide_caption = cap_slice.to_wide_ansi().lookup_or_store_null();
 
             #[cfg(not(feature = "text_extracting"))]
             if _opt_wide_text.is_ok() || _opt_wide_caption.is_ok() {
@@ -314,7 +314,7 @@ pub trait WindowHook: Send + Sync + 'static {
 
             let _opt_trans_msg = text_slice
                 .to_wide_ansi()
-                .lookup_or_add_item_null()
+                .lookup_or_store_null()
                 .ok()
                 .flatten();
 
@@ -346,7 +346,7 @@ pub trait WindowHook: Send + Sync + 'static {
 
             let _opt_trans_msg = text_slice
                 .to_wide_ansi()
-                .lookup_or_add_item_null()
+                .lookup_or_store_null()
                 .ok()
                 .flatten();
 
@@ -375,7 +375,7 @@ pub trait WindowHook: Send + Sync + 'static {
 
                 let _opt_trans_msg = text_slice
                     .to_wide_ansi()
-                    .lookup_or_add_item_null()
+                    .lookup_or_store_null()
                     .ok()
                     .flatten();
 
@@ -415,7 +415,7 @@ pub trait WindowHook: Send + Sync + 'static {
 
             let _opt_trans = caption_slice
                 .to_wide_ansi()
-                .lookup_or_add_item()
+                .lookup_or_store()
                 .ok()
                 .flatten()
                 .map(|s| s.to_multi_byte_null(0));

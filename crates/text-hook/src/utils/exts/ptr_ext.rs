@@ -39,6 +39,16 @@ pub trait PtrExt<T>: AsPtrExt<T> + Sized
 where
     T: Copy + PartialEq + Default,
 {
+    /// 严格地将指针转换为指定长度的不可变切片引用。
+    ///
+    /// # Safety
+    ///
+    /// - 指针必须有效且指向至少 `len` 个连续的元素
+    /// - 返回的切片生命周期 `'a` 由调用者控制，必须确保不超过底层内存的有效期
+    unsafe fn try_to_slice<'a>(self, len: usize) -> crate::Result<&'a [T]> {
+        unsafe { crate::utils::mem::try_slice_from_raw_parts(self.as_const_ptr(), len) }
+    }
+
     /// 将指针转换为指定长度的不可变切片引用。
     ///
     /// # 参数
@@ -50,7 +60,24 @@ where
     /// - 指针必须有效且指向至少 `len` 个连续的元素
     /// - 返回的切片生命周期 `'a` 由调用者控制，必须确保不超过底层内存的有效期
     unsafe fn to_slice<'a>(self, len: usize) -> &'a [T] {
-        unsafe { crate::utils::mem::slice_from_raw_parts(self.as_const_ptr(), len) }
+        match unsafe { self.try_to_slice(len) } {
+            Ok(slice) => slice,
+            Err(err) => {
+                crate::debug!("to_slice failed: {err:?}");
+                &[]
+            }
+        }
+    }
+
+    /// 严格地将指针转换为指定长度的可变切片引用。
+    ///
+    /// # Safety
+    ///
+    /// - 指针必须有效、可变且指向至少 `len` 个连续的元素
+    /// - 返回的切片生命周期 `'a` 由调用者控制，必须确保不超过底层内存的有效期
+    /// - 此操作会创建可变引用，必须确保在此期间没有其他引用访问同一内存
+    unsafe fn try_to_slice_mut<'a>(self, len: usize) -> crate::Result<&'a mut [T]> {
+        unsafe { crate::utils::mem::try_slice_from_raw_parts_mut(self.as_mut_ptr(), len) }
     }
 
     /// 将指针转换为指定长度的可变切片引用。
@@ -65,7 +92,25 @@ where
     /// - 返回的切片生命周期 `'a` 由调用者控制，必须确保不超过底层内存的有效期
     /// - 此操作会创建可变引用，必须确保在此期间没有其他引用访问同一内存
     unsafe fn to_slice_mut<'a>(self, len: usize) -> &'a mut [T] {
-        unsafe { crate::utils::mem::slice_from_raw_parts_mut(self.as_mut_ptr(), len) }
+        match unsafe { self.try_to_slice_mut(len) } {
+            Ok(slice) => slice,
+            Err(err) => {
+                crate::debug!("to_slice_mut failed: {err:?}");
+                &mut []
+            }
+        }
+    }
+
+    /// 严格地将指针转换为以空值（`T::default()`）结尾的不可变切片引用。
+    ///
+    /// # Safety
+    ///
+    /// - 指针必须有效，且在 `max_len` 范围内可读
+    /// - 如果在 `max_len` 范围内找到 `T::default()`，返回终止符之前的切片
+    /// - 如果未找到 `T::default()`，返回长度为 `max_len` 的切片
+    /// - 返回的切片生命周期 `'a` 由调用者控制
+    unsafe fn try_to_slice_until_null<'a>(self, max_len: usize) -> crate::Result<&'a [T]> {
+        unsafe { crate::utils::mem::try_slice_until_null(self.as_const_ptr(), max_len) }
     }
 
     /// 将指针转换为以空值（T::default()）结尾的不可变切片引用。
@@ -79,11 +124,31 @@ where
     ///
     /// # Safety
     ///
-    /// - 指针必须有效且指向以 `T::default()` 结尾的连续内存
-    /// - 如果未找到空值，切片长度将为 `max_len`
+    /// - 指针必须有效，且在 `max_len` 范围内可读
+    /// - 如果未找到空值，则返回长度为 `max_len` 的切片
+    /// - 如果快速内存检查失败，将记录调试日志并返回空切片
     /// - 返回的切片生命周期 `'a` 由调用者控制
     unsafe fn to_slice_until_null<'a>(self, max_len: usize) -> &'a [T] {
-        unsafe { crate::utils::mem::slice_until_null(self.as_const_ptr(), max_len) }
+        match unsafe { self.try_to_slice_until_null(max_len) } {
+            Ok(slice) => slice,
+            Err(err) => {
+                crate::debug!("to_slice_until_null failed: {err:?}");
+                &[]
+            }
+        }
+    }
+
+    /// 严格地将指针转换为以空值（`T::default()`）结尾的可变切片引用。
+    ///
+    /// # Safety
+    ///
+    /// - 指针必须有效、可变，且在 `max_len` 范围内可读可写
+    /// - 如果在 `max_len` 范围内找到 `T::default()`，返回终止符之前的切片
+    /// - 如果未找到 `T::default()`，返回长度为 `max_len` 的切片
+    /// - 返回的切片生命周期 `'a` 由调用者控制
+    /// - 此操作会创建可变引用，必须确保在此期间没有其他引用访问同一内存
+    unsafe fn try_to_slice_until_null_mut<'a>(self, max_len: usize) -> crate::Result<&'a mut [T]> {
+        unsafe { crate::utils::mem::try_slice_until_null_mut(self.as_mut_ptr(), max_len) }
     }
 
     /// 将指针转换为以空值（T::default()）结尾的可变切片引用。
@@ -97,12 +162,19 @@ where
     ///
     /// # Safety
     ///
-    /// - 指针必须有效、可变且指向以 `T::default()` 结尾的连续内存
-    /// - 如果未找到空值，切片长度将为 `max_len`
+    /// - 指针必须有效、可变，且在 `max_len` 范围内可读可写
+    /// - 如果未找到空值，则返回长度为 `max_len` 的切片
+    /// - 如果快速内存检查失败，将记录调试日志并返回空切片
     /// - 返回的切片生命周期 `'a` 由调用者控制
     /// - 此操作会创建可变引用，必须确保在此期间没有其他引用访问同一内存
     unsafe fn to_slice_until_null_mut<'a>(self, max_len: usize) -> &'a mut [T] {
-        unsafe { crate::utils::mem::slice_until_null_mut(self.as_mut_ptr(), max_len) }
+        match unsafe { self.try_to_slice_until_null_mut(max_len) } {
+            Ok(slice) => slice,
+            Err(err) => {
+                crate::debug!("to_slice_until_null_mut failed: {err:?}");
+                &mut []
+            }
+        }
     }
 }
 

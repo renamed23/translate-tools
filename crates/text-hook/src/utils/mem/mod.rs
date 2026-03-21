@@ -2,121 +2,131 @@ pub(crate) mod iat;
 pub(crate) mod patch;
 pub(crate) mod protect_guard;
 
-/// 从 `*const T` 开始搜索第一个值为 0 的元素，返回 `&[T]`（长度 ≤ max_len）。
+/// 从 `*const T` 开始搜索第一个值为 0 的元素，返回 `&[T]`（长度 <= `max_len`）。
 ///
 /// # Safety
-/// - `ptr` 必须指向至少 `max_len` 或到第一个 `0` 之前那段可读内存（由调用者保证）。
+/// - `ptr` 必须指向至少 `max_len` 个元素的可读内存，或者在此范围内提前遇到第一个 `0`。
 /// - `ptr` 必须按 `T` 的对齐方式对齐。
 /// - 返回的切片生命周期 `'a` 必须小于等于该内存有效期。
-/// - `T` 必须实现 `From<u8>`, `PartialEq` 与 `Copy`（内置无符号整型符合此条件）。
-pub unsafe fn slice_until_null<'a, T>(ptr: *const T, max_len: usize) -> &'a [T]
-where
-    T: PartialEq + Copy + Default,
-{
-    unsafe {
-        if max_len == 0 || quick_memory_check(ptr as *const u8, max_len * size_of::<T>()).is_err() {
-            return &[];
-        }
-
-        let zero = T::default();
-
-        // 遍历查找第一个 0
-        for i in 0..max_len {
-            if *ptr.add(i) == zero {
-                return core::slice::from_raw_parts(ptr, i);
-            }
-        }
-
-        // 未找到 0，则以 max_len 返回
-        core::slice::from_raw_parts(ptr, max_len)
-    }
-}
-
-/// 从 `*mut T` 开始搜索第一个值为 0 的元素，返回 `&[T]`（长度 ≤ max_len）。
-///
-/// # Safety
-/// - `ptr` 必须指向至少 `max_len` 或到第一个 `0` 之前那段可读内存（由调用者保证）。
-/// - `ptr` 必须按 `T` 的对齐方式对齐。
-/// - 返回的切片生命周期 `'a` 必须小于等于该内存有效期。
-/// - `T` 必须实现 `From<u8>`, `PartialEq` 与 `Copy`（内置无符号整型符合此条件）。
-pub unsafe fn slice_until_null_mut<'a, T>(ptr: *mut T, max_len: usize) -> &'a mut [T]
-where
-    T: PartialEq + Copy + Default,
-{
-    unsafe {
-        // 如果是非法指针，返回空切片（注意：从任意指针构造 0 长度切片是允许的）
-        // 或者长度为 0 的情况直接返回空切片
-        if max_len == 0 || quick_memory_check(ptr as *const u8, max_len * size_of::<T>()).is_err() {
-            return &mut [];
-        }
-
-        let zero = T::default();
-
-        // 遍历查找第一个 0
-        for i in 0..max_len {
-            if *ptr.add(i) == zero {
-                return core::slice::from_raw_parts_mut(ptr, i);
-            }
-        }
-
-        // 未找到 0，则以 max_len 返回
-        core::slice::from_raw_parts_mut(ptr, max_len)
-    }
-}
-
-/// 从 `*const T` 构造切片，会进行快速内存检查。
-///
-/// # 参数
-/// - `ptr`: 指向数据的指针
-/// - `len`: 期望的切片长度
+/// - `T` 必须实现 `PartialEq`、`Copy` 与 `Default`。
 ///
 /// # 返回值
-/// 如果指针有效则返回指定长度的切片，否则返回空切片
+/// - 如果在 `max_len` 范围内找到 `T::default()`，返回终止符之前的切片。
+/// - 如果未找到终止符，返回长度为 `max_len` 的切片。
+/// - 如果指针范围未通过快速内存检查，则返回错误。
+pub unsafe fn try_slice_until_null<'a, T>(ptr: *const T, max_len: usize) -> crate::Result<&'a [T]>
+where
+    T: PartialEq + Copy + Default,
+{
+    unsafe {
+        if max_len == 0 {
+            return Ok(&[]);
+        }
+
+        quick_memory_check(ptr as *const u8, max_len * size_of::<T>())?;
+
+        let zero = T::default();
+
+        for i in 0..max_len {
+            if *ptr.add(i) == zero {
+                return Ok(core::slice::from_raw_parts(ptr, i));
+            }
+        }
+
+        // 未找到 0，则以 max_len 返回
+        Ok(core::slice::from_raw_parts(ptr, max_len))
+    }
+}
+
+/// 从 `*mut T` 开始搜索第一个值为 0 的元素，返回 `&mut [T]`（长度 <= `max_len`）。
+///
+/// # Safety
+/// - `ptr` 必须指向至少 `max_len` 个元素的可读可写内存，或者在此范围内提前遇到第一个 `0`。
+/// - `ptr` 必须按 `T` 的对齐方式对齐。
+/// - 返回的切片生命周期 `'a` 必须小于等于该内存有效期。
+/// - 必须满足可变引用的别名规则。
+///
+/// # 返回值
+/// - 如果在 `max_len` 范围内找到 `T::default()`，返回终止符之前的切片。
+/// - 如果未找到终止符，返回长度为 `max_len` 的切片。
+/// - 如果指针范围未通过快速内存检查，则返回错误。
+pub unsafe fn try_slice_until_null_mut<'a, T>(
+    ptr: *mut T,
+    max_len: usize,
+) -> crate::Result<&'a mut [T]>
+where
+    T: PartialEq + Copy + Default,
+{
+    unsafe {
+        if max_len == 0 {
+            return Ok(&mut []);
+        }
+
+        quick_memory_check(ptr as *const u8, max_len * size_of::<T>())?;
+
+        let zero = T::default();
+
+        for i in 0..max_len {
+            if *ptr.add(i) == zero {
+                return Ok(core::slice::from_raw_parts_mut(ptr, i));
+            }
+        }
+
+        Ok(core::slice::from_raw_parts_mut(ptr, max_len))
+    }
+}
+
+/// 从 `*const T` 构造切片，并进行快速内存检查。
 ///
 /// # Safety
 /// - 如果指针有效，必须保证指向至少 `len` 个 `T` 类型元素的有效内存
 /// - `ptr` 必须按 `T` 的对齐方式对齐
 /// - 返回的切片生命周期 `'a` 必须小于等于该内存有效期
-pub unsafe fn slice_from_raw_parts<'a, T>(ptr: *const T, len: usize) -> &'a [T]
+///
+/// # 返回值
+/// - 成功时返回长度为 `len` 的切片。
+/// - 如果指针范围未通过快速内存检查，则返回错误。
+pub unsafe fn try_slice_from_raw_parts<'a, T>(ptr: *const T, len: usize) -> crate::Result<&'a [T]>
 where
     T: Copy,
 {
     unsafe {
-        // 长度为 0 或者非法指针时直接返回空切片
-        if len == 0 || quick_memory_check(ptr as *const u8, len * size_of::<T>()).is_err() {
-            return &[];
+        if len == 0 {
+            return Ok(&[]);
         }
 
-        // 指针有效，构造切片
-        core::slice::from_raw_parts(ptr, len)
+        quick_memory_check(ptr as *const u8, len * size_of::<T>())?;
+
+        Ok(core::slice::from_raw_parts(ptr, len))
     }
 }
 
-/// 从 `*mut T` 构造可变切片，会进行快速内存检查。
-///
-/// # 参数
-/// - `ptr`: 指向数据的可变指针
-/// - `len`: 期望的切片长度
-///
-/// # 返回值
-/// 如果指针有效则返回指定长度的可变切片，否则返回空切片
+/// 从 `*mut T` 构造可变切片，并进行快速内存检查。
 ///
 /// # Safety
 /// - 如果指针有效，必须保证指向至少 `len` 个 `T` 类型元素的有效可写内存
 /// - `ptr` 必须按 `T` 的对齐方式对齐
 /// - 返回的切片生命周期 `'a` 必须小于等于该内存有效期
-pub unsafe fn slice_from_raw_parts_mut<'a, T>(ptr: *mut T, len: usize) -> &'a mut [T]
+/// - 必须满足可变引用的别名规则
+///
+/// # 返回值
+/// - 成功时返回长度为 `len` 的可变切片。
+/// - 如果指针范围未通过快速内存检查，则返回错误。
+pub unsafe fn try_slice_from_raw_parts_mut<'a, T>(
+    ptr: *mut T,
+    len: usize,
+) -> crate::Result<&'a mut [T]>
 where
     T: Copy,
 {
     unsafe {
-        // 长度为 0 或者非法指针时直接返回空切片
-        if len == 0 || quick_memory_check(ptr as *const u8, len * size_of::<T>()).is_err() {
-            return &mut [];
+        if len == 0 {
+            return Ok(&mut []);
         }
 
-        // 指针有效，构造可变切片
-        core::slice::from_raw_parts_mut(ptr, len)
+        quick_memory_check(ptr as *const u8, len * size_of::<T>())?;
+
+        Ok(core::slice::from_raw_parts_mut(ptr, len))
     }
 }
 
