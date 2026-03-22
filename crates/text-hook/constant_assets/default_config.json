@@ -76,10 +76,12 @@
     "encode_to_u16": true
   },
   "REDIRECTION_SRC_PATH": {
-    "type": "&str"
+    "type": "&str",
+    "value": ""
   },
   "REDIRECTION_TARGET_PATH": {
-    "type": "&str"
+    "type": "&str",
+    "value": ""
   },
   "RESOURCE_PACK_NAME": {
     "type": "&str"

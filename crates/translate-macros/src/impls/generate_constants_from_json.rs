@@ -4,7 +4,7 @@ use serde::Deserialize;
 use serde_json::Value as JsonValue;
 use std::collections::HashMap;
 
-use crate::impls::utils::{CommaSeparatedPaths, read_json_file, resolve_manifest_path};
+use crate::utils::{input::CommaSeparatedPaths, read_json_file, resolve_manifest_path};
 
 #[derive(Deserialize)]
 #[serde(untagged)]

@@ -409,7 +409,7 @@ impl Drop for ProtectGuard {
             for p in &self.pages {
                 let _ok = VirtualProtect(p.base as _, p.size as _, p.protect as _, &mut _tmp as _);
 
-                #[cfg(feature = "debug_output")]
+                #[cfg(feature = "enable_debug_output")]
                 if _ok == 0 {
                     crate::debug!("VirtualProtect restore failed for {:p}", p.base);
                 }

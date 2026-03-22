@@ -6,7 +6,7 @@ use syn::{
     parse::{Parse, ParseStream},
 };
 
-use crate::impls::utils::get_full_path_by_manifest;
+use crate::utils::get_full_path_by_manifest;
 
 enum Kind {
     Static,

@@ -1,12 +1,9 @@
+pub(crate) mod components;
 pub(crate) mod impls;
 pub(crate) mod traits;
 
-#[allow(dead_code)]
-pub(crate) mod trait_impls;
-
 mod hook_lists {
     translate_macros::expand_by_files!("src/hook/traits" => {
-        #[cfg(feature = __file_str__)]
         use super::traits::__file__::*;
     });
 
@@ -31,12 +28,12 @@ pub fn disable_hooks_from_lists() {
 #[macro_export]
 macro_rules! call {
     ($hook:ident, $($arg:tt)*) => {{
-        #[cfg(not(feature = "iat_hook"))]
+        #[cfg(not(feature = "enable_iat_hook"))]
         {
             $hook.call($($arg)*)
         }
 
-        #[cfg(feature = "iat_hook")]
+        #[cfg(feature = "enable_iat_hook")]
         {
             $hook.orig()($($arg)*)
         }

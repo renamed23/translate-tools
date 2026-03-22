@@ -2,9 +2,9 @@ use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use syn::{FnArg, Ident, ItemTrait, LitStr, Pat, PatIdent, TraitItem, TraitItemFn, Type};
 
-use crate::impls::{
-    detour::{DetourAttr, generate_detour_ident, parse_detour_attrs},
-    utils::ReturnKind,
+use crate::{
+    impls::detour::{DetourAttr, generate_detour_ident, parse_detour_attrs},
+    utils::return_kind::ReturnKind,
 };
 
 pub fn detour_trait(_attr: TokenStream, item: TokenStream) -> syn::Result<TokenStream> {
@@ -99,7 +99,7 @@ pub fn detour_trait(_attr: TokenStream, item: TokenStream) -> syn::Result<TokenS
                         on_panic = #fallback_tokens,
                         on_err = unsafe {crate::call!(#static_ident, #(#call_args_tokens),*)}
                     )]
-                    #[cfg_attr(feature = "export_hooks", unsafe(no_mangle))]
+                    #[cfg_attr(feature = "export_hook_symbols", unsafe(no_mangle))]
                     pub unsafe extern #calling_convention fn #export_ident( #(#param_pairs_iter),* ) #output {
                        unsafe {
                             crate::hook::impls::HookImplType::#method_ident( #(#call_args_tokens),* )
@@ -107,7 +107,7 @@ pub fn detour_trait(_attr: TokenStream, item: TokenStream) -> syn::Result<TokenS
                     }
 
                     // 自动生成：LazyLock 的 retour detour 静态
-                    #[cfg(not(feature = "iat_hook"))]
+                    #[cfg(not(feature = "enable_iat_hook"))]
                     pub static #static_ident: ::std::sync::LazyLock<retour::GenericDetour<#fn_ty_tokens>> =
                         ::std::sync::LazyLock::new(|| {
                             crate::debug!("initialize detour: {}!{}", #dll_lit, #symbol_lit);
@@ -122,7 +122,7 @@ pub fn detour_trait(_attr: TokenStream, item: TokenStream) -> syn::Result<TokenS
                         });
 
                     // 自动生成：LazyLock 的 IAT 静态
-                    #[cfg(feature = "iat_hook")]
+                    #[cfg(feature = "enable_iat_hook")]
                     pub static #static_ident: ::std::sync::LazyLock<crate::utils::mem::iat::IatHook<#fn_ty_tokens>> =
                     ::std::sync::LazyLock::new(|| {
                         crate::debug!("initialize iat: {}!{}", #dll_lit, #symbol_lit);

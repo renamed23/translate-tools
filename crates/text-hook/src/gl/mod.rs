@@ -1,21 +1,21 @@
-#[cfg(feature = "gl_painter")]
+#[cfg(feature = "enable_gl_painter")]
 pub(crate) mod painter;
 
 use glow::HasContext;
 use std::sync::Arc;
 use windows_sys::{
+    s, w,
     Win32::{
         Foundation::HWND,
         Graphics::{
             Gdi::{GetDC, HDC},
             OpenGL::{
-                ChoosePixelFormat, GetPixelFormat, HGLRC, PFD_DOUBLEBUFFER, PFD_DRAW_TO_WINDOW,
+                wglCreateContext, wglGetProcAddress, wglMakeCurrent, ChoosePixelFormat,
+                GetPixelFormat, SetPixelFormat, HGLRC, PFD_DOUBLEBUFFER, PFD_DRAW_TO_WINDOW,
                 PFD_MAIN_PLANE, PFD_SUPPORT_OPENGL, PFD_TYPE_RGBA, PIXELFORMATDESCRIPTOR,
-                SetPixelFormat, wglCreateContext, wglGetProcAddress, wglMakeCurrent,
             },
         },
     },
-    s, w,
 };
 
 use crate::{

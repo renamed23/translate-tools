@@ -50,15 +50,15 @@ pub trait ByteSliceExt {
     fn with_null(&self) -> Vec<u8>;
 
     /// 获取补丁数据或执行提取。
-    #[cfg(feature = "patch")]
+    #[cfg(feature = "enable_patch")]
     fn get_patch_or_extract(&self) -> crate::Result<Option<&'static [u8]>>;
 
     /// 获取补丁数据。
-    #[cfg(feature = "patch")]
+    #[cfg(feature = "enable_patch")]
     fn get_patch(&self) -> Option<&'static [u8]>;
 
     /// 尝试提取传入数据，若为新数据，将会写入 raw 目录。
-    #[cfg(feature = "patch_extracting")]
+    #[cfg(feature = "extract_patch")]
     fn extract_to_file(&self) -> crate::Result<()>;
 }
 
@@ -94,17 +94,17 @@ impl ByteSliceExt for [u8] {
         v
     }
 
-    #[cfg(feature = "patch")]
+    #[cfg(feature = "enable_patch")]
     fn get_patch_or_extract(&self) -> crate::Result<Option<&'static [u8]>> {
         crate::patch::get_patch_or_extract(self)
     }
 
-    #[cfg(feature = "patch")]
+    #[cfg(feature = "enable_patch")]
     fn get_patch(&self) -> Option<&'static [u8]> {
         crate::patch::get_patch(self)
     }
 
-    #[cfg(feature = "patch_extracting")]
+    #[cfg(feature = "extract_patch")]
     fn extract_to_file(&self) -> crate::Result<()> {
         crate::patch::extract_to_file(self)
     }
@@ -168,19 +168,19 @@ pub trait WideSliceExt {
     fn to_path_buf(&self) -> PathBuf;
 
     /// 文本补丁：查找对应的翻译/映射文本。
-    #[cfg(all(feature = "text_patch", not(feature = "text_extracting")))]
+    #[cfg(all(feature = "enable_text_patch", not(feature = "extract_text")))]
     fn lookup(&self) -> crate::Result<Option<Vec<u16>>>;
 
     /// 文本补丁：查找对应的文本，若不存在则存储。
-    #[cfg(feature = "text_patch")]
+    #[cfg(feature = "enable_text_patch")]
     fn lookup_or_store(&self) -> crate::Result<Option<Vec<u16>>>;
 
     /// 文本补丁：查找并返回以 null 结尾的文本。
-    #[cfg(all(feature = "text_patch", not(feature = "text_extracting")))]
+    #[cfg(all(feature = "enable_text_patch", not(feature = "extract_text")))]
     fn lookup_null(&self) -> crate::Result<Option<Vec<u16>>>;
 
     /// 文本补丁：查找或存储并返回以 null 结尾的文本。
-    #[cfg(feature = "text_patch")]
+    #[cfg(feature = "enable_text_patch")]
     fn lookup_or_store_null(&self) -> crate::Result<Option<Vec<u16>>>;
 }
 
@@ -240,7 +240,7 @@ impl WideSliceExt for [u16] {
         PathBuf::from(self.to_os_string())
     }
 
-    #[cfg(all(feature = "text_patch", not(feature = "text_extracting")))]
+    #[cfg(all(feature = "enable_text_patch", not(feature = "extract_text")))]
     fn lookup(&self) -> crate::Result<Option<Vec<u16>>> {
         use crate::utils::exts::str_ext::StrExt;
         Ok(self
@@ -249,7 +249,7 @@ impl WideSliceExt for [u16] {
             .map(|s| s.as_bytes().to_wide_utf8()))
     }
 
-    #[cfg(feature = "text_patch")]
+    #[cfg(feature = "enable_text_patch")]
     fn lookup_or_store(&self) -> crate::Result<Option<Vec<u16>>> {
         use crate::utils::exts::str_ext::StrExt;
         Ok(self
@@ -258,7 +258,7 @@ impl WideSliceExt for [u16] {
             .map(|s| s.as_bytes().to_wide_utf8()))
     }
 
-    #[cfg(all(feature = "text_patch", not(feature = "text_extracting")))]
+    #[cfg(all(feature = "enable_text_patch", not(feature = "extract_text")))]
     fn lookup_null(&self) -> crate::Result<Option<Vec<u16>>> {
         use crate::utils::exts::str_ext::StrExt;
         Ok(self
@@ -267,7 +267,7 @@ impl WideSliceExt for [u16] {
             .map(|s| s.as_bytes().to_wide_null_utf8()))
     }
 
-    #[cfg(feature = "text_patch")]
+    #[cfg(feature = "enable_text_patch")]
     fn lookup_or_store_null(&self) -> crate::Result<Option<Vec<u16>>> {
         use crate::utils::exts::str_ext::StrExt;
         Ok(self

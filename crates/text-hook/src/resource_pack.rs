@@ -4,7 +4,7 @@ use crate::utils::exts::slice_ext::WideSliceExt;
 
 mod pack {
     cfg_if::cfg_if! {
-        if #[cfg(feature = "resource_pack_embedding")] {
+        if #[cfg(feature = "embed_resource_pack")] {
             translate_macros::generate_resource_pack!("assets/resource_pack", "assets/config.json");
         } else {
             translate_macros::generate_resource_pack!(

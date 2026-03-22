@@ -9,93 +9,23 @@ use windows_sys::{
     core::{BOOL, PCSTR, PCWSTR},
 };
 
-use crate::utils::exts::ptr_ext::PtrExt;
-
 #[detour_trait]
-pub trait FileHook: Send + Sync + 'static {
+pub trait CreateFile {
     #[detour(
         dll = "kernel32.dll",
         symbol = "CreateFileA",
         fallback = "windows_sys::Win32::Foundation::INVALID_HANDLE_VALUE"
     )]
     unsafe fn create_file_a(
-        _lp_file_name: PCSTR,
-        _dw_desired_access: u32,
-        _dw_share_mode: u32,
-        _lp_security_attributes: *const SECURITY_ATTRIBUTES,
-        _dw_creation_disposition: u32,
-        _dw_flags_and_attributes: u32,
-        _h_template_file: HANDLE,
+        lp_file_name: PCSTR,
+        dw_desired_access: u32,
+        dw_share_mode: u32,
+        lp_security_attributes: *const SECURITY_ATTRIBUTES,
+        dw_creation_disposition: u32,
+        dw_flags_and_attributes: u32,
+        h_template_file: HANDLE,
     ) -> HANDLE {
-        #[cfg(any(feature = "create_file_redirect", feature = "resource_pack"))]
-        unsafe {
-            #[cfg(feature = "resource_pack")]
-            use crate::utils::exts::slice_ext::ByteSliceExt;
-
-            let filename_bytes = _lp_file_name.to_slice_until_null(4096);
-
-            #[cfg(feature = "create_file_redirect")]
-            {
-                use crate::constant::{REDIRECTION_SRC_PATH, REDIRECTION_TARGET_PATH};
-
-                // 检查文件名是否以 REDIRECTION_SRC_PATH 结尾
-                if let Some(tail) = filename_bytes.get(
-                    filename_bytes
-                        .len()
-                        .saturating_sub(REDIRECTION_SRC_PATH.len())..,
-                ) && tail.eq_ignore_ascii_case(REDIRECTION_SRC_PATH.as_bytes())
-                {
-                    crate::debug!(
-                        "'{REDIRECTION_SRC_PATH}' file hooked, replace to \
-                         '{REDIRECTION_TARGET_PATH}'"
-                    );
-                    let mut new_path = filename_bytes
-                        [..filename_bytes.len() - REDIRECTION_SRC_PATH.len()]
-                        .to_vec();
-                    new_path.extend_from_slice(
-                        const_str::concat!(REDIRECTION_TARGET_PATH, "\0").as_bytes(),
-                    );
-
-                    return crate::call!(
-                        HOOK_CREATE_FILE_A,
-                        new_path.as_ptr(),
-                        _dw_desired_access,
-                        _dw_share_mode,
-                        _lp_security_attributes,
-                        _dw_creation_disposition,
-                        _dw_flags_and_attributes,
-                        _h_template_file,
-                    );
-                }
-            }
-
-            #[cfg(feature = "resource_pack")]
-            if let Some(handle) = try_redirect(
-                &filename_bytes.to_wide(0),
-                _dw_desired_access,
-                _dw_share_mode,
-                _lp_security_attributes,
-                _dw_creation_disposition,
-                _dw_flags_and_attributes,
-                _h_template_file,
-            ) {
-                return handle;
-            }
-
-            crate::call!(
-                HOOK_CREATE_FILE_A,
-                _lp_file_name,
-                _dw_desired_access,
-                _dw_share_mode,
-                _lp_security_attributes,
-                _dw_creation_disposition,
-                _dw_flags_and_attributes,
-                _h_template_file,
-            )
-        }
-
-        #[cfg(not(any(feature = "create_file_redirect", feature = "resource_pack")))]
-        unimplemented!();
+        unimplemented!()
     }
 
     #[detour(
@@ -104,44 +34,20 @@ pub trait FileHook: Send + Sync + 'static {
         fallback = "windows_sys::Win32::Foundation::INVALID_HANDLE_VALUE"
     )]
     unsafe fn create_file_w(
-        _lp_file_name: PCWSTR,
-        _dw_desired_access: u32,
-        _dw_share_mode: u32,
-        _lp_security_attributes: *const SECURITY_ATTRIBUTES,
-        _dw_creation_disposition: u32,
-        _dw_flags_and_attributes: u32,
-        _h_template_file: HANDLE,
+        lp_file_name: PCWSTR,
+        dw_desired_access: u32,
+        dw_share_mode: u32,
+        lp_security_attributes: *const SECURITY_ATTRIBUTES,
+        dw_creation_disposition: u32,
+        dw_flags_and_attributes: u32,
+        h_template_file: HANDLE,
     ) -> HANDLE {
-        #[cfg(feature = "resource_pack")]
-        unsafe {
-            if let Some(handle) = try_redirect(
-                _lp_file_name.to_slice_until_null(4096),
-                _dw_desired_access,
-                _dw_share_mode,
-                _lp_security_attributes,
-                _dw_creation_disposition,
-                _dw_flags_and_attributes,
-                _h_template_file,
-            ) {
-                return handle;
-            }
-
-            crate::call!(
-                HOOK_CREATE_FILE_W,
-                _lp_file_name,
-                _dw_desired_access,
-                _dw_share_mode,
-                _lp_security_attributes,
-                _dw_creation_disposition,
-                _dw_flags_and_attributes,
-                _h_template_file,
-            )
-        }
-
-        #[cfg(not(feature = "resource_pack"))]
-        unimplemented!();
+        unimplemented!()
     }
+}
 
+#[detour_trait]
+pub trait ReadFile {
     #[allow(unused_variables)]
     #[detour(
         dll = "kernel32.dll",
@@ -149,74 +55,40 @@ pub trait FileHook: Send + Sync + 'static {
         fallback = "windows_sys::Win32::Foundation::FALSE"
     )]
     unsafe fn read_file(
-        _h_file: HANDLE,
-        _lp_buffer: *mut u8,
-        _n_number_of_bytes_to_read: u32,
-        _lp_number_of_bytes_read: *mut u32,
-        _lp_overlapped: *mut OVERLAPPED,
+        h_file: HANDLE,
+        lp_buffer: *mut u8,
+        n_number_of_bytes_to_read: u32,
+        lp_number_of_bytes_read: *mut u32,
+        lp_overlapped: *mut OVERLAPPED,
     ) -> BOOL {
-        #[cfg(not(feature = "read_file_patch_impl"))]
-        unimplemented!();
-
-        #[cfg(feature = "read_file_patch_impl")]
-        unsafe {
-            use windows_sys::Win32::Foundation::FALSE;
-
-            let result = crate::call!(
-                HOOK_READ_FILE,
-                _h_file,
-                _lp_buffer,
-                _n_number_of_bytes_to_read,
-                _lp_number_of_bytes_read,
-                _lp_overlapped,
-            );
-
-            if result == FALSE {
-                crate::debug!("ReadFile failed");
-                return FALSE;
-            }
-
-            // 如果 lp_number_of_bytes_read 为 NULL
-            // - 若 lp_overlapped 非 NULL（异步），我们无法得知实际读到多少字节，跳过 patch
-            // - 若 lp_overlapped 为 NULL（同步），按规范 lp_number_of_bytes_read 不应为 NULL，跳过 patch
-            let len: usize = if !_lp_number_of_bytes_read.is_null() {
-                // 安全地读取并 clamp 到请求的最大值，避免异常值
-                let bytes = *_lp_number_of_bytes_read as usize;
-                let max = _n_number_of_bytes_to_read as usize;
-                core::cmp::min(bytes, max)
-            } else {
-                crate::debug!("ReadFile: lp_number_of_bytes_read is NULL");
-                return result;
-            };
-
-            use crate::utils::exts::slice_ext::ByteSliceExt;
-
-            if let Ok(Some(patch)) = _lp_buffer.to_slice_mut(len).get_patch_or_extract() {
-                _lp_buffer.to_slice_mut(len).copy_from_slice(patch);
-            }
-            result
-        }
+        unimplemented!()
     }
+}
 
+#[detour_trait]
+pub trait CloseHandle {
     #[detour(
         dll = "kernel32.dll",
         symbol = "CloseHandle",
         fallback = "windows_sys::Win32::Foundation::FALSE"
     )]
-    unsafe fn close_handle(_h_object: HANDLE) -> BOOL {
-        unimplemented!();
+    unsafe fn close_handle(h_object: HANDLE) -> BOOL {
+        unimplemented!()
     }
+}
 
+#[detour_trait]
+pub trait FindFirstFile {
     #[detour(
         dll = "kernel32.dll",
         symbol = "FindFirstFileA",
         fallback = "windows_sys::Win32::Foundation::INVALID_HANDLE_VALUE"
     )]
     unsafe fn find_first_file_a(
-        _lp_file_name: PCSTR,
-        _lp_find_file_data: *mut WIN32_FIND_DATAA,
+        lp_file_name: PCSTR,
+        lp_find_file_data: *mut WIN32_FIND_DATAA,
     ) -> HANDLE {
-        unimplemented!();
+        unimplemented!()
     }
 
     #[detour(
@@ -225,22 +97,25 @@ pub trait FileHook: Send + Sync + 'static {
         fallback = "windows_sys::Win32::Foundation::INVALID_HANDLE_VALUE"
     )]
     unsafe fn find_first_file_w(
-        _lp_file_name: PCWSTR,
-        _lp_find_file_data: *mut WIN32_FIND_DATAW,
+        lp_file_name: PCWSTR,
+        lp_find_file_data: *mut WIN32_FIND_DATAW,
     ) -> HANDLE {
-        unimplemented!();
+        unimplemented!()
     }
+}
 
+#[detour_trait]
+pub trait FindNextFile {
     #[detour(
         dll = "kernel32.dll",
         symbol = "FindNextFileA",
         fallback = "windows_sys::Win32::Foundation::FALSE"
     )]
     unsafe fn find_next_file_a(
-        _h_find_file: HANDLE,
-        _lp_find_file_data: *mut WIN32_FIND_DATAA,
+        h_find_file: HANDLE,
+        lp_find_file_data: *mut WIN32_FIND_DATAA,
     ) -> BOOL {
-        unimplemented!();
+        unimplemented!()
     }
 
     #[detour(
@@ -249,67 +124,21 @@ pub trait FileHook: Send + Sync + 'static {
         fallback = "windows_sys::Win32::Foundation::FALSE"
     )]
     unsafe fn find_next_file_w(
-        _h_find_file: HANDLE,
-        _lp_find_file_data: *mut WIN32_FIND_DATAW,
+        h_find_file: HANDLE,
+        lp_find_file_data: *mut WIN32_FIND_DATAW,
     ) -> BOOL {
-        unimplemented!();
+        unimplemented!()
     }
+}
 
+#[detour_trait]
+pub trait FindClose {
     #[detour(
         dll = "kernel32.dll",
         symbol = "FindClose",
         fallback = "windows_sys::Win32::Foundation::FALSE"
     )]
-    unsafe fn find_close(_h_find_file: HANDLE) -> BOOL {
-        unimplemented!();
+    unsafe fn find_close(h_find_file: HANDLE) -> BOOL {
+        unimplemented!()
     }
-}
-
-/// 尝试将传入文件路径重定向到资源包中的替代文件。
-#[cfg(feature = "resource_pack")]
-fn try_redirect(
-    u16_filename: &[u16],
-    dw_desired_access: u32,
-    dw_share_mode: u32,
-    lp_security_attributes: *const SECURITY_ATTRIBUTES,
-    dw_creation_disposition: u32,
-    dw_flags_and_attributes: u32,
-    h_template_file: HANDLE,
-) -> Option<HANDLE> {
-    use crate::utils::exts::{path_ext::PathExt, slice_ext::WideSliceExt};
-
-    let orig_path = u16_filename.to_path_buf();
-    match crate::resource_pack::get_resource_path(&orig_path) {
-        Ok(Some(path)) => {
-            crate::debug!(
-                "Resource pack hooked file: {}, replace to {}",
-                orig_path.to_string_lossy(),
-                path.to_string_lossy()
-            );
-
-            let handle = unsafe {
-                crate::call!(
-                    HOOK_CREATE_FILE_W,
-                    path.to_wide_null().as_ptr(),
-                    dw_desired_access,
-                    dw_share_mode,
-                    lp_security_attributes,
-                    dw_creation_disposition,
-                    dw_flags_and_attributes,
-                    h_template_file,
-                )
-            };
-
-            return Some(handle);
-        }
-        Err(e) => {
-            crate::debug!(
-                "Failed to get resource path for {}: {e:?}",
-                orig_path.to_string_lossy()
-            );
-        }
-        _ => (),
-    }
-
-    None
 }

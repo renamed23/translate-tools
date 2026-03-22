@@ -1,5 +1,5 @@
-use crate::impls::utils::{
-    ArrowSeparatedPaths, collect_files_in_dir, read_file_bytes, resolve_manifest_path,
+use crate::utils::{
+    collect_files_in_dir, input::ArrowSeparatedPaths, read_file_bytes, resolve_manifest_path,
 };
 use proc_macro2::{Ident, Literal, Span, TokenStream};
 use quote::quote;
@@ -189,7 +189,7 @@ pub fn generate_patch_data(input: TokenStream) -> syn::Result<TokenStream> {
         filenames_entries.push(entry);
     }
     let filenames_map = quote! {
-        #[cfg(feature = "debug_output")]
+        #[cfg(feature = "enable_debug_output")]
         pub(super) static FILENAMES: ::phf::Map<&'static [u8;32], &'static str> = ::phf::phf_map! {
             #(#filenames_entries)*
         };

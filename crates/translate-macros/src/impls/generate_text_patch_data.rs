@@ -3,8 +3,9 @@ use std::collections::BTreeMap;
 use proc_macro2::{Literal, TokenStream};
 use quote::quote;
 
-use crate::impls::utils::{
-    ArrowSeparatedPaths, collect_files_in_dir, ensure_dir, read_file_string, resolve_manifest_path,
+use crate::utils::{
+    collect_files_in_dir, ensure_dir, input::ArrowSeparatedPaths, read_file_string,
+    resolve_manifest_path,
 };
 
 pub fn generate_text_patch_data(input: TokenStream) -> syn::Result<TokenStream> {

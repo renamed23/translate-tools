@@ -4,7 +4,7 @@ use serde::Deserialize;
 use std::collections::HashMap;
 use syn::LitInt;
 
-use crate::impls::utils::{SinglePathInput, read_json_file, resolve_manifest_path};
+use crate::utils::{input::SinglePath, read_json_file, resolve_manifest_path};
 
 #[derive(Deserialize)]
 struct MappingConfig {
@@ -24,7 +24,7 @@ fn get_code_page_from_src_encoding(src_encoding: &str) -> syn::Result<u32> {
 }
 
 pub fn generate_mapping_data(input: TokenStream) -> syn::Result<TokenStream> {
-    let parsed = syn::parse2::<SinglePathInput>(input)?;
+    let parsed = syn::parse2::<SinglePath>(input)?;
 
     let mapping_path = resolve_manifest_path(&parsed.path)?;
     let config: MappingConfig = read_json_file(&mapping_path)?;

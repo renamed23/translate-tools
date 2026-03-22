@@ -1,7 +1,7 @@
 use cfg_if::cfg_if;
 
 cfg_if! {
-    if #[cfg(feature = "text_extracting")]  {
+    if #[cfg(feature = "extract_text")]  {
         use std::sync::{LazyLock, Mutex};
         static EXTRACTED_ITEMS: LazyLock<Mutex<indexmap::IndexSet<serde_json::Value>>> =
             LazyLock::new(|| Mutex::new(indexmap::IndexSet::new()));
@@ -79,7 +79,7 @@ cfg_if! {
 /// 处理文本，`text_extracting` 特性开启时存储提取条目，否则返回译文（如果有）
 pub fn lookup_or_store(message: &str) -> Option<&'static str> {
     cfg_if! {
-        if #[cfg(feature = "text_extracting")] {
+        if #[cfg(feature = "extract_text")] {
             crate::text_patch::store_item(serde_json::json!({"message": message}));
             crate::debug!("Added item for message: {message}");
             None

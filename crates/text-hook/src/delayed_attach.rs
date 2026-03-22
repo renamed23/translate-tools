@@ -1,6 +1,6 @@
 use std::sync::{
-    LazyLock,
     atomic::{AtomicBool, Ordering},
+    LazyLock,
 };
 
 use crate::{debug, hook::traits::CoreHook};
@@ -11,7 +11,7 @@ static HOOK_ENTRY_POINT: LazyLock<retour::GenericDetour<unsafe extern "C" fn()>>
             crate::utils::mem::patch::get_entry_point_addr().expect("Get entry point addr failed");
 
         // 检测是否有入口断点，一般用x32dbg之类的调试器都会有，打印出警告
-        #[cfg(feature = "debug_output")]
+        #[cfg(feature = "enable_debug_output")]
         if (entry_point_addr as *const u8).read_unaligned() == 0xCC {
             debug!("Warning: detect `INT3` at entry point");
         }
@@ -27,12 +27,12 @@ static HOOK_ENTRY_POINT: LazyLock<retour::GenericDetour<unsafe extern "C" fn()>>
 fn delayed_attach() {
     debug!("Delayed attach start...");
 
-    #[cfg(feature = "dll_hijacking")]
+    #[cfg(feature = "enable_dll_hijacking")]
     unsafe {
         crate::dll_hijacking::load_library();
     };
 
-    #[cfg(feature = "hwbp_from_constants")]
+    #[cfg(feature = "enable_hwbp_from_constants")]
     if let Ok(addr) = crate::utils::win32::get_module_handle(crate::constant::HWBP_MODULE) {
         let target_addr = addr as usize + crate::constant::HWBP_RVA;
 
@@ -53,7 +53,7 @@ fn delayed_attach() {
 fn delayed_attach_clean() {
     debug!("Delayed attach clean start...");
 
-    #[cfg(feature = "dll_hijacking")]
+    #[cfg(feature = "enable_dll_hijacking")]
     unsafe {
         crate::dll_hijacking::unload_library();
     };

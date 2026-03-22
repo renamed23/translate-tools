@@ -1,6 +1,6 @@
 cfg_if::cfg_if! {
-    if #[cfg(feature = "debug_output")] {
-        /// 设置自定义 panic hook，仅在启用 "debug_output" 特性时有效
+    if #[cfg(feature = "enable_debug_output")] {
+        /// 设置自定义 panic hook，仅在启用 "enable_debug_output" 特性时有效
         /// 这个 hook 会使用 `debug!` 宏记录详细的 panic 信息
         pub fn set_debug_panic_hook() {
             std::panic::set_hook(Box::new(|panic_info| {
@@ -32,7 +32,7 @@ cfg_if::cfg_if! {
             }));
         }
     } else {
-        /// 当未启用 "debug_output" 特性时的空实现
+        /// 当未启用 "enable_debug_output" 特性时的空实现
         #[allow(dead_code)]
         pub fn set_debug_panic_hook() {
             // 不设置任何 panic hook，保持默认行为

@@ -12,118 +12,140 @@ crate-type = ["cdylib"]
 
 # features ---------------------------------------------------
 
-# 调试输出
-debug_output = []
-# 调试输出映射文本
-debug_text_mapping = ["debug_output"]
+# 如下 bind_* 系列 feature 将特定组件绑定到 HookImplType--------
 
-# 启用独立透明覆盖层，使用OpenGL绘制
-overlay_gl = ["overlay", "gl_painter"]
-# 启用独立透明覆盖层（同进程）
-overlay = ["win_event_hook", "worker_thread"]
-# 启用轻量的OpenGL绘制器
-gl_painter = []
-# 窗口事件钩子(windows的SetWinEventHook的钩子机制)
-win_event_hook = ["worker_thread"]
-# 在DLL attach的时候创建一个工作线程
-worker_thread = []
-# 通过HOOK ExitProcess以及相关函数
+# 启用资产虚拟化文件系统，Hook CreateFile 相关函数，如果命中到资源包里的资产文件，会重定向到资源包临时目录
+bind_asset_virtualizer = ["enable_resource_pack"]
+# Hook CreateFont 相关函数实现字体管理，使用 disable_forced_font 控制字体过滤的行为
+bind_font_manager = []
+# 通过 HOOK ExitProcess 以及相关函数
 # 实现对应于 PROCESS_ATTACH 阶段的清理工作
 # 默认不会执行清理，因为进程内资源系统可以正确进行清理回收
-attach_clean_up = ["life_cycle_hook"]
+bind_lifecycle_guard = ["enable_attach_cleanup"]
+# Hook `CreateFileA`，将匹配 `REDIRECTION_SRC_PATH` 的文件重定向到 `REDIRECTION_TARGET_PATH`
+# 目前的实现十分简陋，需要确保 `REDIRECTION_SRC_PATH`，`REDIRECTION_TARGET_PATH`均为ascii
+bind_path_redirector = []
+# Hook `GDI` 相关的绘制函数，并将文本中的替身字符转换为正常字符，映射表由`translate_macros::generate_mapping_data!`生成
+# 使用 assume_text_out_arg_c_is_byte_len，将认为输入参数C是字节长度而不是字符长度
+bind_text_mapping = []
+bind_user_interface_patcher = ["enable_text_patch"]
+# Hook `DefWindowProc` 并对窗口标题进行处理，
+# 如果开启了 enable_window_title_override，使用`assets/config.json`的`WINDOW_TITLE`覆写标题
+# 否则将其根据 ANSI_CODE 转码为u16并进行映射处理，然后传递给 W 版本的 DefWindowProc
+bind_window_title_overrider = []
+
+# 开启后，仅对命中过滤器的字体执行替换；未命中过滤器的字体保持原样。
+# 此时 `FONT_FILTER` 的语义等价于黑名单，而不是白名单。
+disable_forced_font = []
+# 假设TextOutA中的`c`参数是字节而不是字符数
+# 对于一些传入了错误的参数的老游戏可能会有效...
+assume_text_out_arg_c_is_byte_len = []
+# 使用`assets/config.json`的`WINDOW_TITLE`字段覆写游戏主窗口标题
+enable_window_title_override = []
+
+# 调试输出
+enable_debug_output = []
+# 调试输出映射文本
+enable_text_mapping_debug = ["enable_debug_output"]
+
+# 读取x64dbg的1337文件并生成运行时patch代码
+enable_x64dbg_1337_patch = []
+# 是否在Process attach时自动应用1337补丁
+auto_apply_1337_patch_on_attach = ["enable_x64dbg_1337_patch"]
 # 使用硬件断点中断目标位置(通过constants生成)，中断时应用x64dbg补丁文件
-apply_1337_patch_on_hwbp_hit = ["hwbp_from_constants", "x64dbg_1337_patch"]
+auto_apply_1337_patch_on_hwbp_hit = [
+    "enable_hwbp_from_constants",
+    "enable_x64dbg_1337_patch",
+]
+
+# 对应于 PROCESS_ATTACH 阶段的清理工作
+# 默认不会执行清理，因为进程内资源系统可以正确进行清理回收
+enable_attach_cleanup = []
+# 启用独立透明覆盖层，使用OpenGL绘制
+enable_overlay_gl = ["enable_overlay", "enable_gl_painter"]
+# 启用独立透明覆盖层（同进程）
+enable_overlay = ["enable_win_event_hook", "enable_worker_thread"]
+# 启用轻量的OpenGL绘制器
+enable_gl_painter = []
+# 窗口事件钩子(windows的SetWinEventHook的钩子机制)
+enable_win_event_hook = ["enable_worker_thread"]
+# 在DLL attach的时候创建一个工作线程
+enable_worker_thread = []
 # 延迟加载，使用硬件断点中断目标位置(通过constants生成)
-hwbp_from_constants = ["veh", "delayed_attach"]
+enable_hwbp_from_constants = ["enable_veh", "enable_delayed_attach"]
 # 启用 veh 处理程序，可用于捕获硬件断点
-veh = []
+enable_veh = []
 # 扫描 assets/resource_pack 生成资源包
 # 在DLL attach时，会将资源包解压到临时目录中
 # 在DLL detach时，会将临时目录删除
 # 若exe所在目录的同名文件存在于临时目录中
 # 则重定向到临时目录中，否则直接转发
-resource_pack = ["file_hook"]
+enable_resource_pack = []
 # 内嵌资源包而不是外置
-resource_pack_embedding = ["resource_pack"]
+embed_resource_pack = ["enable_resource_pack"]
 # 使用IAT HOOK，而不是Inline Hook
 # IAT HOOK 比 Inline Hook更轻量，但是后者更全面
-iat_hook = []
-# Hook `CreateFileA`，将匹配 `REDIRECTION_SRC_PATH` 的文件重定向到 `REDIRECTION_TARGET_PATH`
-# 目前的实现十分简陋，需要确保 `REDIRECTION_SRC_PATH`，`REDIRECTION_TARGET_PATH`均为ascii
-create_file_redirect = ["file_hook"]
-# 假设TextOutA中的`c`参数是字节而不是字符数
-# 对于一些传入了错误的参数的老游戏可能会有效...
-text_out_arg_c_is_bytes = []
-# 读取x64dbg的1337文件并生成运行时patch代码
-x64dbg_1337_patch = []
-# 是否在Process attach时自动应用1337补丁
-apply_1337_patch_on_attach = ["x64dbg_1337_patch"]
+enable_iat_hook = []
+
 # 截获并替换文本数据
-text_patch = []
-# 提取文本而不是替换文本
-text_extracting = ["text_patch", "attach_clean_up"]
+enable_text_patch = []
+# 提取文本而不是替换文本，需要开启 bind_lifecycle_guard 或者显式调用 cleanup 才能将原文输出
+extract_text = ["enable_text_patch", "enable_attach_cleanup"]
 # 截获并替换patch数据
-patch = []
+enable_patch = []
 # 提取补丁而不是替换补丁
-patch_extracting = ["patch"]
-# 截获ReadFile来实现patch
-read_file_patch_impl = ["patch", "file_hook"]
-# 当该feature开启时，create_font系列函数不再固定字体
-enum_font_families = []
+extract_patch = ["enable_patch"]
+
 # 嵌入`assets/font`的自定义字体，会使用`AddFontMemResourceEx`让GDI识别
-custom_font = []
+enable_custom_font = []
 # 导出默认的DllMain，内部使用`default_dll_main`，
 # 使用`HookImplType::default()`作为钩子实例
 export_default_dll_main = []
-# 使用`assets/config.json`的`WINDOW_TITLE`字段覆写游戏主窗口标题
-override_window_title = ["window_hook"]
 # 模拟日语环境，基于locale_emulator
-locale_emulator = []
+enable_locale_emulator = []
 # 启用延迟加载，对于某些特性是必要的
-delayed_attach = []
+enable_delayed_attach = []
 # 根据`assets/hijacked`中的PE文件(仅限一个)生成对应的导出函数，
 # 以进行DLL劫持，编译后需要自己改名为对应的DLL文件名，然后放在游戏EXE所在的目录。
 # 在`assets/config.json`的`HIJACKED_DLL_PATH`中可以指定被劫持DLL的路径，
 # 否则默认会在系统目录中寻找
-dll_hijacking = ["delayed_attach"]
-# 禁止GDI映射文本
-no_text_mapping = []
-
-# 启用文本相关的钩子(包括文本映射和改变字体)
-text_hook = []
-# 启用文件相关的钩子
-file_hook = []
-# 启动窗口相关的钩子
-window_hook = []
-# 启动转码相关的钩子(MultiByteToWideChar & WideChar...)
-code_cvt_hook = []
-# 模块生命周期相关的钩子(ExitProcess...)
-life_cycle_hook = []
+enable_dll_hijacking = ["enable_delayed_attach"]
 
 # 是否导出钩子函数，实际上如果用detour的话，不需要导出
-export_hooks = []
+export_hook_symbols = []
+
 
 # 通用impl ---------------------------------------------------
 
-# 调试文件输出的HOOK实现，可用于调试，并导出默认的DllMain
-debug_file_impl = ["debug_output", "export_default_dll_main", "file_hook"]
 # 默认的HOOK实现(即使用`Hook` trait的默认代码)，并导出默认的DllMain
 default_impl = ["export_default_dll_main"]
 
 # 针对特定游戏的impl-------------------------------------------
 # 非C社的c4
-c4 = ["patch", "default_impl", "enum_font_families", "text_hook"]
+c4 = [
+    "enable_patch",
+    "default_impl",
+    "bind_text_mapping",
+    "bind_font_manager",
+    "disable_forced_font",
+]
 complets = [
     "export_default_dll_main",
-    "text_hook",
-    "window_hook",
-    "enum_font_families",
-    "text_out_arg_c_is_bytes",
+    "bind_text_mapping",
+    "bind_font_manager",
+    "disable_forced_font",
+    "assume_text_out_arg_c_is_byte_len",
+    "bind_window_title_overrider",
 ]
-natsu_natsu = ["export_default_dll_main", "enum_font_families", "text_hook"]
+natsu_natsu = [
+    "export_default_dll_main",
+    "bind_text_mapping",
+    "bind_font_manager",
+    "disable_forced_font",
+]
 seraph = ["export_default_dll_main"]
-g0win = ["export_default_dll_main", "text_patch"]
-hitocos2 = ["export_default_dll_main", "text_patch"]
+g0win = ["export_default_dll_main", "enable_text_patch"]
+hitocos2 = ["export_default_dll_main", "enable_text_patch"]
 
 [dependencies]
 translate-macros.workspace = true

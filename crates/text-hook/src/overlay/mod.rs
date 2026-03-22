@@ -11,7 +11,7 @@ use windows_sys::Win32::{
     },
 };
 
-#[cfg(feature = "overlay_gl")]
+#[cfg(feature = "enable_overlay_gl")]
 use crate::gl::{GLContext, painter::GLPainter};
 use crate::{
     constant::{OVERLAY_TARGET_WINDOW_CLASS_NAME, OVERLAY_TARGET_WINDOW_TEXT},
@@ -23,11 +23,11 @@ use crate::{
 /// Overlay上下文结构体
 pub struct OverlayContext {
     /// OpenGL 轻量级绘制器
-    #[cfg(feature = "overlay_gl")]
+    #[cfg(feature = "enable_overlay_gl")]
     pub gl_painter: GLPainter,
 
     /// OpenGL 上下文
-    #[cfg(feature = "overlay_gl")]
+    #[cfg(feature = "enable_overlay_gl")]
     pub gl_ctx: GLContext,
 
     /// 目标窗口 hwnd
@@ -89,12 +89,12 @@ pub fn win_event_callback(
                 if let Ok(overlay) = create_overlay_window(hwnd) {
                     crate::debug!("Initialize overlay context");
 
-                    #[cfg(feature = "overlay_gl")]
+                    #[cfg(feature = "enable_overlay_gl")]
                     let Ok(gl_ctx) = GLContext::new(*overlay) else {
                         return;
                     };
 
-                    #[cfg(feature = "overlay_gl")]
+                    #[cfg(feature = "enable_overlay_gl")]
                     let Ok(gl_painter) = GLPainter::new(gl_ctx.gl.clone()) else {
                         return;
                     };
@@ -102,9 +102,9 @@ pub fn win_event_callback(
                     crate::debug!("Initialize overlay context finished");
 
                     OVERLAY_CTX.set(Some(OverlayContext {
-                        #[cfg(feature = "overlay_gl")]
+                        #[cfg(feature = "enable_overlay_gl")]
                         gl_painter,
-                        #[cfg(feature = "overlay_gl")]
+                        #[cfg(feature = "enable_overlay_gl")]
                         gl_ctx,
                         target: hwnd,
                         overlay,
@@ -167,10 +167,10 @@ pub fn win_event_callback(
 /// Overlay 渲染函数
 pub fn render() {
     OVERLAY_CTX.with_borrow_mut(|ctx| {
-        if let Some(context) = ctx {
-            if let Err(e) = HookImplType::on_overlay_render(context) {
-                crate::debug!("on_overlay_render failed with {e:?}");
-            }
+        if let Some(context) = ctx
+            && let Err(e) = HookImplType::on_overlay_render(context)
+        {
+            crate::debug!("on_overlay_render failed with {e:?}");
         }
     });
 }

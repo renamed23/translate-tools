@@ -1,4 +1,49 @@
+#[allow(unused_macros)]
+macro_rules! syn_bail {
+    // 使用 token 的 span（自动提取）
+    ($token:expr, $($arg:tt)*) => {
+        return Err(syn::Error::new_spanned(
+            $token,
+            format!($($arg)*)
+        ))
+    };
+}
+
+#[allow(unused_macros)]
+macro_rules! syn_bail2 {
+    // 使用 call_site span（宏调用位置）
+    ($($arg:tt)*) => {
+        return Err(syn::Error::new(
+            proc_macro2::Span::call_site(),
+            format!($($arg)*)
+        ))
+    };
+}
+
+#[allow(unused_macros)]
+macro_rules! syn_err {
+    // 使用 token 的 span（自动提取）
+    ($token:expr, $($arg:tt)*) => {
+       syn::Error::new_spanned(
+            $token,
+            format!($($arg)*)
+        )
+    };
+}
+
+#[allow(unused_macros)]
+macro_rules! syn_err2 {
+    // 使用 call_site span（宏调用位置）
+    ($($arg:tt)*) => {
+     syn::Error::new(
+            proc_macro2::Span::call_site(),
+            format!($($arg)*)
+        )
+    };
+}
+
 pub(crate) mod impls;
+pub(crate) mod utils;
 
 use proc_macro::TokenStream;
 
@@ -64,10 +109,14 @@ pub fn byte_slice(input: TokenStream) -> TokenStream {
 /// 应用于 trait 定义。该宏遍历 trait 中的每个方法，对于带有 `#[detour(...)]` 标记的 trait 方法，
 /// 宏会基于方法签名自动生成两类项：
 ///
-/// 1. 一个 `pub unsafe extern "system" fn <export_name>(...) -> Ret` 的 C-ABI 风格 wrapper（导出函数），
+/// 1. 一个 `pub unsafe extern "system" fn <wrapper_name>(...) -> Ret` 的 C-ABI 风格 wrapper，
 ///    wrapper 内部通过 `crate::hook::impls::HookImplType::<method>(...)` 转发到当前的 Hook 实现，并使用 `ffi_guard`
 ///    或等价保护在 panic/unwind 时返回 `fallback` 指定的值；若内部返回 `Err(...)`，则自动回退到
-///    `crate::call!(HOOK_<METHOD>, ...)` 调用原始 HOOK；
+///    `crate::call!(HOOK_<METHOD>, ...)` 调用原始 HOOK。
+///
+///    - 若 `detour` 属性中提供了 `export = "..."`，则该值会作为生成 wrapper 的 **Rust 函数名**；
+///    - 若未提供，则默认使用 trait 方法名；
+///    - 只有启用 `feature = "export_hook_symbols"` 时，wrapper 才会额外带上 `#[no_mangle]`，从而以未改名符号导出；
 /// 2. 一个名为 `HOOK_<METHOD_UPPER>` 的 `pub static` 变量，类型为
 ///    `std::sync::LazyLock<retour::GenericDetour<unsafe extern "system" fn(...) -> Ret>>`，
 ///    该静态在首次访问时会查找 `dll` 的 `symbol` 地址并尝试注册 detour（使用 `retour::GenericDetour::new`）。
@@ -83,7 +132,7 @@ pub fn byte_slice(input: TokenStream) -> TokenStream {
 ///     #[detour(
 ///         dll = "gdi32.dll",                              // 必需，目标动态库名（字符串字面量）
 ///         symbol = "TextOutA",                            // 必需，目标导出符号名（字符串字面量）
-///         export = "text_out",                            // 可选，生成的 wrapper 导出名（字符串字面量），默认使用 trait 方法名
+///         export = "text_out",                            // 可选，生成的 wrapper 的 Rust 函数名
 ///         fallback = "FALSE"                              // 可选，仅在 panic/unwind 时使用的回退值（字符串字面量，内部会解析为 Rust 表达式）
 ///         calling_convention = "system"                   // 可选，调用约定（字符串字面量），默认 "system"
 ///     )]
@@ -479,7 +528,7 @@ pub fn generate_mapping_data(input: TokenStream) -> TokenStream {
 /// # 注意事项
 /// - 文件按文件名进行匹配（翻译文件必须与原始文件同名）
 /// - 所有文件都按二进制方式处理，不涉及字符编码转换
-/// - 调试信息需要启用 `debug_output` feature 才能使用
+/// - 调试信息需要启用 `enable_debug_output` feature 才能使用
 /// - 生成的静态变量都是 `pub(super)` 可见性
 /// - 哈希比较使用字节数组，确保精确匹配
 ///
@@ -786,19 +835,34 @@ pub fn generate_patch_fn_from_1337(input: TokenStream) -> TokenStream {
 
 /// 为结构体自动生成默认的钩子实现的过程宏
 ///
-/// 该Derive宏会扫描 `src/hook/traits` 目录下的所有 `.rs` 文件（除 `mod.rs` 和 `lib.rs` 外），
-/// 并为每个文件对应的 trait 生成实现代码。
+/// 该 Derive 宏会扫描 `src/hook/traits` 目录下的所有 `.rs` 文件（除 `mod.rs` 和 `lib.rs` 外），
+/// 解析其中真实声明的 trait，并为当前结构体逐个生成默认实现。
+///
+/// 与旧版本“按文件名推导 trait 名”不同，当前实现是**直接读取 trait 定义本身**，因此：
+/// - 一个 traits 文件里即使包含多个 trait，也都会被正确处理；
+/// - 生成的 impl 路径会指向真实模块路径，例如 `crate::hook::traits::file_hook::ReadFile`；
+/// - 不再依赖“一个文件只对应一个 trait”的旧假设。
+///
+/// 此外，宏还会读取 `constant_assets/featured_hook_lists.json` 中的 `trait` 配置，
+/// 对那些在特定 feature 组合下会由“专门实现”接管的 trait，自动为默认 impl 补上
+/// `#[cfg(not(any(...)))]` 排除条件，避免默认实现与特化实现冲突。
 ///
 /// # 生成的代码结构
 /// ```ignore
-/// ::translate_macros::expand_by_files!("src/hook/traits" => {
-///     #[cfg(feature = __file_str__)]
-///     impl crate::hook::traits::__file_pascal__ for #struct_name {}
-/// });
+/// impl crate::hook::traits::file_hook::CreateFile for MyTranslator {}
+///
+/// impl crate::hook::traits::file_hook::ReadFile for MyTranslator {}
+///
+/// // 若某 trait 被 featured 配置声明为特化 trait，则默认 impl 会被自动排除
+/// #[cfg(not(any(...)))]
+/// impl crate::hook::traits::text_hook::TextHook for MyTranslator {}
 /// ```
+/// 上面只是示意，实际生成结果取决于 `src/hook/traits` 中声明的 trait，以及
+/// `featured_hook_lists.json` 中的 `trait` 配置。
+///
 /// # 辅助属性
-/// - `#[exclude(Ident1, Ident2, ...)]`：排除指定的 trait 文件，不为其生成实现
-/// - `Ident` 可以是 snake_case 或 PascalCase，宏会自动处理文件名和 trait 名称的转换
+/// - `#[exclude(Ident1, Ident2, ...)]`：按 **trait 名** 排除指定默认实现，不为其生成 impl
+/// - `Ident` 可以写成 snake_case 或 PascalCase，宏内部会统一转成 PascalCase 后再匹配 trait 名
 ///
 /// # 示例
 /// ```ignore
@@ -806,9 +870,9 @@ pub fn generate_patch_fn_from_1337(input: TokenStream) -> TokenStream {
 /// #[derive(DefaultHook)]
 /// struct MyTranslator;
 ///
-/// // 排除特定 trait：不生成 CodeCvtHook 和 FileHook 的实现
+/// // 排除特定 trait：不生成 MultiByteToWideChar 和 ReadFile 的默认实现
 /// #[derive(DefaultHook)]
-/// #[exclude(CodeCvtHook, FileHook)]
+/// #[exclude(MultiByteToWideChar, ReadFile)]
 /// struct MyTranslator;
 /// ```
 #[proc_macro_derive(DefaultHook, attributes(exclude))]
@@ -835,11 +899,21 @@ pub fn derive_default_hook(input: TokenStream) -> TokenStream {
 /// ## 特性化钩子列表格式
 /// ```json
 /// {
-///   "cfg_condition_1": ["hook_name_1", "hook_name_2"],
-///   "cfg_condition_2": ["hook_name_3"]
+///   "cfg_condition_1": {
+///     "trait": ["SomeHookTrait"],
+///     "fn": ["hook_name_1", "hook_name_2"]
+///   },
+///   "cfg_condition_2": {
+///     "fn": ["hook_name_3"]
+///   }
 /// }
 /// ```
-/// 键为 Rust 的 `#[cfg(...)]` 条件，值为该条件下需要启用的钩子名称数组。
+/// 键为 Rust 的 `#[cfg(...)]` 条件，值为对象：
+/// - `trait`：可选，声明在该条件下被视为“特化实现已接管”的 Hook trait 名列表
+/// - `fn`：可选，声明在该条件下需要自动启用/禁用的 detour 函数名列表
+///
+/// 其中 `generate_hook_lists_from_json` 只使用 `fn` 字段；`trait` 字段则供
+/// `#[derive(DefaultHook)]` 用于抑制默认 impl 生成。
 ///
 /// ## 用户钩子列表格式
 /// ```json
@@ -848,8 +922,8 @@ pub fn derive_default_hook(input: TokenStream) -> TokenStream {
 ///   "disable": ["hook_name_c"]
 /// }
 /// ```
-/// - `enable`: 强制启用的钩子列表（覆盖特性化配置）
-/// - `disable`: 强制禁用的钩子列表（覆盖特性化配置）
+/// - `enable`: 额外加入自动启用/自动禁用流程的钩子列表（覆盖特性化配置）
+/// - `disable`: 从特性化自动列表中移除的钩子列表
 ///
 /// # 生成代码
 /// 宏展开后会生成以下两个函数：
@@ -861,10 +935,11 @@ pub fn derive_default_hook(input: TokenStream) -> TokenStream {
 ///
 /// # 配置解析规则
 /// 1. 优先处理用户配置：`disable` 列表中的钩子会从任何条件中移除
-/// 2. `enable` 列表中的钩子无条件启用（即使在其他条件中被排除）
-/// 3. 用户配置中同一个钩子不能同时出现在 `enable` 和 `disable` 中
-/// 4. 特性化配置中每个条件会生成对应的 `#[cfg(...)]` 代码块
-/// 5. 空的条件配置（所有钩子都被用户配置覆盖）不会生成代码
+/// 2. `enable` 列表中的钩子会额外加入自动启用/自动禁用流程
+/// 3. `disable` 列表中的钩子只会从特性化自动列表里移除；它表示“不要由本宏自动启用”，并不意味着此处会主动调用对应 hook 的 `disable()`
+/// 4. 用户配置中同一个钩子不能同时出现在 `enable` 和 `disable` 中
+/// 5. 特性化配置中每个条件会生成对应的 `#[cfg(...)]` 代码块
+/// 6. 空的条件配置（所有钩子都被用户配置覆盖）不会生成代码
 ///
 /// # 示例
 /// ```
@@ -874,8 +949,12 @@ pub fn derive_default_hook(input: TokenStream) -> TokenStream {
 /// 假设 `featured.json` 内容：
 /// ```json
 /// {
-///   "target_os = \"windows\"": ["CreateWindowEx", "MessageBoxW"],
-///   "all(feature = \"directx\", target_os = \"windows\")": ["Direct3DCreate9"]
+///   "target_os = \"windows\"": {
+///     "fn": ["CreateWindowEx", "MessageBoxW"]
+///   },
+///   "all(feature = \"directx\", target_os = \"windows\")": {
+///     "fn": ["Direct3DCreate9"]
+///   }
 /// }
 /// ```
 ///
@@ -887,8 +966,8 @@ pub fn derive_default_hook(input: TokenStream) -> TokenStream {
 /// }
 /// ```
 ///
-/// 生成的代码将根据编译条件启用相应的钩子，同时无条件启用 `ExtraHook`，
-/// 并始终禁用 `MessageBoxW`。
+/// 生成的代码将根据编译条件启用相应的钩子，同时额外把 `ExtraHook`
+/// 纳入自动启用/自动禁用流程，而 `MessageBoxW` 会从特性化自动启用列表中被排除。
 #[proc_macro]
 pub fn generate_hook_lists_from_json(input: TokenStream) -> TokenStream {
     match impls::generate_hook_lists_from_json::generate_hook_lists_from_json(input.into()) {

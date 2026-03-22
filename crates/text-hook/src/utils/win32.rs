@@ -1,7 +1,8 @@
 use scopeguard::defer;
 use windows_sys::{
+    core::{PCSTR, PCWSTR},
     Win32::{
-        Foundation::{GetLastError, HMODULE, HWND, SetLastError},
+        Foundation::{GetLastError, SetLastError, HMODULE, HWND},
         Storage::FileSystem::{Wow64DisableWow64FsRedirection, Wow64RevertWow64FsRedirection},
         System::{
             Environment::GetCurrentDirectoryW,
@@ -9,12 +10,11 @@ use windows_sys::{
             SystemInformation::GetSystemDirectoryW,
         },
         UI::WindowsAndMessaging::{
-            CB_ADDSTRING, CB_FINDSTRING, CB_FINDSTRINGEXACT, CB_GETLBTEXT, CB_INSERTSTRING,
-            CB_SELECTSTRING, GetClassNameW, GetWindowTextW, LB_ADDSTRING, LB_FINDSTRING,
+            GetClassNameW, GetWindowTextW, CB_ADDSTRING, CB_FINDSTRING, CB_FINDSTRINGEXACT,
+            CB_GETLBTEXT, CB_INSERTSTRING, CB_SELECTSTRING, LB_ADDSTRING, LB_FINDSTRING,
             LB_FINDSTRINGEXACT, LB_GETTEXT, LB_INSERTSTRING, LB_SELECTSTRING,
         },
     },
-    core::{PCSTR, PCWSTR},
 };
 
 use crate::{
@@ -185,7 +185,7 @@ where
     let mut old_state = core::ptr::null_mut();
     let success = unsafe { Wow64DisableWow64FsRedirection(&mut old_state) != 0 };
 
-    #[cfg(feature = "debug_output")]
+    #[cfg(feature = "enable_debug_output")]
     if !success {
         print_last_error_message!();
     }

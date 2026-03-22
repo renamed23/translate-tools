@@ -5,7 +5,7 @@ use syn::{
     parse::{Parse, ParseStream},
 };
 
-use crate::impls::utils::ReturnKind;
+use crate::utils::return_kind::ReturnKind;
 
 struct FFIInput {
     on_panic: Expr,

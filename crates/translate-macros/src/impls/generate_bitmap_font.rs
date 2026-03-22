@@ -3,8 +3,8 @@ use quote::quote;
 use serde::Deserialize;
 use std::collections::HashSet;
 
-use crate::impls::utils::{
-    SinglePathInput, get_full_path_by_manifest, read_file_bytes, read_json_file,
+use crate::utils::{
+    get_full_path_by_manifest, input::SinglePath, read_file_bytes, read_json_file,
     resolve_manifest_path,
 };
 
@@ -33,7 +33,7 @@ mod defaults {
 }
 
 pub fn generate_bitmap_font(input: TokenStream) -> syn::Result<TokenStream> {
-    let parsed = syn::parse2::<SinglePathInput>(input)?;
+    let parsed = syn::parse2::<SinglePath>(input)?;
 
     let path = resolve_manifest_path(&parsed.path)?;
     let font_config: FontConfig = read_json_file(&path)?;

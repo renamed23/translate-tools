@@ -14,7 +14,7 @@ thread_local! {
 #[ffi_guard(on_err_or_panic = ())]
 #[unsafe(no_mangle)]
 pub unsafe extern "system" fn prepare_for_replace() {
-    #[cfg(feature = "debug_output")]
+    #[cfg(feature = "enable_debug_output")]
     if SNR_FILE_OCCUR.get() {
         debug!("SNR_FILE_OCCUR set to true more than once!");
     }

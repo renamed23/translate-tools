@@ -58,9 +58,9 @@ cargo build-text-hook --features default_impl
 }
 ```
 
-若未开启`enum_font_families`特性，如果传入字体非`FONT_FILTER`则使用`FONT_FACE`固定字体，若开启了`enum_font_families`，那么传入字体是`FONT_FILTER`，则使用`FONT_FACE`，否则使用传入的字体
+若未开启`disable_forced_font`特性，如果传入字体非`FONT_FILTER`则使用`FONT_FACE`固定字体；若开启了`disable_forced_font`，那么传入字体命中`FONT_FILTER`时才使用`FONT_FACE`，否则使用传入的字体。
 
-> 当未开启`enum_font_families`特性时，`FONT_FILTER`是白名单，开启时则变成黑名单了
+> 当未开启`disable_forced_font`特性时，`FONT_FILTER`是白名单；开启后则变成黑名单。
 
 `CHAR_SET`对应于GDI函数的`CharSet`
 
@@ -68,27 +68,27 @@ cargo build-text-hook --features default_impl
 
 `CHAR_FILTER`用于过滤一些字符(比如需要定长时的填充字符，注意输入的应该是字符的u16值(只支持BMP))，示例中`@`会被过滤，不会被显示出来
 
-`WINDOW_TITLE`在开启`override_window_title`特性后会被用于覆写游戏标题
+`WINDOW_TITLE`在开启`enable_window_title_override`特性后会被用于覆写游戏标题
 
-`HIJACKED_DLL_PATH`用于指定被劫持的DLL的路径，若未指定，那么默认会在系统目录中寻找。需要开启`dll_hijacking`特性，并将需要劫持的DLL放在`assets/hijacked`目录里(仅限一个)，最终编译的DLL需要手动改名，然后放在游戏EXE所在目录即可完成劫持，此时就不再需要改游戏的导入表了。
+`HIJACKED_DLL_PATH`用于指定被劫持的DLL的路径，若未指定，那么默认会在系统目录中寻找。需要开启`enable_dll_hijacking`特性，并将需要劫持的DLL放在`assets/hijacked`目录里(仅限一个)，最终编译的DLL需要手动改名，然后放在游戏EXE所在目录即可完成劫持，此时就不再需要改游戏的导入表了。
 
-`RESOURCE_PACK_NAME`在开启`resource_pack`特性后有效，它代表解压到资源包文件的名字。
+`RESOURCE_PACK_NAME`在开启`enable_resource_pack`特性后有效，它代表解压到资源包文件的名字。
 
-开启`apply_1337_patch_on_hwbp_hit`或者`hwbp_from_constants`特性时候，使用如下值
+开启`auto_apply_1337_patch_on_hwbp_hit`或者`enable_hwbp_from_constants`特性时候，使用如下值
 - `HWBP_REG`: 硬件断点的寄存器
 - `HWBP_TYPE`: 硬件断点的类型（写/访问/执行）
 - `HWBP_LEN`: 硬件断点的长度(1，2，4，8)
 - `HWBP_MODULE`：硬件断点的模块，也可以是`::windows_sys::w!("sc.dll")`
 - `HWBP_RVA`: 硬件断点的相对虚拟地址（相对于模块）
 
-开启`locale_emulator`时，使用如下值
+开启`enable_locale_emulator`时，使用如下值
 - `EMULATE_LOCALE_CODEPAGE`: 转区的目标代码页
 - `EMULATE_LOCALE_LOCALE`: 转区的目标区域码
 - `EMULATE_LOCALE_CHARSET`: 转区的目标CharSet
 - `EMULATE_LOCALE_TIMEZONE`: 转区的目标时间区域
 - `EMULATE_LOCALE_WAIT_FOR_EXIT`: 等待转区后的进程结束再退出
 
-开启`overlay`时，使用如下值
+开启`enable_overlay`时，使用如下值
 - `OVERLAY_TARGET_WINDOW_TEXT`：目标窗口（需要overlay的窗口）标题
 - `OVERLAY_TARGET_WINDOW_CLASS_NAME`：目标窗口（需要overlay的窗口）窗口类名
 
@@ -114,12 +114,12 @@ cargo build-text-hook --features default_impl
 2. `enable` 列表中的钩子会无条件启用
 3. `hook_lists.json`中同一个钩子不能同时出现在 enable 和 disable 中
 
-> 例如，如果开启了`text_hook`特性，那么`CreateFontA`钩子会自动启用，可以通过在`disable`指定`CreateFontA`来移除这个钩子。
+> 例如，如果开启了`bind_font_manager`特性，那么`CreateFontA`钩子会自动启用，可以通过在`disable`指定`CreateFontA`来移除这个钩子。
 
 
 ### font
 
-`font`目录应该只存放一个字体文件，该字体文件会被内嵌到DLL，需要开启`custom_font`特性
+`font`目录应该只存放一个字体文件，该字体文件会被内嵌到DLL，需要开启`enable_custom_font`特性
 
 ### mapping.json
 
@@ -145,7 +145,7 @@ cargo build-text-hook --features default_impl
 
 raw_patch文件夹包含需要被替换的文件，translated_patch文件夹包含对应的替换文件
 
-若需使用需要开启`patch`或者`default_patch_impl`特性
+若需使用需要开启`enable_patch`特性
 
 ### raw_text & translated_text
 
@@ -164,7 +164,7 @@ raw_patch文件夹包含需要被替换的文件，translated_patch文件夹包�
 
 raw文件夹包含如上结构的json文件，translated文件夹包含对应的翻译后的json文件，会将文本嵌入到DLL中，使用原文条目调用`lookup`可以获得相对应的译文条目。
 
-需要开启`text_patch`功能，如果需要翻译exe的对话框以及其他exe的文本，则同时需要开启`window_hook`功能，可以使用`text_extracting`功能来从exe中提取出对话框的文本，提取的文本会输出到dll所在目录的`raw.json`中
+需要开启`enable_text_patch`功能，如果需要翻译exe的对话框以及其他exe的文本，则需要开启`bind_user_interface_patcher`功能，可以使用`extract_text` + `bind_lifecycle_guard`功能来从exe中提取出对话框的文本，提取的文本会输出到dll所在目录的`raw.json`中
 
 
 ### hijacked
@@ -182,9 +182,9 @@ DLL会`inline hook`入口点，然后加载被劫持的DLL，并获取导出函�
 
 ### x64dbg_1337_patch
 
-该目录应该包含由x64dbg生成的补丁文件，在开启`apply_1337_patch_on_attach`特性后，会在DLL attach的时候进行修补，或者可以只开启`x64dbg_1337_patch`并由自己选择修补时机。
+该目录应该包含由x64dbg生成的补丁文件，在开启`auto_apply_1337_patch_on_attach`特性后，会在DLL attach的时候进行修补，或者可以只开启`enable_x64dbg_1337_patch`并由自己选择修补时机。
 
-开启`apply_1337_patch_on_hwbp_hit`特性后，会在硬件断点命中时进行修补。
+开启`auto_apply_1337_patch_on_hwbp_hit`特性后，会在硬件断点命中时进行修补。
 
 ### bitmap_font.json
 
@@ -198,7 +198,7 @@ DLL会`inline hook`入口点，然后加载被劫持的DLL，并获取导出函�
 }
 ```
 
-在开启`gl_painter`的时候，过程宏会根据`bitmap_font.json`生成位图字体，其中：
+在开启`enable_gl_painter`的时候，过程宏会根据`bitmap_font.json`生成位图字体，其中：
 - `font_path`: 字体路径，用于光栅化（支持TTF，OTF）
 - `font_size`: 字体大小
 - `padding`: 位图每个字符的padding

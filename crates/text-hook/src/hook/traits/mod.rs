@@ -4,19 +4,15 @@ use windows_sys::Win32::{
     System::Diagnostics::Debug::CONTEXT,
 };
 
-#[cfg(feature = "overlay")]
+#[cfg(feature = "enable_overlay")]
 use crate::overlay::OverlayContext;
 use crate::utils::hwbp::HwReg;
-#[cfg(feature = "worker_thread")]
+#[cfg(feature = "enable_worker_thread")]
 use crate::worker_thread::LoopAction;
 
-// 声明所有的Hook接口的模块文件，并导出Trait
+// 声明所有的Hook接口的模块文件
 translate_macros::expand_by_files!("src/hook/traits" => {
-    #[cfg(feature = __file_str__)]
-    pub use __file__::__file_pascal__;
-
-    #[cfg(feature = __file_str__)]
-    #[allow(dead_code)]
+    #[allow(dead_code, unused_variables)]
     pub mod __file__;
 });
 
@@ -25,7 +21,7 @@ pub trait CoreHook: Send + Sync + 'static {
     ///
     /// 此时程序已经完成基本的初始化，可以安全地进行各种需要完整运行环境的操作。
     /// 适合执行那些在`PROCESS_ATTACH`阶段可能导致死锁的操作。
-    #[cfg(feature = "delayed_attach")]
+    #[cfg(feature = "enable_delayed_attach")]
     fn on_delayed_attach() -> crate::Result<()> {
         Ok(())
     }
@@ -41,7 +37,7 @@ pub trait CoreHook: Send + Sync + 'static {
     /// 进程附加清理回调，会在开启`attach_clean_up`时调用
     ///
     /// 此时可以进行安全的各种清理操作的，比如保存文件，清理临时文件等等。
-    #[cfg(feature = "attach_clean_up")]
+    #[cfg(feature = "enable_attach_cleanup")]
     fn on_process_attach_clean_up() -> crate::Result<()> {
         Ok(())
     }
@@ -63,7 +59,7 @@ pub trait CoreHook: Send + Sync + 'static {
     /// - `_id_child`: 子对象 ID
     /// - `_id_event_thread`: 触发事件的线程 ID
     /// - `_dwms_event_time`: 事件触发时间戳（毫秒）
-    #[cfg(feature = "win_event_hook")]
+    #[cfg(feature = "enable_win_event_hook")]
     fn on_win_event_triggered(
         _event: u32,
         _hwnd: HWND,
@@ -90,7 +86,7 @@ pub trait CoreHook: Send + Sync + 'static {
     /// - 执行断点（Execute）命中时，返回 `false` 会自动设置 RF 位防止立即重触发；其他类型（Write/Access）无需此处理
     /// - 若返回 `Ok(true)`，断点被清除后该 `HwReg` 可被重新用于新的硬件断点
     /// - 此方法在 VEH 异常处理上下文中执行，**禁止**调用可能引发异常的 API（如内存分配、同步原语），仅限修改寄存器、内存 patch 等原子操作
-    #[cfg(feature = "veh")]
+    #[cfg(feature = "enable_veh")]
     fn on_hwbp_hit(_context: &mut CONTEXT, _reg: HwReg) -> crate::Result<bool> {
         Ok(true)
     }
@@ -117,7 +113,7 @@ pub trait CoreHook: Send + Sync + 'static {
     /// - **禁止**在此处执行任何阻塞操作，否则会导致窗口失去响应或渲染卡顿。
     /// - 如果打算实现点击穿透之外的交互（如菜单、按钮），需要在此处通过 `egui-winit` 或手动逻辑
     ///   判断鼠标是否落在 UI 元素上，并据此决定是否拦截消息。
-    #[cfg(feature = "overlay")]
+    #[cfg(feature = "enable_overlay")]
     fn on_overlay_wnd_proc(
         _hwnd: HWND,
         _msg: u32,
@@ -135,7 +131,7 @@ pub trait CoreHook: Send + Sync + 'static {
     /// # 注意事项
     /// - 此方法在 `worker_thread` 中执行，请确保绘制操作的线程安全性。
     /// - 严禁在此回调中执行耗时过长的阻塞操作，否则会拖慢渲染帧率及消息循环。
-    #[cfg(feature = "overlay")]
+    #[cfg(feature = "enable_overlay")]
     fn on_overlay_render(_context: &mut OverlayContext) -> crate::Result<()> {
         Ok(())
     }
@@ -148,7 +144,7 @@ pub trait CoreHook: Send + Sync + 'static {
     ///
     /// # 注意事项
     /// - 此处严禁执行高耗时的阻塞操作（如同步 IO、复杂的循环计算），否则会直接降低渲染帧率（FPS）。
-    #[cfg(feature = "worker_thread")]
+    #[cfg(feature = "enable_worker_thread")]
     fn on_worker_main_tick() -> crate::Result<LoopAction> {
         Ok(LoopAction::Continue)
     }

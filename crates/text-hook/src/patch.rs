@@ -17,6 +17,7 @@ pub fn get_patch(src: &[u8]) -> Option<&'static [u8]> {
 
     let patch = patch_data::PATCHES.get(&sha256_of_bytes(src))?.as_slice();
 
+    #[cfg(feature = "enable_debug_output")]
     debug!(
         "Got Patch file, len={}, filename={}",
         patch.len(),
@@ -32,7 +33,7 @@ pub fn get_patch(src: &[u8]) -> Option<&'static [u8]> {
 /// - `patch_extracting` 模式：尝试提取并返回 `Ok(None)`。
 pub fn get_patch_or_extract(src: &[u8]) -> crate::Result<Option<&'static [u8]>> {
     cfg_if! {
-        if #[cfg(feature = "patch_extracting")] {
+        if #[cfg(feature = "extract_patch")] {
             extract_to_file(src)?;
             Ok(None)
         } else {
@@ -47,7 +48,7 @@ fn is_patch_len(len: usize) -> bool {
 }
 
 /// 根据目标数据，获取补丁数据对应的原始文件名（仅在 debug_output 特性启用时可用）
-#[cfg(feature = "debug_output")]
+#[cfg(feature = "enable_debug_output")]
 fn get_filename(src: &[u8]) -> Option<&str> {
     if !is_patch_len(src.len()) {
         return None;
@@ -64,7 +65,7 @@ fn get_filename(src: &[u8]) -> Option<&str> {
 /// - `ptr` 必须指向长度至少为 `len` 的可读有效内存。
 /// - 调用者需保证该内存在本次调用期间保持有效且不被并发修改。
 #[allow(dead_code, unused_variables)]
-#[cfg(feature = "patch_extracting")]
+#[cfg(feature = "extract_patch")]
 pub fn extract_to_file(buf: &[u8]) -> crate::Result<()> {
     crate::utils::mem::quick_memory_check(buf.as_ptr(), buf.len())?;
 

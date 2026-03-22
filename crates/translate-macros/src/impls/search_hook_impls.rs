@@ -6,7 +6,7 @@ use syn::{
     parse::{Parse, ParseStream},
 };
 
-use crate::impls::utils::get_full_path_by_manifest;
+use crate::utils::get_full_path_by_manifest;
 
 /// Macro 输入解析器：`[pub] type <AliasIdent> , "relative/path"`
 struct SearchHookInput {

@@ -1,14 +1,14 @@
-#[cfg(feature = "debug_output")]
+#[cfg(feature = "enable_debug_output")]
 pub(crate) mod debug_impl {
     use std::sync::Once;
     use windows_sys::Win32::{
-        Foundation::{GetLastError, NTSTATUS, RtlNtStatusToDosError},
+        Foundation::{GetLastError, RtlNtStatusToDosError, NTSTATUS},
         Globalization::CP_UTF8,
         System::{
             Console::{AllocConsole, SetConsoleCP, SetConsoleOutputCP},
             Diagnostics::Debug::{
-                FORMAT_MESSAGE_FROM_SYSTEM, FORMAT_MESSAGE_IGNORE_INSERTS, FormatMessageW,
-                OutputDebugStringW,
+                FormatMessageW, OutputDebugStringW, FORMAT_MESSAGE_FROM_SYSTEM,
+                FORMAT_MESSAGE_IGNORE_INSERTS,
             },
         },
     };
@@ -91,14 +91,14 @@ macro_rules! fn_name {
 #[macro_export]
 macro_rules! debug {
     (raw $($arg:tt)*) => {{
-        #[cfg(feature = "debug_output")]
+        #[cfg(feature = "enable_debug_output")]
         {
             $crate::debug_output::debug_impl::debug(
                 format_args!($($arg)*)
             );
         }
 
-        #[cfg(not(feature = "debug_output"))]
+        #[cfg(not(feature = "enable_debug_output"))]
         {
             #[allow(unreachable_code, clippy::let_unit_value)]
             if false {
@@ -108,7 +108,7 @@ macro_rules! debug {
     }};
 
     ($($arg:tt)*) => {{
-        #[cfg(feature = "debug_output")]
+        #[cfg(feature = "enable_debug_output")]
         {
             $crate::debug_output::debug_impl::debug(
                 format_args!(
@@ -120,7 +120,7 @@ macro_rules! debug {
             );
         }
 
-        #[cfg(not(feature = "debug_output"))]
+        #[cfg(not(feature = "enable_debug_output"))]
         {
             #[allow(unreachable_code, clippy::let_unit_value)]
             if false {
@@ -133,7 +133,7 @@ macro_rules! debug {
 #[macro_export]
 macro_rules! print_last_error_message {
     () => {{
-        #[cfg(feature = "debug_output")]
+        #[cfg(feature = "enable_debug_output")]
         {
             if let Some(msg) = $crate::debug_output::debug_impl::get_last_error_message() {
                 $crate::debug!("[system error]: {}", msg);
@@ -141,7 +141,7 @@ macro_rules! print_last_error_message {
         }
     }};
     (ec $ec:expr) => {{
-        #[cfg(feature = "debug_output")]
+        #[cfg(feature = "enable_debug_output")]
         {
             if let Some(msg) = $crate::debug_output::debug_impl::get_last_error_message_from_ec($ec)
             {
@@ -150,7 +150,7 @@ macro_rules! print_last_error_message {
         }
     }};
     (nt $ntstatus:expr) => {{
-        #[cfg(feature = "debug_output")]
+        #[cfg(feature = "enable_debug_output")]
         {
             if let Some(msg) =
                 $crate::debug_output::debug_impl::get_last_error_message_from_ntstatus($ntstatus)

@@ -2,7 +2,7 @@ use windows_sys::Win32::{
     Foundation::HWND,
     System::Threading::GetCurrentProcessId,
     UI::{
-        Accessibility::{HWINEVENTHOOK, SetWinEventHook, UnhookWinEvent},
+        Accessibility::{SetWinEventHook, UnhookWinEvent, HWINEVENTHOOK},
         WindowsAndMessaging::{EVENT_MAX, EVENT_MIN, WINEVENT_OUTOFCONTEXT},
     },
 };
@@ -86,7 +86,7 @@ unsafe extern "system" fn win_event_hook_proc(
         id_child
     );
 
-    #[cfg(feature = "overlay")]
+    #[cfg(feature = "enable_overlay")]
     crate::overlay::win_event_callback(
         event,
         hwnd,

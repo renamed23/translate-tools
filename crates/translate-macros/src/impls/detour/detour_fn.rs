@@ -2,9 +2,9 @@ use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use syn::{Attribute, ItemFn, LitStr, parse_quote};
 
-use crate::impls::{
-    detour::{DetourAttr, generate_detour_ident, parse_detour_attr},
-    utils::ReturnKind,
+use crate::{
+    impls::detour::{DetourAttr, generate_detour_ident, parse_detour_attr},
+    utils::return_kind::ReturnKind,
 };
 
 pub fn detour_fn(attr: TokenStream, item: TokenStream) -> syn::Result<TokenStream> {
@@ -69,11 +69,11 @@ pub fn detour_fn(attr: TokenStream, item: TokenStream) -> syn::Result<TokenStrea
             on_panic = #fallback_tokens,
             on_err = unsafe {crate::call!(#static_ident, #(#call_args),*)}
         )]
-        #[cfg_attr(feature = "export_hooks", unsafe(no_mangle))]
+        #[cfg_attr(feature = "export_hook_symbols", unsafe(no_mangle))]
         #item_fn
 
         // 自动生成：LazyLock 的 retour detour 静态
-        #[cfg(not(feature = "iat_hook"))]
+        #[cfg(not(feature = "enable_iat_hook"))]
         pub static #static_ident: ::std::sync::LazyLock<::retour::GenericDetour<#fn_ty_tokens>> =
         ::std::sync::LazyLock::new(|| {
             crate::debug!("initialize detour: {}!{}", #dll_lit, #symbol_lit);
@@ -88,7 +88,7 @@ pub fn detour_fn(attr: TokenStream, item: TokenStream) -> syn::Result<TokenStrea
         });
 
         // 自动生成：LazyLock 的 IAT 静态
-        #[cfg(feature = "iat_hook")]
+        #[cfg(feature = "enable_iat_hook")]
         pub static #static_ident: ::std::sync::LazyLock<crate::utils::mem::iat::IatHook<#fn_ty_tokens>> =
         ::std::sync::LazyLock::new(|| {
             crate::debug!("initialize iat: {}!{}", #dll_lit, #symbol_lit);

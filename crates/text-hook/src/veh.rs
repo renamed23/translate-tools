@@ -188,8 +188,10 @@ unsafe extern "system" fn veh_handler(exception_info: *mut EXCEPTION_POINTERS) -
                     Err(e) => crate::debug!("on_hwbp_hit failed with {e:?}"),
                 }
 
-                #[cfg(feature = "apply_1337_patch_on_hwbp_hit")]
-                crate::x64dbg_1337_patch::apply();
+                #[cfg(feature = "auto_apply_1337_patch_on_hwbp_hit")]
+                if let Err(e) = crate::x64dbg_1337_patch::apply() {
+                    crate::debug!("Apply 1337 patch failed with {e:?}");
+                }
 
                 // 清除 DR6 命中标志
                 context.Dr6 &= !0b1111;

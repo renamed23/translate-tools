@@ -8,7 +8,7 @@ use syn::{
     punctuated::Punctuated,
 };
 
-use crate::impls::utils::get_full_path_by_manifest;
+use crate::utils::get_full_path_by_manifest;
 
 struct Args {
     path: LitStr,

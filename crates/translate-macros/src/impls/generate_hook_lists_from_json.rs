@@ -1,11 +1,15 @@
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 use serde::Deserialize;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
-use crate::impls::{
-    detour::generate_detour_ident,
-    utils::{CommaSeparatedPaths, read_json_file, read_optional_json_file, resolve_manifest_path},
+use crate::{
+    impls::detour::generate_detour_ident,
+    utils::{
+        featured_hook::{FeaturedHookLists, parse_cfg_expr},
+        input::CommaSeparatedPaths,
+        read_json_file, read_optional_json_file, resolve_manifest_path,
+    },
 };
 
 #[derive(Default, Deserialize)]
@@ -16,9 +20,6 @@ pub struct UserHookLists {
     #[serde(default)]
     pub disable: Vec<String>,
 }
-
-#[derive(Deserialize)]
-pub struct FeaturedHookLists(#[serde(default)] HashMap<String, Vec<String>>);
 
 pub fn generate_hook_lists_from_json(input: TokenStream) -> syn::Result<TokenStream> {
     let parsed = syn::parse2::<CommaSeparatedPaths>(input)?;
@@ -52,10 +53,12 @@ pub fn generate_hook_lists_from_json(input: TokenStream) -> syn::Result<TokenStr
     // 如果一个钩子在 user_hook_set 中，则跳过
 
     let mut cfg_list: Vec<(String, Vec<String>)> = Vec::new();
-    for (k, v) in featured.0 {
-        let filtered_hooks: Vec<String> = v
-            .into_iter()
-            .filter(|name| !user_hook_set.contains(name))
+    for (k, entry) in featured.0 {
+        let filtered_hooks: Vec<String> = entry
+            .fns
+            .iter()
+            .filter(|&name| !user_hook_set.contains(name))
+            .cloned()
             .collect();
 
         if !filtered_hooks.is_empty() {
@@ -96,9 +99,7 @@ pub fn generate_hook_lists_from_json(input: TokenStream) -> syn::Result<TokenStr
     }
 
     for (cfg_key, names) in cfg_list {
-        let cfg_inner: TokenStream = cfg_key
-            .parse()
-            .map_err(|e| syn_err2!("无法解析 cfg key `{cfg_key}`: {e}"))?;
+        let cfg_inner = parse_cfg_expr(&cfg_key)?;
 
         let idents: Vec<_> = names
             .iter()

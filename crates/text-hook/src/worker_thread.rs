@@ -4,7 +4,7 @@ use std::{
 };
 
 use windows_sys::Win32::UI::WindowsAndMessaging::{
-    DispatchMessageW, MSG, PM_REMOVE, PeekMessageW, TranslateMessage, WM_QUIT,
+    DispatchMessageW, PeekMessageW, TranslateMessage, MSG, PM_REMOVE, WM_QUIT,
 };
 
 use crate::hook::{impls::HookImplType, traits::CoreHook};
@@ -63,17 +63,17 @@ pub enum LoopAction {
 }
 
 fn worker_main() {
-    #[cfg(feature = "win_event_hook")]
+    #[cfg(feature = "enable_win_event_hook")]
     if let Err(e) = unsafe { crate::win_event_hook::install_win_event_hook() } {
         crate::debug!("Install WinEvent hook failed with {e:?}");
     }
 
-    #[cfg(feature = "overlay")]
+    #[cfg(feature = "enable_overlay")]
     scopeguard::defer!(
         crate::overlay::clean_up();
     );
 
-    #[cfg(feature = "win_event_hook")]
+    #[cfg(feature = "enable_win_event_hook")]
     scopeguard::defer!(
         if let Err(e) = unsafe { crate::win_event_hook::uninstall_win_event_hook() } {
             crate::debug!("Uninstall WinEvent hook failed with {e:?}");
@@ -93,7 +93,7 @@ fn worker_main() {
 
             match HookImplType::on_worker_main_tick() {
                 Ok(LoopAction::Continue) => {
-                    #[cfg(feature = "overlay")]
+                    #[cfg(feature = "enable_overlay")]
                     crate::overlay::render();
                 }
                 Ok(LoopAction::Exit) => {

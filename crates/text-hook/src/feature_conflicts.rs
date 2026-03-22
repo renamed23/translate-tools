@@ -1,6 +1,6 @@
 #[cfg(all(
-    feature = "apply_1337_patch_on_attach",
-    feature = "apply_1337_patch_on_hwbp_hit"
+    feature = "auto_apply_1337_patch_on_attach",
+    feature = "auto_apply_1337_patch_on_hwbp_hit"
 ))]
 compile_error!(
     "特性 `apply_1337_patch_on_attach` 和 `apply_1337_patch_on_hwbp_hit` \
