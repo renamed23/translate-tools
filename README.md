@@ -143,7 +143,7 @@ cargo build-text-hook --features default_impl
 
 ### raw_patch & translated_patch
 
-raw_patch文件夹包含需要被替换的文件，translated_patch文件夹包含对应的替换文件，需要注意被替换文件和替换文件的文件长度要相等
+raw_patch文件夹包含需要被替换的文件，translated_patch文件夹包含对应的替换文件
 
 若需使用需要开启`patch`或者`default_patch_impl`特性
 
