@@ -361,102 +361,79 @@ pub fn generate_constants_from_json(input: TokenStream) -> TokenStream {
     }
 }
 
-/// 生成字符映射数据的过程宏
+/// 生成字符映射数据的过程宏。
 ///
 /// # 功能描述
-/// 这个宏从映射配置文件和可选的译文文件中生成两个高效的字符映射表：
-/// - SJIS_PHF_MAP: 用于 Shift_JIS 编码到 UTF-16 码点的映射
-/// - UTF16_PHF_MAP: 用于 UTF-16 码点到 UTF-16 码点的直接映射
 ///
-/// 生成的映射表使用 Perfect Hash Function (PHF) 实现，提供 O(1) 时间复杂度的查找性能。
+/// 该宏从一个 JSON 配置文件中读取字符映射，并生成两个静态项：
+///
+/// - `ANSI_CODE_PAGE: u32`：源文本所使用的 ANSI 代码页
+/// - `PHF_MAP: ::phf::Map<u16, u16>`：`u16 -> u16` 的字符映射表
+///
+/// 这里的映射表键值都直接使用 Unicode BMP 范围内的码点值；宏本身**不会**把字符预先转换成
+/// Shift_JIS / GBK 等多字节编码后的数值表。代码页信息会单独保存在 `ANSI_CODE_PAGE` 中，供运行时按需使用。
 ///
 /// # 输入参数
-/// 接受一个或两个字符串字面量参数，用逗号分隔：
-/// - `mapping_path`: 必需，映射配置文件的相对路径（相对于 `CARGO_MANIFEST_DIR`）
-/// - `translated_path`: 可选，译文文件的相对路径（用于生成完整映射数据）
+///
+/// 接受一个字符串字面量参数：
+///
+/// - `mapping_path`：映射配置文件路径（相对于 `CARGO_MANIFEST_DIR`）
 ///
 /// # 配置文件格式
 ///
-/// ## 映射配置文件 (mapping.json)
-/// JSON 对象，键值对表示字符映射关系：
+/// 配置文件应为一个 JSON 对象，格式如下：
+///
 /// ```json
 /// {
-///   "原字符": "目标字符",
-///   "Ａ": "A",
-///   "ｶ": "カ"
+///   "code_page": 932,
+///   "src_encoding": "ShiftJIS",
+///   "mapping": {
+///     "Ａ": "A",
+///     "ｶ": "カ"
+///   }
 /// }
 /// ```
-/// - 键和值都必须是单个 Unicode 字符
-/// - 键字符必须属于 JIS0208 字符集（可被 Shift_JIS 编码）
 ///
-/// ## 译文文件
-/// 包含需要处理的文本内容，用于提取所有 JIS0208 字符并创建自映射（字符映射到自身）。
+/// 字段说明：
 ///
-/// # 生成规则
+/// - `mapping`：必需。键和值都必须是单个 `char`，表示 1:1 字符映射。
+/// - `code_page`：可选。直接指定源文本代码页，例如 `932`、`936`。
+/// - `src_encoding`：可选。当前仅支持：
+///   - `"ShiftJIS"` / `"CP932"` -> `932`
+///   - `"GBK"` -> `936`
 ///
-/// ## SJIS_PHF_MAP (Shift_JIS → UTF-16)
-/// 1. 如果提供了译文文件，首先提取其中所有 JIS0208 字符并创建自映射（字符映射到自身）
-/// 2. 使用映射配置文件中的映射关系覆盖或添加映射
-/// 3. 将每个键字符编码为 Shift_JIS 双字节编码（u16，高字节在前）
-/// 4. 将每个值字符转换为 UTF-16 码点（u16）
-///
-/// ## UTF16_PHF_MAP (UTF-16 → UTF-16)
-/// 1. 仅使用映射配置文件中的映射关系
-/// 2. 将键字符直接转换为 UTF-16 码点（u16）
-/// 3. 将值字符转换为 UTF-16 码点（u16）
-/// 4. 提供 UTF-16 字符到 UTF-16 字符的直接映射
+/// 若同时提供 `code_page` 与 `src_encoding`，优先使用 `code_page`。
+/// 若两者都未提供，则 `ANSI_CODE_PAGE` 为 `0`。
 ///
 /// # 输出
-/// 生成两个静态的 PHF 映射表：
-/// ```rust
-/// // Shift_JIS 编码到 UTF-16 码点的映射
-/// pub(super) static SJIS_PHF_MAP: ::phf::Map<u16, u16> = phf_map! {
-///     0x8340u16 => 0x0041u16,  // "Ａ" 的 Shift_JIS 编码 -> "A" 的 UTF-16
-///     0x8341u16 => 0x0042u16,  // "Ｂ" 的 Shift_JIS 编码 -> "B" 的 UTF-16
-///     // ...
-/// };
 ///
-/// // UTF-16 码点到 UTF-16 码点的直接映射
-/// pub(super) static UTF16_PHF_MAP: ::phf::Map<u16, u16> = phf_map! {
-///     0xFF21u16 => 0x0041u16,  // "Ａ" 的 UTF-16 -> "A" 的 UTF-16
-///     0xFF22u16 => 0x0042u16,  // "Ｂ" 的 UTF-16 -> "B" 的 UTF-16
-///     // ...
+/// 宏展开后会生成：
+///
+/// ```rust
+/// pub(super) static ANSI_CODE_PAGE: u32 = 932;
+/// pub(super) static PHF_MAP: ::phf::Map<u16, u16> = ::phf::phf_map! {
+///     0xFF21u16 => 0x0041u16,
+///     0xFF76u16 => 0x30ABu16,
 /// };
 /// ```
 ///
-/// # 使用示例
-/// ## 基本用法（仅映射文件）
+/// 其中：
+///
+/// - `PHF_MAP` 的键：源字符的 Unicode `u16` 码点
+/// - `PHF_MAP` 的值：目标字符的 Unicode `u16` 码点
+///
+/// # 示例
+///
 /// ```rust
 /// generate_mapping_data!("assets/mapping.json");
 /// ```
 ///
-/// ## 完整映射（包含译文文件）
-/// ```rust
-/// generate_mapping_data!("assets/mapping.json", "assets/translated.txt");
-/// ```
-///
-/// # 字符编码说明
-/// - **SJIS_PHF_MAP 键**: 原字符 -> Shift_JIS 双字节编码 -> u16（高字节在前）
-/// - **SJIS_PHF_MAP 值**: 目标字符 -> UTF-16 码点 -> u16
-/// - **UTF16_PHF_MAP 键**: 原字符 -> UTF-16 码点 -> u16
-/// - **UTF16_PHF_MAP 值**: 目标字符 -> UTF-16 码点 -> u16
-///
-/// # 性能特点
-/// - 使用 PHF 实现，编译时构建完美哈希函数
-/// - 运行时查找时间复杂度 O(1)
-/// - 适合在性能敏感的字符转换场景中使用
-///
-/// # 应用场景
-/// 主要用于游戏本地化、字符集转换、文本处理等需要高效字符映射的场景，
-/// 特别是在处理日文 Shift_JIS 编码文本时。
-///
 /// # 注意事项
-/// - 配置文件路径相对于 `CARGO_MANIFEST_DIR`（项目根目录）
-/// - 译文文件为可选，用于生成完整字符集的自映射
-/// - 所有字符映射都是 1:1 的单个字符映射
-/// - 目前不支持 BMP 之外的 Unicode 字符（>0xFFFF）
-/// - UTF16_PHF_MAP 仅包含映射文件中定义的字符，不包含译文文件中的自映射
-/// - 映射键必须通过 JIS0208 校验（可被 Shift_JIS 编码）
+///
+/// - 路径相对于 `CARGO_MANIFEST_DIR`
+/// - 所有字符必须位于 BMP 范围内（`<= 0xFFFF`），否则编译失败
+/// - `mapping` 会按键排序后生成，以保证输出稳定
+/// - `src_encoding` 目前只支持少量预设值，传入其他值会直接报编译错误
 #[proc_macro]
 pub fn generate_mapping_data(input: TokenStream) -> TokenStream {
     match impls::generate_mapping_data::generate_mapping_data(input.into()) {
@@ -575,36 +552,59 @@ pub fn expand_by_files(input: TokenStream) -> TokenStream {
     }
 }
 
-/// 为 DLL 劫持生成导出函数包装器
+/// 为 DLL 劫持生成导出转发包装器，并额外写出 `.def` 文件。
 ///
-/// 这个宏会在编译时分析指定的 DLL 文件，自动生成：
-/// - 所有导出函数的地址静态变量
-/// - 对应的跳转包装函数（使用 naked 汇编）
-/// - 动态加载/卸载 DLL 的辅助函数
+/// 该宏会在编译时分析指定目录中的唯一一个 DLL，读取其命名导出表，然后自动生成：
+///
+/// - 所有导出函数地址的静态变量
+/// - 对应的裸函数跳转包装器（naked asm）
+/// - `load_library()` / `unload_library()` 辅助函数
+/// - 一个 `.def` 文件，用于保留原 DLL 的导出名与 ordinal
+///
+/// # 语法
+///
+/// ```ignore
+/// generated_exports_from_hijacked_dll!("path/to/dll_dir" => "path/to/output.def");
+/// ```
 ///
 /// # 参数
-/// - `input`: 一个字符串字面量，表示包含目标 DLL 的目录路径（相对于 `CARGO_MANIFEST_DIR`）
+///
+/// - 左侧参数：包含目标 DLL 的目录路径（相对于 `CARGO_MANIFEST_DIR`）
+/// - 右侧参数：生成的 `.def` 文件输出路径（相对于 `CARGO_MANIFEST_DIR`）
 ///
 /// # 要求
-/// - 指定的目录必须存在且包含且仅包含一个 DLL 文件
-/// - 需要在 Cargo 构建环境中运行（依赖 `CARGO_MANIFEST_DIR` 环境变量）
-/// - 目标 DLL 必须包含命名导出函数
+///
+/// - 指定目录必须存在
+/// - 目录中必须且只能有一个 DLL 文件
+/// - 该 DLL 必须包含**命名导出**；纯 ordinal 导出当前不支持
 ///
 /// # 生成代码
-/// 宏展开后会生成以下内容：
-/// - `HMOD` - 模块句柄静态变量
-/// - `ADDR_*` - 每个导出函数的地址静态变量（大写下划线命名）
-/// - 每个导出函数的汇编跳转包装器（保持原导出名）
-/// - `load_library()` - 加载 DLL 并解析函数地址
-/// - `unload_library()` - 卸载 DLL 并重置地址
+///
+/// 宏展开后会生成：
+///
+/// - `HMOD`：真实 DLL 的模块句柄
+/// - `ADDR_*`：每个导出函数对应的目标地址缓存
+/// - 若干 `#[unsafe(export_name = "...")]` 的跳转导出函数
+/// - `pub(super) unsafe extern "system" fn load_library()`
+/// - `pub(super) unsafe extern "system" fn unload_library()`
+///
+/// 其中 `load_library()` 会调用 crate 内的 Windows 辅助函数加载真实 DLL，并批量解析所有导出地址；
+/// 每个导出包装器随后通过汇编直接跳转到解析出来的真实地址。
 ///
 /// # 示例
-/// ```
-/// generated_exports_from_hijacked_dll!("hijacked_dlls/version");
+///
+/// ```ignore
+/// generated_exports_from_hijacked_dll!(
+///     "assets/hijacked" => "target/generated/version.def"
+/// );
 /// ```
 ///
-/// # 注意
-/// 此宏专为 Windows DLL 劫持场景设计，生成的代码包含 unsafe 操作和平台特定汇编。
+/// # 注意事项
+///
+/// - 该宏专用于 Windows DLL 劫持/转发场景
+/// - 生成代码依赖平台相关的 naked asm
+/// - `.def` 文件会在宏展开期间直接写入磁盘
+/// - 目前仅支持有名字的导出，不支持纯序号导出
 #[proc_macro]
 pub fn generated_exports_from_hijacked_dll(input: TokenStream) -> TokenStream {
     match impls::generate_exports_from_hijacked_dll::generated_exports_from_hijacked_dll(
@@ -615,65 +615,77 @@ pub fn generated_exports_from_hijacked_dll(input: TokenStream) -> TokenStream {
     }
 }
 
-/// 生成文本补丁数据的编译时过程宏
+/// 生成文本补丁数据的编译时过程宏。
 ///
-/// 这个宏在编译时读取原始文本文件夹和翻译文本文件夹中的JSON文件，
-/// 生成高效的PHF(Perfect Hash Function)映射表，用于运行时快速查找和替换游戏文本。
+/// 该宏在编译时读取“原文目录”和“译文目录”中同名的 JSON 文件，生成数个 PHF 映射表，
+/// 供运行时按“字典项优先、正文按上下文索引匹配”的方式快速查找译文。
 ///
 /// # 语法
+///
 /// ```ignore
 /// generated_text_patch_data! {
-///     "path/to/original_folder" => "path/to/translated_folder"
+///     "path/to/raw_dir" => "path/to/translated_dir"
 /// }
 /// ```
 ///
-/// # 输入文件夹结构
-/// - 原始文件夹和翻译文件夹中应包含同名的JSON文件
-/// - 宏会自动匹配两个文件夹中文件名相同的JSON文件
-/// - 例如：
-///   ```
-///   texts/original/dialogue1.json
-///   texts/original/dialogue2.json
-///   texts/translated/dialogue1.json  (对应原始 dialogue1.json 的翻译)
-///   texts/translated/dialogue2.json  (对应原始 dialogue2.json 的翻译)
-///   ```
+/// # 输入要求
 ///
-/// # 输入文件格式
-/// 每个JSON文件应为数组格式，运行时只关注 `message`、`is_name`、`is_dict`：
+/// - 两个目录中的文件按**文件名**一一对应
+/// - 每个文件内容都必须是 JSON 数组
+/// - 原文数组与译文数组长度必须一致
+/// - 每一项只会读取 `message`、`is_name`、`is_dict` 字段
+///
+/// 单项格式示例：
+///
 /// ```json
 /// [
-///     {"message": "原始消息"},
-///     {"message": "另一条消息", "is_dict": true},
-///     {"message": "角色名", "is_name": true}
+///   {"message": "原始消息"},
+///   {"message": "另一条消息", "is_dict": true},
+///   {"message": "角色名", "is_name": true}
 /// ]
 /// ```
 ///
-/// 生成内容
-/// 宏展开后会生成以下内容：
-/// - `DICT_PHF` - 上下文无关的静态 PHF 映射表 (原句 -> 译句)
-/// - `TEXT_SINGLE_PHF` - 无歧义正文的静态 PHF 映射表 (原句 -> `(索引, 译句)`)
-/// - `TEXT_MULTI_PHF` - 多候选正文的静态 PHF 映射表 (原句 -> `[(索引, 译句)]`)
-/// - `lookup_result(original, last_index)` - 带上下文的查找函数
-/// - `lookup(original)` - 无上下文的兼容查找函数
+/// # 生成内容
+///
+/// 宏展开后会生成以下项：
+///
+/// - `LookupResult`：查找结果结构，包含译文和命中的正文索引
+/// - `DICT_PHF`：上下文无关字典映射，类型为 `phf::Map<&'static str, &'static str>`
+/// - `TEXT_SINGLE_PHF`：无歧义正文映射，类型为 `phf::Map<&'static str, (usize, &'static str)>`
+/// - `TEXT_MULTI_PHF`：多候选正文映射，类型为 `phf::Map<&'static str, &'static [(usize, &'static str)]>`
+/// - `lookup_result(original, last_index)`：带上下文的统一查找接口
+/// - `lookup(original)`：不带上下文的兼容接口
 ///
 /// # 处理规则
-/// - 自动处理路径解析（相对于 `CARGO_MANIFEST_DIR`）
-/// - 验证原始JSON和翻译JSON的数组长度必须相等（针对每个对应的文件对）
-/// - `is_name == true` 或 `is_dict == true` 的条目写入 `DICT_PHF`，不会参与上下文推进
-/// - 其余 `message` 条目视为正文，都会按遍历顺序分配稳定索引
-/// - 同一原文的正文条目不会去重；即使译文文本相同，也会保留各自独立的上下文索引
-/// - 正文唯一映射会进入 `TEXT_SINGLE_PHF`，并在运行时命中后推进上下文索引
-/// - 跳过空字符串的条目
-/// - 查找顺序为：`DICT_PHF` -> `TEXT_SINGLE_PHF` -> `TEXT_MULTI_PHF`
-/// - 如果翻译文件夹中缺少对应的JSON文件，会报错
+///
+/// - `is_name == true` 或 `is_dict == true` 的条目视为字典项，进入 `DICT_PHF`
+/// - 其余非空 `message` 条目视为正文，并按遍历顺序分配稳定的 `text_index`
+/// - 同一原文若只出现一次，进入 `TEXT_SINGLE_PHF`
+/// - 同一原文若出现多次，则全部候选保留到 `TEXT_MULTI_PHF`
+/// - 即使多个候选的译文完全相同，也**不会合并**，因为它们的上下文索引不同
+/// - 字典项要求严格 1:1；若同一原文对应多个不同译文，会直接报编译错误
+/// - 空 `message` 会被跳过
+///
+/// # 查找顺序
+///
+/// 运行时查找顺序为：
+///
+/// 1. `DICT_PHF`
+/// 2. `TEXT_SINGLE_PHF`
+/// 3. `TEXT_MULTI_PHF`（结合 `last_index` 选择最近候选）
+///
+/// 当命中 `TEXT_MULTI_PHF` 时：
+///
+/// - 若提供 `last_index`，会选择与之距离最近的正文项
+/// - 若未提供 `last_index`，则默认选择第一个候选
 ///
 /// # 示例
+///
 /// ```ignore
 /// generated_text_patch_data! {
 ///     "texts/original" => "texts/chinese"
 /// }
 ///
-/// // 运行时使用
 /// let translated = lookup("Hello world!").unwrap_or("Hello world!");
 /// ```
 #[proc_macro]
