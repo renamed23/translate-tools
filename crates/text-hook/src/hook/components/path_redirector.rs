@@ -6,7 +6,7 @@ use windows_sys::{
 
 use crate::{
     constant::{REDIRECTION_SRC_PATH, REDIRECTION_TARGET_PATH},
-    hook::traits::filesystem::{CreateFile, HOOK_CREATE_FILE_A},
+    hook::api_hooks::filesystem::{CreateFile, HOOK_CREATE_FILE_A},
     utils::exts::ptr_ext::PtrExt,
 };
 

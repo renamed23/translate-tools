@@ -12,7 +12,7 @@ use windows_sys::{
 use crate::{
     constant::ARG_REG_PATH,
     debug,
-    hook::core_hook::ProcessAttach,
+    hook::internal_hooks::ProcessAttach,
     print_last_error_message,
     utils::exts::{ptr_ext::PtrExt, slice_ext::ByteSliceExt},
 };

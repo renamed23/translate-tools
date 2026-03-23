@@ -6,7 +6,7 @@ use windows_sys::{
 };
 
 use crate::{
-    hook::traits::filesystem::{CreateFile, HOOK_CREATE_FILE_A, HOOK_CREATE_FILE_W},
+    hook::api_hooks::filesystem::{CreateFile, HOOK_CREATE_FILE_A, HOOK_CREATE_FILE_W},
     utils::exts::{ptr_ext::PtrExt, slice_ext::ByteSliceExt},
 };
 

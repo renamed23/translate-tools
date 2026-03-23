@@ -1,13 +1,13 @@
-pub(crate) mod core_hook;
 pub(crate) mod entry;
+pub(crate) mod internal_hooks;
 
+pub(crate) mod api_hooks;
 pub(crate) mod components;
 pub(crate) mod impls;
-pub(crate) mod traits;
 
 mod hook_lists {
-    translate_macros::expand_by_files!("src/hook/traits" => {
-        use super::traits::__file__::*;
+    translate_macros::expand_by_files!("src/hook/api_hooks" => {
+        use super::api_hooks::__file__::*;
     });
 
     translate_macros::generate_hook_lists_from_json!(

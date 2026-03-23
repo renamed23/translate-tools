@@ -7,7 +7,7 @@ use windows_sys::Win32::{
     },
 };
 
-use crate::hook::{core_hook::WinEventTriggered, impls::HookImplType};
+use crate::hook::{impls::HookImplType, internal_hooks::WinEventTriggered};
 
 static mut WIN_EVENT_HOOK: Option<HWINEVENTHOOK> = None;
 

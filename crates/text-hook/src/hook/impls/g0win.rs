@@ -8,7 +8,7 @@ use windows_sys::Win32::Foundation::HMODULE;
 
 use crate::{
     constant::ARG_GAME_TYPE,
-    hook::core_hook::ProcessAttach,
+    hook::internal_hooks::ProcessAttach,
     utils::exts::{
         ptr_ext::{PtrExt, PtrWriteExt},
         slice_ext::{ByteSliceExt, WideSliceExt},

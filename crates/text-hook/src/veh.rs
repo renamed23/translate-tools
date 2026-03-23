@@ -7,7 +7,7 @@ use windows_sys::Win32::{
 };
 
 use crate::{
-    hook::{core_hook::HwbpHit, impls::HookImplType},
+    hook::{impls::HookImplType, internal_hooks::HwbpHit},
     utils::hwbp::{HwBreakpointLen, HwBreakpointType, HwReg},
 };
 

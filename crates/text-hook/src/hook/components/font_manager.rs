@@ -13,7 +13,7 @@ use windows_sys::Win32::{
 use crate::{
     constant::{CHAR_SET, FONT_FACE, FONT_FILTER},
     debug,
-    hook::traits::gdi_text::{
+    hook::api_hooks::gdi_text::{
         CreateFont, CreateFontIndirect, HOOK_CREATE_FONT_INDIRECT_A, HOOK_CREATE_FONT_INDIRECT_W,
         HOOK_CREATE_FONT_W,
     },
@@ -26,7 +26,7 @@ use crate::{
 #[cfg(feature = "disable_forced_font")]
 use crate::{
     constant::{ENUM_FONT_PROC_CHAR_SET, ENUM_FONT_PROC_OUT_PRECISION, ENUM_FONT_PROC_PITCH},
-    hook::traits::gdi_text::{
+    hook::api_hooks::gdi_text::{
         EnumFontFamilies, EnumFontFamiliesEx, EnumFonts, HOOK_ENUM_FONT_FAMILIES_A,
         HOOK_ENUM_FONT_FAMILIES_EX_A, HOOK_ENUM_FONT_FAMILIES_EX_W, HOOK_ENUM_FONT_FAMILIES_W,
         HOOK_ENUM_FONTS_A, HOOK_ENUM_FONTS_W,

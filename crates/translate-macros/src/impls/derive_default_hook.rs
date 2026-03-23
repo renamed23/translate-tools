@@ -21,9 +21,10 @@ pub fn derive_default_hook(input: TokenStream) -> syn::Result<TokenStream> {
         .map(|ident| ident.to_string().to_case(Case::Pascal))
         .collect();
 
-    let trait_dir = resolve_manifest_path(&LitStr::new("src/hook/traits", Span::call_site()))?;
-    let core_hook_dir =
-        resolve_manifest_path(&LitStr::new("src/hook/core_hook", Span::call_site()))?;
+    let api_hooks_dir =
+        resolve_manifest_path(&LitStr::new("src/hook/api_hooks", Span::call_site()))?;
+    let internal_hooks_dir =
+        resolve_manifest_path(&LitStr::new("src/hook/internal_hooks", Span::call_site()))?;
     let featured_path = resolve_manifest_path(&LitStr::new(
         "constant_assets/featured_hook_lists.json",
         Span::call_site(),
@@ -36,26 +37,26 @@ pub fn derive_default_hook(input: TokenStream) -> syn::Result<TokenStream> {
 
     append_trait_impls(
         &mut impl_blocks,
-        &trait_dir,
+        &api_hooks_dir,
         &trait_cfg_map,
         &exclude,
         |module_ident, trait_ident, cfg_attr| {
             quote! {
                 #cfg_attr
-                impl crate::hook::traits::#module_ident::#trait_ident for #name {}
+                impl crate::hook::api_hooks::#module_ident::#trait_ident for #name {}
             }
         },
     )?;
 
     append_trait_impls(
         &mut impl_blocks,
-        &core_hook_dir,
+        &internal_hooks_dir,
         &trait_cfg_map,
         &exclude,
         |module_ident, trait_ident, cfg_attr| {
             quote! {
                 #cfg_attr
-                impl crate::hook::core_hook::#module_ident::#trait_ident for #name {}
+                impl crate::hook::internal_hooks::#module_ident::#trait_ident for #name {}
             }
         },
     )?;

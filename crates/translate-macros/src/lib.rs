@@ -609,9 +609,9 @@ pub fn generate_patch_data(input: TokenStream) -> TokenStream {
 /// });
 ///
 /// // 带排除列表（忽略 code_cvt_hook.rs 和 file_hook.rs）
-/// expand_by_files!("src/hook/traits" => {
+/// expand_by_files!("src/hook/api_hooks" => {
 ///     #[cfg(feature = __file_str__)]
-///     impl crate::hook::traits::__file_pascal__ for #name {}
+///     impl crate::hook::api_hooks::__file_pascal__ for #name {}
 /// }, {CodeCvtHook, FileHook});
 /// ```
 #[proc_macro]
@@ -856,12 +856,12 @@ pub fn generate_patch_fn_from_1337(input: TokenStream) -> TokenStream {
 
 /// 为结构体自动生成默认的钩子实现的过程宏
 ///
-/// 该 Derive 宏会扫描 `src/hook/traits` 目录下的所有 `.rs` 文件（除 `mod.rs` 和 `lib.rs` 外），
+/// 该 Derive 宏会扫描 `src/hook/api_hooks` 目录下的所有 `.rs` 文件（除 `mod.rs` 和 `lib.rs` 外），
 /// 解析其中真实声明的 trait，并为当前结构体逐个生成默认实现。
 ///
 /// 与旧版本“按文件名推导 trait 名”不同，当前实现是**直接读取 trait 定义本身**，因此：
-/// - 一个 traits 文件里即使包含多个 trait，也都会被正确处理；
-/// - 生成的 impl 路径会指向真实模块路径，例如 `crate::hook::traits::filesystem::ReadFile`；
+/// - 一个 api_hooks 文件里即使包含多个 trait，也都会被正确处理；
+/// - 生成的 impl 路径会指向真实模块路径，例如 `crate::hook::api_hooks::filesystem::ReadFile`；
 /// - 不再依赖“一个文件只对应一个 trait”的旧假设。
 ///
 /// 此外，宏还会读取 `constant_assets/featured_hook_lists.json` 中的 `trait` 配置，
@@ -870,15 +870,15 @@ pub fn generate_patch_fn_from_1337(input: TokenStream) -> TokenStream {
 ///
 /// # 生成的代码结构
 /// ```ignore
-/// impl crate::hook::traits::filesystem::CreateFile for MyTranslator {}
+/// impl crate::hook::api_hooks::filesystem::CreateFile for MyTranslator {}
 ///
-/// impl crate::hook::traits::filesystem::ReadFile for MyTranslator {}
+/// impl crate::hook::api_hooks::filesystem::ReadFile for MyTranslator {}
 ///
 /// // 若某 trait 被 featured 配置声明为特化 trait，则默认 impl 会被自动排除
 /// #[cfg(not(any(...)))]
-/// impl crate::hook::traits::gdi_text::TextHook for MyTranslator {}
+/// impl crate::hook::api_hooks::gdi_text::TextHook for MyTranslator {}
 /// ```
-/// 上面只是示意，实际生成结果取决于 `src/hook/traits` 中声明的 trait，以及
+/// 上面只是示意，实际生成结果取决于 `src/hook/api_hooks` 中声明的 trait，以及
 /// `featured_hook_lists.json` 中的 `trait` 配置。
 ///
 /// # 辅助属性

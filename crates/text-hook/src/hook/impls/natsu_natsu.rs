@@ -3,7 +3,7 @@ use translate_macros::DefaultHook;
 use windows_sys::Win32::Foundation::HMODULE;
 
 use crate::{
-    constant::ARG_PATCH_TYPE, hook::core_hook::ProcessAttach, utils::exts::ptr_ext::PtrWriteExt,
+    constant::ARG_PATCH_TYPE, hook::internal_hooks::ProcessAttach, utils::exts::ptr_ext::PtrWriteExt,
 };
 
 #[derive(DefaultHook)]

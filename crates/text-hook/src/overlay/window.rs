@@ -18,7 +18,7 @@ use windows_sys::{
 };
 
 use crate::{
-    hook::{core_hook::OverlayWndProc, impls::HookImplType},
+    hook::{impls::HookImplType, internal_hooks::OverlayWndProc},
     print_last_error_message,
     utils::raii_wrapper::OwnedHWND,
 };

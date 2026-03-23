@@ -8,7 +8,7 @@ use windows_sys::{
 };
 
 use crate::{
-    hook::traits::gdi_text::{
+    hook::api_hooks::gdi_text::{
         ExtTextOut, GetGlyphOutline, GetTextExtentPoint32, HOOK_EXT_TEXT_OUT_W,
         HOOK_GET_GLYPH_OUTLINE_W, HOOK_GET_TEXT_EXTENT_POINT_32_W, HOOK_TEXT_OUT_W, TextOut,
     },

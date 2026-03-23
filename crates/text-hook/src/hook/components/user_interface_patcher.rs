@@ -9,7 +9,7 @@ use windows_sys::{
 };
 
 use crate::{
-    hook::traits::windowing::{
+    hook::api_hooks::windowing::{
         HOOK_MESSAGE_BOX_A, HOOK_MODIFY_MENU_A, HOOK_PROPERTY_SHEET_A, HOOK_SEND_MESSAGE_A,
         HOOK_SET_DLG_ITEM_TEXT_A, HOOK_SET_WINDOW_TEXT_A, MessageBox, ModifyMenu, PropertySheet,
         SendMessage, SetDlgItemText, SetWindowText,
