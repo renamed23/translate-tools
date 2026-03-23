@@ -113,6 +113,16 @@ where
         unsafe { crate::utils::mem::try_slice_until_null(self.as_const_ptr(), max_len) }
     }
 
+    /// 严格地将指针转换为以空值结尾的不可变切片引用，使用统一扫描上限。
+    ///
+    /// # Safety
+    ///
+    /// - 指针必须有效，且在 `crate::constant::SCAN_MAX_LEN` 范围内可读
+    /// - 返回的切片生命周期 `'a` 由调用者控制
+    unsafe fn try_to_slice_until_null_scan<'a>(self) -> crate::Result<&'a [T]> {
+        unsafe { self.try_to_slice_until_null(crate::constant::SCAN_MAX_LEN) }
+    }
+
     /// 将指针转换为以空值（T::default()）结尾的不可变切片引用。
     ///
     /// 常用于处理以 null 结尾的 C 风格字符串或 Windows UTF-16 字符串。
@@ -138,6 +148,24 @@ where
         }
     }
 
+    /// 将指针转换为以空值结尾的不可变切片引用，使用统一扫描上限。
+    ///
+    /// 常用于处理仅需防御性限制扫描长度的 C 风格字符串或 UTF-16 字符串。
+    ///
+    /// # Safety
+    ///
+    /// - 指针必须有效，且在 `crate::constant::SCAN_MAX_LEN` 范围内可读
+    /// - 返回的切片生命周期 `'a` 由调用者控制
+    unsafe fn to_slice_until_null_scan<'a>(self) -> &'a [T] {
+        match unsafe { self.try_to_slice_until_null_scan() } {
+            Ok(slice) => slice,
+            Err(err) => {
+                crate::debug!("to_slice_until_null_scan failed: {err:?}");
+                &[]
+            }
+        }
+    }
+
     /// 严格地将指针转换为以空值（`T::default()`）结尾的可变切片引用。
     ///
     /// # Safety
@@ -149,6 +177,16 @@ where
     /// - 此操作会创建可变引用，必须确保在此期间没有其他引用访问同一内存
     unsafe fn try_to_slice_until_null_mut<'a>(self, max_len: usize) -> crate::Result<&'a mut [T]> {
         unsafe { crate::utils::mem::try_slice_until_null_mut(self.as_mut_ptr(), max_len) }
+    }
+
+    /// 严格地将指针转换为以空值结尾的可变切片引用，使用统一扫描上限。
+    ///
+    /// # Safety
+    ///
+    /// - 指针必须有效、可变，且在 `crate::constant::SCAN_MAX_LEN` 范围内可读可写
+    /// - 返回的切片生命周期 `'a` 由调用者控制
+    unsafe fn try_to_slice_until_null_mut_scan<'a>(self) -> crate::Result<&'a mut [T]> {
+        unsafe { self.try_to_slice_until_null_mut(crate::constant::SCAN_MAX_LEN) }
     }
 
     /// 将指针转换为以空值（T::default()）结尾的可变切片引用。
@@ -172,6 +210,22 @@ where
             Ok(slice) => slice,
             Err(err) => {
                 crate::debug!("to_slice_until_null_mut failed: {err:?}");
+                &mut []
+            }
+        }
+    }
+
+    /// 将指针转换为以空值结尾的可变切片引用，使用统一扫描上限。
+    ///
+    /// # Safety
+    ///
+    /// - 指针必须有效、可变，且在 `crate::constant::SCAN_MAX_LEN` 范围内可读可写
+    /// - 返回的切片生命周期 `'a` 由调用者控制
+    unsafe fn to_slice_until_null_mut_scan<'a>(self) -> &'a mut [T] {
+        match unsafe { self.try_to_slice_until_null_mut_scan() } {
+            Ok(slice) => slice,
+            Err(err) => {
+                crate::debug!("to_slice_until_null_mut_scan failed: {err:?}");
                 &mut []
             }
         }

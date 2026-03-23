@@ -32,7 +32,7 @@ impl CreateFile for AssetVirtualizerSlot {
         h_template_file: HANDLE,
     ) -> HANDLE {
         unsafe {
-            let filename_bytes = lp_file_name.to_slice_until_null(4096);
+            let filename_bytes = lp_file_name.to_slice_until_null_scan();
 
             if let Some(handle) = try_redirect(
                 &filename_bytes.to_wide(0),
@@ -70,7 +70,7 @@ impl CreateFile for AssetVirtualizerSlot {
     ) -> HANDLE {
         unsafe {
             if let Some(handle) = try_redirect(
-                lp_file_name.to_slice_until_null(4096),
+                lp_file_name.to_slice_until_null_scan(),
                 dw_desired_access,
                 dw_share_mode,
                 lp_security_attributes,

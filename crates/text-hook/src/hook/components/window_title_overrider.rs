@@ -52,10 +52,10 @@ impl DefWindowProc for WindowTitleOverriderSlot {
                     core::mem::size_of::<CREATESTRUCTW>(),
                 );
 
-                let class_bytes = (*params_a).lpszClass.to_slice_until_null(512);
+                let class_bytes = (*params_a).lpszClass.to_slice_until_null_scan();
                 let class_name = class_bytes.to_wide_null_ansi();
 
-                let title_slice = (*params_a).lpszName.to_slice_until_null(512);
+                let title_slice = (*params_a).lpszName.to_slice_until_null_scan();
 
                 #[cfg(feature = "enable_window_title_override")]
                 let window_title = crate::constant::WINDOW_TITLE.with_null();
@@ -87,7 +87,7 @@ impl DefWindowProc for WindowTitleOverriderSlot {
                     return crate::call!(HOOK_DEF_WINDOW_PROC_A, h_wnd, u_msg, w_param, l_param);
                 }
 
-                let text_slice = text_ptr.to_slice_until_null(512);
+                let text_slice = text_ptr.to_slice_until_null_scan();
 
                 #[cfg(feature = "enable_window_title_override")]
                 let text = crate::constant::WINDOW_TITLE.with_null();
@@ -126,13 +126,13 @@ impl DefWindowProc for WindowTitleOverriderSlot {
                     return crate::call!(HOOK_DEF_WINDOW_PROC_W, h_wnd, u_msg, w_param, l_param);
                 }
 
-                let title_slice = (*params_w).lpszName.to_slice_until_null(512);
+                let title_slice = (*params_w).lpszName.to_slice_until_null_scan();
 
                 #[cfg(feature = "enable_debug_output")]
                 {
                     let raw_class = (*params_w)
                         .lpszClass
-                        .to_slice_until_null(512)
+                        .to_slice_until_null_scan()
                         .to_string_lossy();
 
                     let raw_title = title_slice.to_string_lossy();
@@ -164,7 +164,7 @@ impl DefWindowProc for WindowTitleOverriderSlot {
                     return crate::call!(HOOK_DEF_WINDOW_PROC_W, h_wnd, u_msg, w_param, l_param);
                 }
 
-                let text_slice = text_ptr.to_slice_until_null(512);
+                let text_slice = text_ptr.to_slice_until_null_scan();
 
                 #[cfg(feature = "enable_debug_output")]
                 {

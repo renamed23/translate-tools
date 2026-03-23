@@ -84,7 +84,7 @@ fn intern_bytes(bytes: Vec<u8>) -> &'static [u8] {
 #[translate_macros::ffi_guard(on_err_or_panic = ptr)]
 unsafe extern "system" fn hook_text(ptr: *const u8) -> crate::Result<*const u8> {
     unsafe {
-        let slice = ptr.to_slice_until_null(8192 * 50);
+        let slice = ptr.to_slice_until_null_scan();
         let wide_text = slice.try_to_wide(932)?;
 
         crate::debug!("Get raw slice {}", wide_text.to_string_lossy());

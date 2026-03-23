@@ -42,7 +42,7 @@ unsafe extern "system" fn reg_open_key_ex_a(
 ) -> WIN32_ERROR {
     unsafe {
         if hkey == HKEY_LOCAL_MACHINE && !lpsubkey.is_null() {
-            let subkey = lpsubkey.to_slice_until_null(1024).to_string_lossy();
+            let subkey = lpsubkey.to_slice_until_null_scan().to_string_lossy();
 
             debug!("get subkey : {subkey}");
 
@@ -89,7 +89,7 @@ unsafe extern "system" fn reg_create_key_ex_a(
 ) -> WIN32_ERROR {
     unsafe {
         if hkey == HKEY_LOCAL_MACHINE && !lpsubkey.is_null() {
-            let subkey = lpsubkey.to_slice_until_null(1024).to_string_lossy();
+            let subkey = lpsubkey.to_slice_until_null_scan().to_string_lossy();
 
             debug!("get subkey : {subkey}");
 

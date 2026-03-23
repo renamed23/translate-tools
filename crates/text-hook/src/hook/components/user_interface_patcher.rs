@@ -44,7 +44,7 @@ impl ModifyMenu for UserInterfacePatcherSlot {
             use windows_sys::Win32::UI::WindowsAndMessaging::{MF_BITMAP, MF_OWNERDRAW};
 
             if (u_flags & (MF_BITMAP | MF_OWNERDRAW)) == 0 && !lp_new_item.is_null() {
-                let text_slice = lp_new_item.to_slice_until_null(512);
+                let text_slice = lp_new_item.to_slice_until_null_scan();
 
                 #[cfg(feature = "enable_debug_output")]
                 {
@@ -91,8 +91,8 @@ impl MessageBox for UserInterfacePatcherSlot {
                 return crate::call!(HOOK_MESSAGE_BOX_A, h_wnd, lp_text, lp_caption, u_type);
             }
 
-            let text_slice = lp_text.to_slice_until_null(2048);
-            let cap_slice = lp_caption.to_slice_until_null(1024);
+            let text_slice = lp_text.to_slice_until_null_scan();
+            let cap_slice = lp_caption.to_slice_until_null_scan();
 
             #[cfg(feature = "enable_debug_output")]
             {
@@ -147,7 +147,7 @@ impl SetDlgItemText for UserInterfacePatcherSlot {
                 return crate::call!(HOOK_SET_DLG_ITEM_TEXT_A, h_dlg, n_id_dlg_item, lp_string);
             }
 
-            let text_slice = lp_string.to_slice_until_null(1024);
+            let text_slice = lp_string.to_slice_until_null_scan();
 
             #[cfg(feature = "enable_debug_output")]
             {
@@ -178,7 +178,7 @@ impl SetWindowText for UserInterfacePatcherSlot {
                 return crate::call!(HOOK_SET_WINDOW_TEXT_A, h_wnd, lp_string);
             }
 
-            let text_slice = lp_string.to_slice_until_null(1024);
+            let text_slice = lp_string.to_slice_until_null_scan();
 
             #[cfg(feature = "enable_debug_output")]
             {
@@ -206,7 +206,7 @@ impl SendMessage for UserInterfacePatcherSlot {
     unsafe fn send_message_a(h_wnd: HWND, msg: u32, w_param: WPARAM, l_param: LPARAM) -> LRESULT {
         unsafe {
             if crate::utils::win32::needs_text_conversion(msg) && l_param != 0 {
-                let text_slice = (l_param as *const u8).to_slice_until_null(4096);
+                let text_slice = (l_param as *const u8).to_slice_until_null_scan();
 
                 #[cfg(feature = "enable_debug_output")]
                 {
@@ -246,7 +246,7 @@ impl PropertySheet for UserInterfacePatcherSlot {
                 return crate::call!(HOOK_PROPERTY_SHEET_A, ppsh);
             }
 
-            let caption_slice = header.pszCaption.to_slice_until_null(1024);
+            let caption_slice = header.pszCaption.to_slice_until_null_scan();
 
             #[cfg(feature = "enable_debug_output")]
             {

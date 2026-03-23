@@ -1,8 +1,7 @@
 use scopeguard::defer;
 use windows_sys::{
-    core::{PCSTR, PCWSTR},
     Win32::{
-        Foundation::{GetLastError, SetLastError, HMODULE, HWND},
+        Foundation::{GetLastError, HMODULE, HWND, SetLastError},
         Storage::FileSystem::{Wow64DisableWow64FsRedirection, Wow64RevertWow64FsRedirection},
         System::{
             Environment::GetCurrentDirectoryW,
@@ -10,11 +9,12 @@ use windows_sys::{
             SystemInformation::GetSystemDirectoryW,
         },
         UI::WindowsAndMessaging::{
-            GetClassNameW, GetWindowTextW, CB_ADDSTRING, CB_FINDSTRING, CB_FINDSTRINGEXACT,
-            CB_GETLBTEXT, CB_INSERTSTRING, CB_SELECTSTRING, LB_ADDSTRING, LB_FINDSTRING,
+            CB_ADDSTRING, CB_FINDSTRING, CB_FINDSTRINGEXACT, CB_GETLBTEXT, CB_INSERTSTRING,
+            CB_SELECTSTRING, GetClassNameW, GetWindowTextW, LB_ADDSTRING, LB_FINDSTRING,
             LB_FINDSTRINGEXACT, LB_GETTEXT, LB_INSERTSTRING, LB_SELECTSTRING,
         },
     },
+    core::{PCSTR, PCWSTR},
 };
 
 use crate::{
@@ -37,7 +37,7 @@ pub fn get_module_handle(module_name: PCWSTR) -> crate::Result<HMODULE> {
             print_last_error_message!();
             crate::bail!(
                 "GetModuleHandleW for {} failed",
-                module_name.to_slice_until_null(8192).to_string_lossy()
+                module_name.to_slice_until_null_scan().to_string_lossy()
             );
         } else {
             Ok(handle)
@@ -64,7 +64,7 @@ pub fn get_module_symbol_addr_from_handle(module: HMODULE, symbol: PCSTR) -> cra
             print_last_error_message!();
             crate::anyhow!(
                 "GetProcAddress failed, symbol: '{}'",
-                symbol.to_slice_until_null(8192).to_string_lossy()
+                symbol.to_slice_until_null_scan().to_string_lossy()
             )
         })?;
         Ok(func as usize)
@@ -107,7 +107,7 @@ pub fn load_library(path: PCWSTR) -> crate::Result<OwnedHMODULE> {
             print_last_error_message!();
             crate::bail!(
                 "LoadLibraryW failed for: {}",
-                path.to_slice_until_null(8192).to_string_lossy()
+                path.to_slice_until_null_scan().to_string_lossy()
             );
         }
         Ok(OwnedHMODULE(handle))

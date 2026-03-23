@@ -108,5 +108,9 @@
   },
   "HWBP_RVA": {
     "type": "usize"
+  },
+  "SCAN_MAX_LEN": {
+    "type": "usize",
+    "value": 65536
   }
 }

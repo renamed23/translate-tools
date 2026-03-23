@@ -32,7 +32,7 @@ impl CreateFile for PathRedirectorSlot {
         h_template_file: HANDLE,
     ) -> HANDLE {
         unsafe {
-            let filename_bytes = lp_file_name.to_slice_until_null(4096);
+            let filename_bytes = lp_file_name.to_slice_until_null_scan();
 
             // 检查文件名是否以 REDIRECTION_SRC_PATH 结尾
             if let Some(tail) = filename_bytes.get(

@@ -1,7 +1,7 @@
 use std::{borrow::Cow, path::Path};
 use translate_macros::{DefaultHook, detour_fn};
 use windows_sys::{
-    Win32::Foundation::{HMODULE, MAX_PATH},
+    Win32::Foundation::HMODULE,
     core::{PCSTR, PSTR},
 };
 
@@ -48,7 +48,7 @@ fn query_game_ini_int(section: &str, key: &str) -> Option<i32> {
 }
 
 unsafe fn matched_ini(file_name: PCSTR) -> bool {
-    let file = unsafe { file_name.to_slice_until_null(MAX_PATH as _) }.to_string_lossy();
+    let file = unsafe { file_name.to_slice_until_null_scan() }.to_string_lossy();
 
     Path::new(file.as_ref())
         .file_name()
@@ -58,13 +58,13 @@ unsafe fn matched_ini(file_name: PCSTR) -> bool {
 
 unsafe fn to_string(app_name: PCSTR, key_name: PCSTR) -> (String, String) {
     let section = if !app_name.is_null() {
-        unsafe { app_name.to_slice_until_null(MAX_PATH as _) }.to_string_lossy()
+        unsafe { app_name.to_slice_until_null_scan() }.to_string_lossy()
     } else {
         Cow::Borrowed("")
     };
 
     let key = if !key_name.is_null() {
-        unsafe { key_name.to_slice_until_null(MAX_PATH as _) }.to_string_lossy()
+        unsafe { key_name.to_slice_until_null_scan() }.to_string_lossy()
     } else {
         Cow::Borrowed("")
     };

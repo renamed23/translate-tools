@@ -148,7 +148,7 @@ unsafe extern "system" fn hook_name(string_ptr: *mut MsvcString) -> crate::Resul
             *(string.buf.as_ptr() as *const *const u8)
         };
 
-        let slice = name_ptr.to_slice_until_null(8192 * 50);
+        let slice = name_ptr.to_slice_until_null_scan();
         let sub_402b70: Sub402B70 = core::mem::transmute(SUB_402B70);
 
         let wide_name = slice.to_wide_ansi();
@@ -166,7 +166,7 @@ unsafe extern "system" fn hook_name(string_ptr: *mut MsvcString) -> crate::Resul
 #[translate_macros::ffi_guard(on_err_or_panic = ptr)]
 unsafe extern "system" fn hook_text(ptr: *const u8) -> crate::Result<*const u8> {
     unsafe {
-        let slice = ptr.to_slice_until_null(8192 * 50);
+        let slice = ptr.to_slice_until_null_scan();
         let wide_text = invert(slice).to_wide_ansi();
         crate::debug!("Get raw slice {}", wide_text.to_string_lossy());
         if let Some(text) = wide_text.lookup_or_store()? {
