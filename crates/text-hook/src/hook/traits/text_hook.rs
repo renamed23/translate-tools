@@ -16,18 +16,14 @@ pub trait TextOut {
         symbol = "TextOutA",
         fallback = "windows_sys::Win32::Foundation::FALSE"
     )]
-    unsafe fn text_out_a(hdc: HDC, x: i32, y: i32, lp_string: PCSTR, c: i32) -> BOOL {
-        unimplemented!()
-    }
+    unsafe fn text_out_a(hdc: HDC, x: i32, y: i32, lp_string: PCSTR, c: i32) -> BOOL;
 
     #[detour(
         dll = "gdi32.dll",
         symbol = "TextOutW",
         fallback = "windows_sys::Win32::Foundation::FALSE"
     )]
-    unsafe fn text_out_w(hdc: HDC, x: i32, y: i32, lp_string: PCWSTR, c: i32) -> BOOL {
-        unimplemented!()
-    }
+    unsafe fn text_out_w(hdc: HDC, x: i32, y: i32, lp_string: PCWSTR, c: i32) -> BOOL;
 }
 
 #[detour_trait]
@@ -46,9 +42,7 @@ pub trait ExtTextOut {
         lp_string: PCSTR,
         c: u32,
         lp_dx: *const i32,
-    ) -> BOOL {
-        unimplemented!()
-    }
+    ) -> BOOL;
 
     #[detour(
         dll = "gdi32.dll",
@@ -64,9 +58,7 @@ pub trait ExtTextOut {
         lp_string: PCWSTR,
         c: u32,
         lp_dx: *const i32,
-    ) -> BOOL {
-        unimplemented!()
-    }
+    ) -> BOOL;
 }
 
 #[detour_trait]
@@ -81,9 +73,7 @@ pub trait GetTextExtentPoint32 {
         lp_string: PCSTR,
         c: i32,
         lp_size: *mut SIZE,
-    ) -> BOOL {
-        unimplemented!()
-    }
+    ) -> BOOL;
 
     #[detour(
         dll = "gdi32.dll",
@@ -95,9 +85,7 @@ pub trait GetTextExtentPoint32 {
         lp_string: PCWSTR,
         c: i32,
         lp_size: *mut SIZE,
-    ) -> BOOL {
-        unimplemented!()
-    }
+    ) -> BOOL;
 }
 
 #[detour_trait]
@@ -111,9 +99,7 @@ pub trait GetGlyphOutline {
         cb_buffer: u32,
         lpv_buffer: *mut core::ffi::c_void,
         lpmat2: *const MAT2,
-    ) -> u32 {
-        unimplemented!()
-    }
+    ) -> u32;
 
     #[detour(dll = "gdi32.dll", symbol = "GetGlyphOutlineW", fallback = "0")]
     unsafe fn get_glyph_outline_w(
@@ -124,9 +110,7 @@ pub trait GetGlyphOutline {
         cb_buffer: u32,
         lpv_buffer: *mut core::ffi::c_void,
         lpmat2: *const MAT2,
-    ) -> u32 {
-        unimplemented!()
-    }
+    ) -> u32;
 }
 
 #[detour_trait]
@@ -151,9 +135,7 @@ pub trait CreateFont {
         i_quality: u32,
         i_pitch_and_family: u32,
         psz_face_name: PCSTR,
-    ) -> HFONT {
-        unimplemented!()
-    }
+    ) -> HFONT;
 
     #[detour(
         dll = "gdi32.dll",
@@ -175,9 +157,7 @@ pub trait CreateFont {
         i_quality: u32,
         i_pitch_and_family: u32,
         psz_face_name: PCWSTR,
-    ) -> HFONT {
-        unimplemented!()
-    }
+    ) -> HFONT;
 }
 
 #[detour_trait]
@@ -187,18 +167,14 @@ pub trait CreateFontIndirect {
         symbol = "CreateFontIndirectA",
         fallback = "core::ptr::null_mut()"
     )]
-    unsafe fn create_font_indirect_a(lplf: *const LOGFONTA) -> HFONT {
-        unimplemented!()
-    }
+    unsafe fn create_font_indirect_a(lplf: *const LOGFONTA) -> HFONT;
 
     #[detour(
         dll = "gdi32.dll",
         symbol = "CreateFontIndirectW",
         fallback = "core::ptr::null_mut()"
     )]
-    unsafe fn create_font_indirect_w(lplf: *const LOGFONTW) -> HFONT {
-        unimplemented!()
-    }
+    unsafe fn create_font_indirect_w(lplf: *const LOGFONTW) -> HFONT;
 }
 
 #[detour_trait]
@@ -209,9 +185,7 @@ pub trait EnumFontFamilies {
         lpsz_family: PCSTR,
         lp_enum_font_fam_proc: FONTENUMPROCA,
         l_param: LPARAM,
-    ) -> i32 {
-        unimplemented!()
-    }
+    ) -> i32;
 
     #[detour(dll = "gdi32.dll", symbol = "EnumFontFamiliesW", fallback = "0")]
     unsafe fn enum_font_families_w(
@@ -219,9 +193,7 @@ pub trait EnumFontFamilies {
         lpsz_family: PCWSTR,
         lp_enum_font_fam_proc: FONTENUMPROCW,
         l_param: LPARAM,
-    ) -> i32 {
-        unimplemented!()
-    }
+    ) -> i32;
 }
 
 #[detour_trait]
@@ -233,9 +205,7 @@ pub trait EnumFontFamiliesEx {
         lp_enum_font_fam_proc: FONTENUMPROCA,
         l_param: LPARAM,
         dw_flags: u32,
-    ) -> i32 {
-        unimplemented!()
-    }
+    ) -> i32;
 
     #[detour(dll = "gdi32.dll", symbol = "EnumFontFamiliesExW", fallback = "0")]
     unsafe fn enum_font_families_ex_w(
@@ -244,9 +214,7 @@ pub trait EnumFontFamiliesEx {
         lp_enum_font_fam_proc: FONTENUMPROCW,
         l_param: LPARAM,
         dw_flags: u32,
-    ) -> i32 {
-        unimplemented!()
-    }
+    ) -> i32;
 }
 
 #[detour_trait]
@@ -257,9 +225,7 @@ pub trait EnumFonts {
         lpsz_face: PCSTR,
         lp_enum_font_proc: FONTENUMPROCA,
         l_param: LPARAM,
-    ) -> i32 {
-        unimplemented!()
-    }
+    ) -> i32;
 
     #[detour(dll = "gdi32.dll", symbol = "EnumFontsW", fallback = "0")]
     unsafe fn enum_fonts_w(
@@ -267,7 +233,5 @@ pub trait EnumFonts {
         lpsz_face: PCWSTR,
         lp_enum_font_proc: FONTENUMPROCW,
         l_param: LPARAM,
-    ) -> i32 {
-        unimplemented!()
-    }
+    ) -> i32;
 }

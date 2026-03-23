@@ -142,6 +142,27 @@ pub fn byte_slice(input: TokenStream) -> TokenStream {
 ///     fn font_face() -> &'static str;
 /// }
 /// ```
+///
+/// 对于带有 `#[detour(...)]` 的 trait 方法，如果你只写声明而省略函数体：
+///
+/// ```rust
+/// #[detour_trait]
+/// pub trait ExitProcess {
+///     #[detour(dll = "kernel32.dll", symbol = "ExitProcess")]
+///     unsafe fn exit_process(u_exit_code: u32);
+/// }
+/// ```
+///
+/// 宏会自动把它补成一个默认实现：
+///
+/// ```rust,ignore
+/// unsafe fn exit_process(u_exit_code: u32) {
+///     unimplemented!()
+/// }
+/// ```
+///
+/// 注意：这个默认实现只是为了让 trait 接口书写更简洁；实际生成的 detour wrapper 仍然会调用
+/// `crate::hook::impls::HookImplType::<method>(...)`，不会把这个 `unimplemented!()` 当作运行时 fallback。
 #[proc_macro_attribute]
 pub fn detour_trait(attr: TokenStream, item: TokenStream) -> TokenStream {
     match impls::detour::detour_trait::detour_trait(attr.into(), item.into()) {

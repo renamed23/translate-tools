@@ -1,6 +1,9 @@
 use proc_macro2::{Span, TokenStream};
 use quote::quote;
-use syn::{FnArg, Ident, ItemTrait, LitStr, Pat, PatIdent, TraitItem, TraitItemFn, Type};
+use syn::{
+    Block, FnArg, Ident, ItemTrait, LitStr, Pat, PatIdent, TraitItem, TraitItemFn, Type,
+    parse_quote,
+};
 
 use crate::{
     impls::detour::{DetourAttr, generate_detour_ident, parse_detour_attrs},
@@ -138,10 +141,24 @@ pub fn detour_trait(_attr: TokenStream, item: TokenStream) -> syn::Result<TokenS
     }
 
     let mut final_generated = TokenStream::new();
+    let default_impl: Block = parse_quote!({ unimplemented!() });
 
-    for titem in input.items.iter_mut() {
+    for titem in &mut input.items {
         if let TraitItem::Fn(func) = titem {
-            func.attrs.retain(|attr| !attr.path().is_ident("detour"));
+            let mut has_detour = false;
+
+            func.attrs.retain(|attr| {
+                if attr.path().is_ident("detour") {
+                    has_detour = true;
+                    false
+                } else {
+                    true
+                }
+            });
+
+            if has_detour && func.default.is_none() {
+                func.default = Some(default_impl.clone());
+            }
         }
     }
 

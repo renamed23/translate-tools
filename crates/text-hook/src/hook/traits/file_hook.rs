@@ -24,9 +24,7 @@ pub trait CreateFile {
         dw_creation_disposition: u32,
         dw_flags_and_attributes: u32,
         h_template_file: HANDLE,
-    ) -> HANDLE {
-        unimplemented!()
-    }
+    ) -> HANDLE;
 
     #[detour(
         dll = "kernel32.dll",
@@ -41,9 +39,7 @@ pub trait CreateFile {
         dw_creation_disposition: u32,
         dw_flags_and_attributes: u32,
         h_template_file: HANDLE,
-    ) -> HANDLE {
-        unimplemented!()
-    }
+    ) -> HANDLE;
 }
 
 #[detour_trait]
@@ -60,9 +56,7 @@ pub trait ReadFile {
         n_number_of_bytes_to_read: u32,
         lp_number_of_bytes_read: *mut u32,
         lp_overlapped: *mut OVERLAPPED,
-    ) -> BOOL {
-        unimplemented!()
-    }
+    ) -> BOOL;
 }
 
 #[detour_trait]
@@ -72,9 +66,7 @@ pub trait CloseHandle {
         symbol = "CloseHandle",
         fallback = "windows_sys::Win32::Foundation::FALSE"
     )]
-    unsafe fn close_handle(h_object: HANDLE) -> BOOL {
-        unimplemented!()
-    }
+    unsafe fn close_handle(h_object: HANDLE) -> BOOL;
 }
 
 #[detour_trait]
@@ -87,9 +79,7 @@ pub trait FindFirstFile {
     unsafe fn find_first_file_a(
         lp_file_name: PCSTR,
         lp_find_file_data: *mut WIN32_FIND_DATAA,
-    ) -> HANDLE {
-        unimplemented!()
-    }
+    ) -> HANDLE;
 
     #[detour(
         dll = "kernel32.dll",
@@ -99,9 +89,7 @@ pub trait FindFirstFile {
     unsafe fn find_first_file_w(
         lp_file_name: PCWSTR,
         lp_find_file_data: *mut WIN32_FIND_DATAW,
-    ) -> HANDLE {
-        unimplemented!()
-    }
+    ) -> HANDLE;
 }
 
 #[detour_trait]
@@ -114,9 +102,7 @@ pub trait FindNextFile {
     unsafe fn find_next_file_a(
         h_find_file: HANDLE,
         lp_find_file_data: *mut WIN32_FIND_DATAA,
-    ) -> BOOL {
-        unimplemented!()
-    }
+    ) -> BOOL;
 
     #[detour(
         dll = "kernel32.dll",
@@ -126,9 +112,7 @@ pub trait FindNextFile {
     unsafe fn find_next_file_w(
         h_find_file: HANDLE,
         lp_find_file_data: *mut WIN32_FIND_DATAW,
-    ) -> BOOL {
-        unimplemented!()
-    }
+    ) -> BOOL;
 }
 
 #[detour_trait]
@@ -138,7 +122,5 @@ pub trait FindClose {
         symbol = "FindClose",
         fallback = "windows_sys::Win32::Foundation::FALSE"
     )]
-    unsafe fn find_close(h_find_file: HANDLE) -> BOOL {
-        unimplemented!()
-    }
+    unsafe fn find_close(h_find_file: HANDLE) -> BOOL;
 }

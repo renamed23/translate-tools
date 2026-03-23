@@ -11,9 +11,7 @@ pub trait MultiByteToWideChar {
         cb_multi_byte: i32,
         lp_wide_char_str: PWSTR,
         cch_wide_char: i32,
-    ) -> i32 {
-        unimplemented!()
-    }
+    ) -> i32;
 }
 
 #[detour_trait]
@@ -28,7 +26,5 @@ pub trait WideCharToMultiByte {
         cb_multi_byte: i32,
         lp_default_char: PCSTR,
         lp_used_default_char: *mut BOOL,
-    ) -> i32 {
-        unimplemented!()
-    }
+    ) -> i32;
 }
