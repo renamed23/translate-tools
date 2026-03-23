@@ -8,7 +8,7 @@ use windows_sys::Win32::Foundation::HMODULE;
 
 use crate::{
     constant::ARG_GAME_TYPE,
-    hook::core_hook::CoreHook,
+    hook::core_hook::ProcessAttach,
     utils::exts::{
         ptr_ext::{PtrExt, PtrWriteExt},
         slice_ext::{ByteSliceExt, WideSliceExt},
@@ -16,9 +16,10 @@ use crate::{
 };
 
 #[derive(DefaultHook)]
+#[exclude(ProcessAttach)]
 pub struct G0WinHook;
 
-impl CoreHook for G0WinHook {
+impl ProcessAttach for G0WinHook {
     fn on_process_attach(_hinst_dll: HMODULE) -> crate::Result<()> {
         let handle = crate::utils::win32::get_module_handle(core::ptr::null())?;
         let module = handle as *mut u8;

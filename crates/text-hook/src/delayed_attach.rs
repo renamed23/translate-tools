@@ -3,7 +3,7 @@ use std::sync::{
     atomic::{AtomicBool, Ordering},
 };
 
-use crate::{debug, hook::core_hook::CoreHook};
+use crate::{debug, hook::core_hook::DelayedAttach};
 
 static HOOK_ENTRY_POINT: LazyLock<retour::GenericDetour<unsafe extern "C" fn()>> =
     LazyLock::new(|| unsafe {

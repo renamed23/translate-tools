@@ -3,15 +3,16 @@ use translate_macros::DefaultHook;
 use windows_sys::Win32::Foundation::HMODULE;
 
 use crate::{
-    constant::ARG_PATCH_TYPE, hook::core_hook::CoreHook, utils::exts::ptr_ext::PtrWriteExt,
+    constant::ARG_PATCH_TYPE, hook::core_hook::ProcessAttach, utils::exts::ptr_ext::PtrWriteExt,
 };
 
 #[derive(DefaultHook)]
+#[exclude(ProcessAttach)]
 pub struct NatsuNatsuHook;
 
 translate_macros::embed!(const CHARS: [u8] from "assets/misc/System002");
 
-impl CoreHook for NatsuNatsuHook {
+impl ProcessAttach for NatsuNatsuHook {
     fn on_process_attach(_hinst_dll: HMODULE) -> crate::Result<()> {
         let handle = crate::utils::win32::get_module_handle(core::ptr::null())?;
 

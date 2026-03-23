@@ -6,7 +6,6 @@ use windows_sys::Win32::{
 };
 
 use crate::{
-    debug,
     hook::traits::windowing::{DefWindowProc, HOOK_DEF_WINDOW_PROC_A, HOOK_DEF_WINDOW_PROC_W},
     utils::exts::{
         ptr_ext::PtrExt,
@@ -55,13 +54,13 @@ impl DefWindowProc for WindowTitleOverriderSlot {
                 let class_bytes = (*params_a).lpszClass.to_slice_until_null_scan();
                 let class_name = class_bytes.to_wide_null_ansi();
 
-                let title_slice = (*params_a).lpszName.to_slice_until_null_scan();
+                let _title_slice = (*params_a).lpszName.to_slice_until_null_scan();
 
                 #[cfg(feature = "enable_window_title_override")]
                 let window_title = crate::constant::WINDOW_TITLE.with_null();
 
                 #[cfg(not(feature = "enable_window_title_override"))]
-                let window_title = title_slice.to_wide_ansi().mapping_null();
+                let window_title = _title_slice.to_wide_ansi().mapping_null();
 
                 params_w.lpszClass = class_name.as_ptr();
                 params_w.lpszName = window_title.as_ptr();
@@ -69,8 +68,8 @@ impl DefWindowProc for WindowTitleOverriderSlot {
                 #[cfg(feature = "enable_debug_output")]
                 {
                     let raw_class = class_name.to_string_lossy();
-                    let raw_title = title_slice.to_wide_ansi().to_string_lossy();
-                    debug!("Get raw class: {raw_class}, raw window title: {raw_title}");
+                    let raw_title = _title_slice.to_wide_ansi().to_string_lossy();
+                    crate::debug!("Get raw class: {raw_class}, raw window title: {raw_title}");
                 }
 
                 crate::call!(
@@ -87,18 +86,18 @@ impl DefWindowProc for WindowTitleOverriderSlot {
                     return crate::call!(HOOK_DEF_WINDOW_PROC_A, h_wnd, u_msg, w_param, l_param);
                 }
 
-                let text_slice = text_ptr.to_slice_until_null_scan();
+                let _text_slice = text_ptr.to_slice_until_null_scan();
 
                 #[cfg(feature = "enable_window_title_override")]
                 let text = crate::constant::WINDOW_TITLE.with_null();
 
                 #[cfg(not(feature = "enable_window_title_override"))]
-                let text = text_slice.to_wide_ansi().mapping_null();
+                let text = _text_slice.to_wide_ansi().mapping_null();
 
                 #[cfg(feature = "enable_debug_output")]
                 {
-                    let raw_text = text_slice.to_wide_ansi().to_string_lossy();
-                    debug!("Get raw window text: {raw_text}");
+                    let raw_text = _text_slice.to_wide_ansi().to_string_lossy();
+                    crate::debug!("Get raw window text: {raw_text}");
                 }
 
                 crate::call!(
@@ -126,7 +125,7 @@ impl DefWindowProc for WindowTitleOverriderSlot {
                     return crate::call!(HOOK_DEF_WINDOW_PROC_W, h_wnd, u_msg, w_param, l_param);
                 }
 
-                let title_slice = (*params_w).lpszName.to_slice_until_null_scan();
+                let _title_slice = (*params_w).lpszName.to_slice_until_null_scan();
 
                 #[cfg(feature = "enable_debug_output")]
                 {
@@ -135,9 +134,9 @@ impl DefWindowProc for WindowTitleOverriderSlot {
                         .to_slice_until_null_scan()
                         .to_string_lossy();
 
-                    let raw_title = title_slice.to_string_lossy();
+                    let raw_title = _title_slice.to_string_lossy();
 
-                    debug!("Get raw class: {raw_class}, raw window title: {raw_title}");
+                    crate::debug!("Get raw class: {raw_class}, raw window title: {raw_title}");
                 }
 
                 let mut modified_params: CREATESTRUCTW = core::ptr::read(params_w);
@@ -146,7 +145,7 @@ impl DefWindowProc for WindowTitleOverriderSlot {
                 let window_title = crate::constant::WINDOW_TITLE.with_null();
 
                 #[cfg(not(feature = "enable_window_title_override"))]
-                let window_title = title_slice.mapping_null();
+                let window_title = _title_slice.mapping_null();
 
                 modified_params.lpszName = window_title.as_ptr();
 
@@ -164,19 +163,19 @@ impl DefWindowProc for WindowTitleOverriderSlot {
                     return crate::call!(HOOK_DEF_WINDOW_PROC_W, h_wnd, u_msg, w_param, l_param);
                 }
 
-                let text_slice = text_ptr.to_slice_until_null_scan();
+                let _text_slice = text_ptr.to_slice_until_null_scan();
 
                 #[cfg(feature = "enable_debug_output")]
                 {
-                    let raw_text = text_slice.to_string_lossy();
-                    debug!("Get raw window text: {raw_text}");
+                    let raw_text = _text_slice.to_string_lossy();
+                    crate::debug!("Get raw window text: {raw_text}");
                 }
 
                 #[cfg(feature = "enable_window_title_override")]
                 let text = crate::constant::WINDOW_TITLE.with_null();
 
                 #[cfg(not(feature = "enable_window_title_override"))]
-                let text = text_slice.mapping_null();
+                let text = _text_slice.mapping_null();
 
                 crate::call!(
                     HOOK_DEF_WINDOW_PROC_W,

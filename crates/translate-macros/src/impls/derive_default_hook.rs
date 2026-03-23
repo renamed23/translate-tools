@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use convert_case::{Case, Casing};
 use proc_macro2::{Span, TokenStream};
@@ -22,6 +22,8 @@ pub fn derive_default_hook(input: TokenStream) -> syn::Result<TokenStream> {
         .collect();
 
     let trait_dir = resolve_manifest_path(&LitStr::new("src/hook/traits", Span::call_site()))?;
+    let core_hook_dir =
+        resolve_manifest_path(&LitStr::new("src/hook/core_hook", Span::call_site()))?;
     let featured_path = resolve_manifest_path(&LitStr::new(
         "constant_assets/featured_hook_lists.json",
         Span::call_site(),
@@ -32,7 +34,48 @@ pub fn derive_default_hook(input: TokenStream) -> syn::Result<TokenStream> {
 
     let mut impl_blocks = Vec::new();
 
-    for path in collect_files_in_dir(&trait_dir)? {
+    append_trait_impls(
+        &mut impl_blocks,
+        &trait_dir,
+        &trait_cfg_map,
+        &exclude,
+        |module_ident, trait_ident, cfg_attr| {
+            quote! {
+                #cfg_attr
+                impl crate::hook::traits::#module_ident::#trait_ident for #name {}
+            }
+        },
+    )?;
+
+    append_trait_impls(
+        &mut impl_blocks,
+        &core_hook_dir,
+        &trait_cfg_map,
+        &exclude,
+        |module_ident, trait_ident, cfg_attr| {
+            quote! {
+                #cfg_attr
+                impl crate::hook::core_hook::#module_ident::#trait_ident for #name {}
+            }
+        },
+    )?;
+
+    Ok(quote! {
+        #(#impl_blocks)*
+    })
+}
+
+fn append_trait_impls<F>(
+    impl_blocks: &mut Vec<TokenStream>,
+    dir: &std::path::Path,
+    trait_cfg_map: &HashMap<String, Vec<TokenStream>>,
+    exclude: &HashSet<String>,
+    mut build_impl: F,
+) -> syn::Result<()>
+where
+    F: FnMut(&Ident, &Ident, TokenStream) -> TokenStream,
+{
+    for path in collect_files_in_dir(dir)? {
         let Some(ext) = path.extension().and_then(|e| e.to_str()) else {
             continue;
         };
@@ -70,16 +113,11 @@ pub fn derive_default_hook(input: TokenStream) -> syn::Result<TokenStream> {
                 .map(|cfgs| build_cfg_not_any(cfgs))
                 .unwrap_or_default();
 
-            impl_blocks.push(quote! {
-                #cfg_attr
-                impl crate::hook::traits::#module_ident::#trait_ident for #name {}
-            });
+            impl_blocks.push(build_impl(&module_ident, &trait_ident, cfg_attr));
         }
     }
 
-    Ok(quote! {
-        #(#impl_blocks)*
-    })
+    Ok(())
 }
 
 fn parse_exclude_attrs(attrs: &[Attribute]) -> syn::Result<Vec<Ident>> {

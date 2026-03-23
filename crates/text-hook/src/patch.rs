@@ -1,4 +1,4 @@
-use crate::{debug, utils::sha256_of_bytes};
+use crate::utils::sha256_of_bytes;
 use cfg_if::cfg_if;
 
 mod patch_data {
@@ -18,7 +18,7 @@ pub fn get_patch(src: &[u8]) -> Option<&'static [u8]> {
     let patch = patch_data::PATCHES.get(&sha256_of_bytes(src))?.as_slice();
 
     #[cfg(feature = "enable_debug_output")]
-    debug!(
+    crate::debug!(
         "Got Patch file, len={}, filename={}",
         patch.len(),
         get_filename(patch).unwrap()
@@ -102,7 +102,7 @@ pub fn extract_to_file(buf: &[u8]) -> crate::Result<()> {
         if existing_bytes.len() == buf.len() {
             let existing_hash = sha256_of_bytes(&existing_bytes);
             if existing_hash == new_hash {
-                debug!("Identical file already exists, skipping write: {:?}", path);
+                crate::debug!("Identical file already exists, skipping write: {:?}", path);
                 return Ok(());
             }
         }
@@ -113,6 +113,6 @@ pub fn extract_to_file(buf: &[u8]) -> crate::Result<()> {
     let next = max_index + 1;
     let out_path = raw_dir.join(format!("{next}.snr"));
     std::fs::write(&out_path, buf)?;
-    debug!("Wrote raw file {:?} (len={})", out_path, buf.len());
+    crate::debug!("Wrote raw file {:?} (len={})", out_path, buf.len());
     Ok(())
 }

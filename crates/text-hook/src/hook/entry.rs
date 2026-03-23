@@ -3,7 +3,9 @@ use windows_sys::{
     core::BOOL,
 };
 
-use crate::hook::core_hook::CoreHook;
+#[cfg(feature = "enable_attach_cleanup")]
+use crate::hook::core_hook::ProcessAttachCleanup;
+use crate::hook::core_hook::{ProcessAttach, ProcessDetach};
 
 #[cfg(feature = "export_default_dll_main")]
 #[translate_macros::ffi_guard(on_err_or_panic = FALSE)]

@@ -15,7 +15,7 @@ use windows_sys::Win32::{
 use crate::gl::{GLContext, painter::GLPainter};
 use crate::{
     constant::{OVERLAY_TARGET_WINDOW_CLASS_NAME, OVERLAY_TARGET_WINDOW_TEXT},
-    hook::{core_hook::CoreHook, impls::HookImplType},
+    hook::{core_hook::OverlayRender, impls::HookImplType},
     overlay::window::create_overlay_window,
     utils::raii_wrapper::OwnedHWND,
 };

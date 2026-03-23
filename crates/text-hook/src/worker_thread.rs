@@ -7,7 +7,7 @@ use windows_sys::Win32::UI::WindowsAndMessaging::{
     DispatchMessageW, MSG, PM_REMOVE, PeekMessageW, TranslateMessage, WM_QUIT,
 };
 
-use crate::hook::{core_hook::CoreHook, impls::HookImplType};
+use crate::hook::{core_hook::WorkerMainTick, impls::HookImplType};
 
 static STOP_FLAG: AtomicBool = AtomicBool::new(false);
 static mut JOIN_HANDLE: Option<JoinHandle<()>> = None;

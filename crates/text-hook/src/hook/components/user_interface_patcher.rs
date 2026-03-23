@@ -9,7 +9,6 @@ use windows_sys::{
 };
 
 use crate::{
-    debug,
     hook::traits::windowing::{
         HOOK_MESSAGE_BOX_A, HOOK_MODIFY_MENU_A, HOOK_PROPERTY_SHEET_A, HOOK_SEND_MESSAGE_A,
         HOOK_SET_DLG_ITEM_TEXT_A, HOOK_SET_WINDOW_TEXT_A, MessageBox, ModifyMenu, PropertySheet,
@@ -49,7 +48,7 @@ impl ModifyMenu for UserInterfacePatcherSlot {
                 #[cfg(feature = "enable_debug_output")]
                 {
                     let raw_text = text_slice.to_wide_ansi().to_string_lossy();
-                    debug!("Get menu text: {raw_text}");
+                    crate::debug!("Get menu text: {raw_text}");
                 }
 
                 let _opt_trans_msg = text_slice.to_wide_ansi().lookup_or_store_null();
@@ -98,11 +97,11 @@ impl MessageBox for UserInterfacePatcherSlot {
             {
                 if !text_slice.is_empty() {
                     let s = text_slice.to_wide_ansi().to_string_lossy();
-                    debug!("Get message box text: {s}");
+                    crate::debug!("Get message box text: {s}");
                 }
                 if !cap_slice.is_empty() {
                     let s = cap_slice.to_wide_ansi().to_string_lossy();
-                    debug!("Get message box caption: {s}");
+                    crate::debug!("Get message box caption: {s}");
                 }
             }
 
@@ -152,7 +151,7 @@ impl SetDlgItemText for UserInterfacePatcherSlot {
             #[cfg(feature = "enable_debug_output")]
             {
                 let raw_text = text_slice.to_wide_ansi().to_string_lossy();
-                debug!("Get SetDlgItemTextA text: {raw_text}");
+                crate::debug!("Get SetDlgItemTextA text: {raw_text}");
             }
 
             let _opt_trans_msg = text_slice
@@ -183,7 +182,7 @@ impl SetWindowText for UserInterfacePatcherSlot {
             #[cfg(feature = "enable_debug_output")]
             {
                 let raw_text = text_slice.to_wide_ansi().to_string_lossy();
-                debug!("Get SetWindowTextA text: {raw_text}");
+                crate::debug!("Get SetWindowTextA text: {raw_text}");
             }
 
             let _opt_trans_msg = text_slice
@@ -211,7 +210,7 @@ impl SendMessage for UserInterfacePatcherSlot {
                 #[cfg(feature = "enable_debug_output")]
                 {
                     let raw_text = text_slice.to_wide_ansi().to_string_lossy();
-                    debug!("Get SendMessageA (msg={msg:#x}) text: {raw_text}");
+                    crate::debug!("Get SendMessageA (msg={msg:#x}) text: {raw_text}");
                 }
 
                 let _opt_trans_msg = text_slice
@@ -251,7 +250,7 @@ impl PropertySheet for UserInterfacePatcherSlot {
             #[cfg(feature = "enable_debug_output")]
             {
                 let raw = caption_slice.to_wide_ansi().to_string_lossy();
-                debug!("PropertySheetA original caption (ANSI): {raw}");
+                crate::debug!("PropertySheetA original caption (ANSI): {raw}");
             }
 
             let _opt_trans = caption_slice

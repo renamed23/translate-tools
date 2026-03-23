@@ -8,7 +8,6 @@ use windows_sys::{
 };
 
 use crate::{
-    debug,
     hook::traits::gdi_text::{
         ExtTextOut, GetGlyphOutline, GetTextExtentPoint32, HOOK_EXT_TEXT_OUT_W,
         HOOK_GET_GLYPH_OUTLINE_W, HOOK_GET_TEXT_EXTENT_POINT_32_W, HOOK_TEXT_OUT_W, TextOut,
@@ -39,7 +38,7 @@ impl TextOut for TextMappingSlot {
             let buf = input_slice.to_wide_ansi().mapping();
 
             #[cfg(feature = "enable_text_mapping_debug")]
-            debug!(
+            crate::debug!(
                 "draw text '{}' at ({x}, {y}), input: {input_slice:?}",
                 buf.to_string_lossy()
             );
@@ -55,7 +54,7 @@ impl TextOut for TextMappingSlot {
             let buf = input_slice.mapping();
 
             #[cfg(feature = "enable_text_mapping_debug")]
-            debug!("draw text '{}' at ({x}, {y})", buf.to_string_lossy());
+            crate::debug!("draw text '{}' at ({x}, {y})", buf.to_string_lossy());
 
             crate::call!(HOOK_TEXT_OUT_W, hdc, x, y, buf.as_ptr(), buf.len() as i32)
         }
@@ -80,7 +79,7 @@ impl ExtTextOut for TextMappingSlot {
             let buf = input_slice.to_wide_ansi().mapping();
 
             #[cfg(feature = "enable_text_mapping_debug")]
-            debug!(
+            crate::debug!(
                 "ExtTextOutA '{}' at ({x}, {y}), opt={options:#x}",
                 buf.to_string_lossy()
             );
@@ -115,7 +114,7 @@ impl ExtTextOut for TextMappingSlot {
             let buf = input_slice.mapping();
 
             #[cfg(feature = "enable_text_mapping_debug")]
-            debug!(
+            crate::debug!(
                 "ExtTextOutW '{}' at ({x}, {y}), opt={options:#x}",
                 buf.to_string_lossy()
             );
@@ -149,7 +148,7 @@ impl GetTextExtentPoint32 for TextMappingSlot {
             let buf = input_slice.to_wide_ansi().mapping();
 
             #[cfg(feature = "enable_text_mapping_debug")]
-            debug!("result: {}, input: {input_slice:?}", buf.to_string_lossy());
+            crate::debug!("result: {}, input: {input_slice:?}", buf.to_string_lossy());
 
             crate::call!(
                 HOOK_GET_TEXT_EXTENT_POINT_32_W,
@@ -173,7 +172,7 @@ impl GetTextExtentPoint32 for TextMappingSlot {
             let buf = input_slice.mapping();
 
             #[cfg(feature = "enable_text_mapping_debug")]
-            debug!("result: {}", buf.to_string_lossy());
+            crate::debug!("result: {}", buf.to_string_lossy());
 
             crate::call!(
                 HOOK_GET_TEXT_EXTENT_POINT_32_W,
@@ -208,7 +207,7 @@ impl GetGlyphOutline for TextMappingSlot {
         let buf = input_slice.to_wide_ansi().mapping();
 
         #[cfg(feature = "enable_text_mapping_debug")]
-        debug!("result: {}, input: {input_slice:?}", buf.to_string_lossy());
+        crate::debug!("result: {}, input: {input_slice:?}", buf.to_string_lossy());
 
         // 直接使用第一个UTF-16字符（假设都在BMP内，不需要代理对）
         if let Some(&wchar) = buf.first() {
@@ -242,7 +241,7 @@ impl GetGlyphOutline for TextMappingSlot {
         let buf = [u_char as u16].mapping();
 
         #[cfg(feature = "enable_text_mapping_debug")]
-        debug!("result: {}", buf.to_string_lossy());
+        crate::debug!("result: {}", buf.to_string_lossy());
 
         // 直接使用第一个UTF-16字符（假设都在BMP内，不需要代理对）
         if let Some(&wchar) = buf.first() {

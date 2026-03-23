@@ -1,30 +1,35 @@
 use cfg_if::cfg_if;
 use windows_sys::{
-    Win32::{
-        Foundation::LPARAM,
-        Graphics::Gdi::{
-            FONTENUMPROCA, FONTENUMPROCW, HDC, HFONT, LF_FACESIZE, LOGFONTA, LOGFONTW, TEXTMETRICA,
-            TEXTMETRICW,
-        },
-    },
+    Win32::Graphics::Gdi::{HFONT, LF_FACESIZE, LOGFONTA, LOGFONTW},
     core::{PCSTR, PCWSTR},
 };
 
+#[cfg(feature = "disable_forced_font")]
+use windows_sys::Win32::{
+    Foundation::LPARAM,
+    Graphics::Gdi::{FONTENUMPROCA, FONTENUMPROCW, HDC, TEXTMETRICA, TEXTMETRICW},
+};
+
 use crate::{
-    constant::{
-        CHAR_SET, ENUM_FONT_PROC_CHAR_SET, ENUM_FONT_PROC_OUT_PRECISION, ENUM_FONT_PROC_PITCH,
-        FONT_FACE, FONT_FILTER,
-    },
+    constant::{CHAR_SET, FONT_FACE, FONT_FILTER},
     debug,
     hook::traits::gdi_text::{
-        CreateFont, CreateFontIndirect, EnumFontFamilies, EnumFontFamiliesEx, EnumFonts,
-        HOOK_CREATE_FONT_INDIRECT_A, HOOK_CREATE_FONT_INDIRECT_W, HOOK_CREATE_FONT_W,
-        HOOK_ENUM_FONT_FAMILIES_A, HOOK_ENUM_FONT_FAMILIES_EX_A, HOOK_ENUM_FONT_FAMILIES_EX_W,
-        HOOK_ENUM_FONT_FAMILIES_W, HOOK_ENUM_FONTS_A, HOOK_ENUM_FONTS_W,
+        CreateFont, CreateFontIndirect, HOOK_CREATE_FONT_INDIRECT_A, HOOK_CREATE_FONT_INDIRECT_W,
+        HOOK_CREATE_FONT_W,
     },
     utils::exts::{
         ptr_ext::PtrExt,
         slice_ext::{ByteSliceExt, WideSliceExt},
+    },
+};
+
+#[cfg(feature = "disable_forced_font")]
+use crate::{
+    constant::{ENUM_FONT_PROC_CHAR_SET, ENUM_FONT_PROC_OUT_PRECISION, ENUM_FONT_PROC_PITCH},
+    hook::traits::gdi_text::{
+        EnumFontFamilies, EnumFontFamiliesEx, EnumFonts, HOOK_ENUM_FONT_FAMILIES_A,
+        HOOK_ENUM_FONT_FAMILIES_EX_A, HOOK_ENUM_FONT_FAMILIES_EX_W, HOOK_ENUM_FONT_FAMILIES_W,
+        HOOK_ENUM_FONTS_A, HOOK_ENUM_FONTS_W,
     },
 };
 
@@ -347,12 +352,14 @@ impl EnumFonts for FontManagerSlot {
     }
 }
 
+#[cfg(feature = "disable_forced_font")]
 pub struct EnumFontInfo {
     original_proc_a: FONTENUMPROCA,
     original_proc_w: FONTENUMPROCW,
     original_lparam: LPARAM,
 }
 
+#[cfg(feature = "disable_forced_font")]
 impl EnumFontInfo {
     pub fn from_ansi(lparam: LPARAM, proc_a: FONTENUMPROCA) -> Self {
         Self {
@@ -371,6 +378,7 @@ impl EnumFontInfo {
     }
 }
 
+#[cfg(feature = "disable_forced_font")]
 pub unsafe extern "system" fn enum_fonts_proc_a(
     lplf: *const LOGFONTA,
     lptm: *const TEXTMETRICA,
@@ -422,6 +430,7 @@ pub unsafe extern "system" fn enum_fonts_proc_a(
     }
 }
 
+#[cfg(feature = "disable_forced_font")]
 pub unsafe extern "system" fn enum_fonts_proc_w(
     lplf: *const LOGFONTW,
     lptm: *const TEXTMETRICW,

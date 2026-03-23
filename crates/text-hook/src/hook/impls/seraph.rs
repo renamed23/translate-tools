@@ -8,16 +8,17 @@ use windows_sys::{
 use crate::{
     constant::ARG_NAME,
     debug,
-    hook::core_hook::CoreHook,
+    hook::core_hook::ProcessAttach,
     utils::exts::{ptr_ext::PtrExt, slice_ext::ByteSliceExt},
 };
 
 // 之前版本的ARG_NAME为"LUSTS"
 
 #[derive(DefaultHook)]
+#[exclude(ProcessAttach)]
 pub struct SeraphHook;
 
-impl CoreHook for SeraphHook {
+impl ProcessAttach for SeraphHook {
     fn on_process_attach(_hinst_dll: HMODULE) -> crate::Result<()> {
         unsafe {
             HOOK_GET_PRIVATE_PROFILE_INT_A.enable()?;

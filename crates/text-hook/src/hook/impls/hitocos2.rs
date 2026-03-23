@@ -9,7 +9,7 @@ use windows_sys::Win32::Foundation::HMODULE;
 
 use crate::{
     constant::ARG_GAME_TYPE,
-    hook::core_hook::CoreHook,
+    hook::core_hook::ProcessAttach,
     utils::exts::{
         ptr_ext::{PtrExt, PtrWriteExt},
         slice_ext::{ByteSliceExt, WideSliceExt},
@@ -17,6 +17,7 @@ use crate::{
 };
 
 #[derive(DefaultHook)]
+#[exclude(ProcessAttach)]
 pub struct Hitocos2Hook;
 
 #[repr(C)]
@@ -38,7 +39,7 @@ type Sub402B70 = extern "fastcall" fn(
 static mut TEXT_RETURN_ADDR: usize = 0;
 static mut SUB_402B70: usize = 0;
 
-impl CoreHook for Hitocos2Hook {
+impl ProcessAttach for Hitocos2Hook {
     fn on_process_attach(_hinst_dll: HMODULE) -> crate::Result<()> {
         let handle = crate::utils::win32::get_module_handle(core::ptr::null())?;
         let module = handle as *mut u8;

@@ -12,15 +12,16 @@ use windows_sys::{
 use crate::{
     constant::ARG_REG_PATH,
     debug,
-    hook::core_hook::CoreHook,
+    hook::core_hook::ProcessAttach,
     print_last_error_message,
     utils::exts::{ptr_ext::PtrExt, slice_ext::ByteSliceExt},
 };
 
 #[derive(DefaultHook)]
+#[exclude(ProcessAttach)]
 pub struct CompletsHook;
 
-impl CoreHook for CompletsHook {
+impl ProcessAttach for CompletsHook {
     fn on_process_attach(_hinst_dll: HMODULE) -> crate::Result<()> {
         unsafe {
             HOOK_REG_OPEN_KEY_EX_A.enable()?;
