@@ -34,7 +34,7 @@ pub trait CoreHook: Send + Sync + 'static {
         Ok(())
     }
 
-    /// 进程附加清理回调，会在开启`attach_clean_up`时调用
+    /// 进程附加清理回调，通常配合`bind_lifecycle_guard`使用
     ///
     /// 此时可以进行安全的各种清理操作的，比如保存文件，清理临时文件等等。
     #[cfg(feature = "enable_attach_cleanup")]
