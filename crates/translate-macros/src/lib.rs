@@ -861,7 +861,7 @@ pub fn generate_patch_fn_from_1337(input: TokenStream) -> TokenStream {
 ///
 /// 与旧版本“按文件名推导 trait 名”不同，当前实现是**直接读取 trait 定义本身**，因此：
 /// - 一个 traits 文件里即使包含多个 trait，也都会被正确处理；
-/// - 生成的 impl 路径会指向真实模块路径，例如 `crate::hook::traits::file_hook::ReadFile`；
+/// - 生成的 impl 路径会指向真实模块路径，例如 `crate::hook::traits::filesystem::ReadFile`；
 /// - 不再依赖“一个文件只对应一个 trait”的旧假设。
 ///
 /// 此外，宏还会读取 `constant_assets/featured_hook_lists.json` 中的 `trait` 配置，
@@ -870,13 +870,13 @@ pub fn generate_patch_fn_from_1337(input: TokenStream) -> TokenStream {
 ///
 /// # 生成的代码结构
 /// ```ignore
-/// impl crate::hook::traits::file_hook::CreateFile for MyTranslator {}
+/// impl crate::hook::traits::filesystem::CreateFile for MyTranslator {}
 ///
-/// impl crate::hook::traits::file_hook::ReadFile for MyTranslator {}
+/// impl crate::hook::traits::filesystem::ReadFile for MyTranslator {}
 ///
 /// // 若某 trait 被 featured 配置声明为特化 trait，则默认 impl 会被自动排除
 /// #[cfg(not(any(...)))]
-/// impl crate::hook::traits::text_hook::TextHook for MyTranslator {}
+/// impl crate::hook::traits::gdi_text::TextHook for MyTranslator {}
 /// ```
 /// 上面只是示意，实际生成结果取决于 `src/hook/traits` 中声明的 trait，以及
 /// `featured_hook_lists.json` 中的 `trait` 配置。

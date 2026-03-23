@@ -7,7 +7,7 @@ use windows_sys::Win32::{
 
 use crate::{
     debug,
-    hook::traits::window_hook::{DefWindowProc, HOOK_DEF_WINDOW_PROC_A, HOOK_DEF_WINDOW_PROC_W},
+    hook::traits::windowing::{DefWindowProc, HOOK_DEF_WINDOW_PROC_A, HOOK_DEF_WINDOW_PROC_W},
     utils::exts::{
         ptr_ext::PtrExt,
         slice_ext::{ByteSliceExt, WideSliceExt},

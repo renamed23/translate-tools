@@ -16,7 +16,7 @@ use crate::{
         FONT_FACE, FONT_FILTER,
     },
     debug,
-    hook::traits::text_hook::{
+    hook::traits::gdi_text::{
         CreateFont, CreateFontIndirect, EnumFontFamilies, EnumFontFamiliesEx, EnumFonts,
         HOOK_CREATE_FONT_INDIRECT_A, HOOK_CREATE_FONT_INDIRECT_W, HOOK_CREATE_FONT_W,
         HOOK_ENUM_FONT_FAMILIES_A, HOOK_ENUM_FONT_FAMILIES_EX_A, HOOK_ENUM_FONT_FAMILIES_EX_W,

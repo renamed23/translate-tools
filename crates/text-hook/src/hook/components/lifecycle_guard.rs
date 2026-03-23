@@ -1,6 +1,6 @@
 use cfg_if::cfg_if;
 
-use crate::hook::traits::life_cycle_hook::{ExitProcess, HOOK_EXIT_PROCESS};
+use crate::hook::traits::process::{ExitProcess, HOOK_EXIT_PROCESS};
 
 #[allow(dead_code)]
 pub struct LifecycleGuard;
