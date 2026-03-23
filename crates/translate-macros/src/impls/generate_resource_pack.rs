@@ -207,7 +207,7 @@ fn generate_resource_pack_tokens(
         pub(super) fn extract() -> crate::Result<()> {
             let temp_dir = get_temp_dir();
             if temp_dir.exists() {
-                clean_up()?;
+                cleanup()?;
             }
 
             std::fs::create_dir_all(temp_dir)?;
@@ -238,7 +238,7 @@ fn generate_resource_pack_tokens(
             Ok(())
         }
 
-        pub(super) fn clean_up() -> crate::Result<()> {
+        pub(super) fn cleanup() -> crate::Result<()> {
             let temp_dir = get_temp_dir();
             if temp_dir.exists() {
                 std::fs::remove_dir_all(temp_dir)?;

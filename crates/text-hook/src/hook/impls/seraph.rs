@@ -8,7 +8,7 @@ use windows_sys::{
 use crate::{
     constant::ARG_NAME,
     debug,
-    hook::traits::CoreHook,
+    hook::core_hook::CoreHook,
     utils::exts::{ptr_ext::PtrExt, slice_ext::ByteSliceExt},
 };
 

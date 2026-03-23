@@ -1,15 +1,21 @@
 use translate_macros::{DefaultHook, detour_fn};
-use windows_sys::Win32::Foundation::{HMODULE, WIN32_ERROR};
-use windows_sys::Win32::System::Registry::{
-    HKEY, HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE, REG_OPEN_CREATE_OPTIONS, REG_SAM_FLAGS,
+use windows_sys::{
+    Win32::{
+        Foundation::{HMODULE, WIN32_ERROR},
+        System::Registry::{
+            HKEY, HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE, REG_OPEN_CREATE_OPTIONS, REG_SAM_FLAGS,
+        },
+    },
+    core::PCSTR,
 };
-use windows_sys::core::PCSTR;
 
-use crate::constant::ARG_REG_PATH;
-use crate::hook::traits::CoreHook;
-use crate::utils::exts::ptr_ext::PtrExt;
-use crate::utils::exts::slice_ext::ByteSliceExt;
-use crate::{debug, print_last_error_message};
+use crate::{
+    constant::ARG_REG_PATH,
+    debug,
+    hook::core_hook::CoreHook,
+    print_last_error_message,
+    utils::exts::{ptr_ext::PtrExt, slice_ext::ByteSliceExt},
+};
 
 #[derive(DefaultHook)]
 pub struct CompletsHook;

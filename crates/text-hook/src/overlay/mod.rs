@@ -15,7 +15,7 @@ use windows_sys::Win32::{
 use crate::gl::{GLContext, painter::GLPainter};
 use crate::{
     constant::{OVERLAY_TARGET_WINDOW_CLASS_NAME, OVERLAY_TARGET_WINDOW_TEXT},
-    hook::{impls::HookImplType, traits::CoreHook},
+    hook::{core_hook::CoreHook, impls::HookImplType},
     overlay::window::create_overlay_window,
     utils::raii_wrapper::OwnedHWND,
 };
@@ -176,6 +176,6 @@ pub fn render() {
 }
 
 /// Overlay 清理函数
-pub fn clean_up() {
+pub fn cleanup() {
     OVERLAY_CTX.with(|ctx| ctx.take());
 }

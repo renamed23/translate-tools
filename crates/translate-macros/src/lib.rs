@@ -1024,7 +1024,7 @@ pub fn generate_hook_lists_from_json(input: TokenStream) -> TokenStream {
 /// - `RESOURCE_PATHS`: 包含所有资源相对路径的 `phf::Set<&'static str>` 静态集合。
 /// - `is_resource(path: &str) -> bool`: 检查给定路径是否为资源包中的文件。
 /// - `extract() -> Result<()>`: 将资源提取到临时目录，自动处理压缩解压。
-/// - `clean_up() -> Result<()>`: 清理临时目录。
+/// - `cleanup() -> Result<()>`: 清理临时目录。
 #[proc_macro]
 pub fn generate_resource_pack(input: TokenStream) -> TokenStream {
     match impls::generate_resource_pack::generate_resource_pack(input.into()) {

@@ -18,7 +18,7 @@ use windows_sys::{
 };
 
 use crate::{
-    hook::{impls::HookImplType, traits::CoreHook},
+    hook::{core_hook::CoreHook, impls::HookImplType},
     print_last_error_message,
     utils::raii_wrapper::OwnedHWND,
 };

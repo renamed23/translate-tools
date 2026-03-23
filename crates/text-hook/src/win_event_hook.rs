@@ -2,12 +2,12 @@ use windows_sys::Win32::{
     Foundation::HWND,
     System::Threading::GetCurrentProcessId,
     UI::{
-        Accessibility::{SetWinEventHook, UnhookWinEvent, HWINEVENTHOOK},
+        Accessibility::{HWINEVENTHOOK, SetWinEventHook, UnhookWinEvent},
         WindowsAndMessaging::{EVENT_MAX, EVENT_MIN, WINEVENT_OUTOFCONTEXT},
     },
 };
 
-use crate::hook::{impls::HookImplType, traits::CoreHook};
+use crate::hook::{core_hook::CoreHook, impls::HookImplType};
 
 static mut WIN_EVENT_HOOK: Option<HWINEVENTHOOK> = None;
 

@@ -4,10 +4,10 @@ use std::{
 };
 
 use windows_sys::Win32::UI::WindowsAndMessaging::{
-    DispatchMessageW, PeekMessageW, TranslateMessage, MSG, PM_REMOVE, WM_QUIT,
+    DispatchMessageW, MSG, PM_REMOVE, PeekMessageW, TranslateMessage, WM_QUIT,
 };
 
-use crate::hook::{impls::HookImplType, traits::CoreHook};
+use crate::hook::{core_hook::CoreHook, impls::HookImplType};
 
 static STOP_FLAG: AtomicBool = AtomicBool::new(false);
 static mut JOIN_HANDLE: Option<JoinHandle<()>> = None;
@@ -70,7 +70,7 @@ fn worker_main() {
 
     #[cfg(feature = "enable_overlay")]
     scopeguard::defer!(
-        crate::overlay::clean_up();
+        crate::overlay::cleanup();
     );
 
     #[cfg(feature = "enable_win_event_hook")]

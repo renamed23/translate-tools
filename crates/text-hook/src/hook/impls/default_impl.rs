@@ -4,4 +4,4 @@ use translate_macros::DefaultHook;
 #[derive(DefaultHook)]
 pub struct DefaultImplHook;
 
-impl crate::hook::traits::CoreHook for DefaultImplHook {}
+impl crate::hook::core_hook::CoreHook for DefaultImplHook {}

@@ -22,8 +22,8 @@ pub fn extract() -> crate::Result<()> {
 }
 
 /// 清理资源包解压产生的临时文件
-pub fn clean_up() -> crate::Result<()> {
-    pack::clean_up()
+pub fn cleanup() -> crate::Result<()> {
+    pack::cleanup()
 }
 
 fn to_unix_clean_path(path: &Path) -> String {

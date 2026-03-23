@@ -15,7 +15,7 @@ cfg_if! {
 
 impl ExitProcess for LifecycleGuardSlot {
     unsafe fn exit_process(u_exit_code: u32) {
-        crate::hook::impls::attach_clean_up();
+        crate::hook::entry::attach_cleanup();
         unsafe { crate::call!(HOOK_EXIT_PROCESS, u_exit_code) };
     }
 }
