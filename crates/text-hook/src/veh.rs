@@ -182,7 +182,7 @@ unsafe extern "system" fn veh_handler(exception_info: *mut EXCEPTION_POINTERS) -
                 // * 建议：出问题后，请将此处逻辑改为无锁信号通知模式。
 
                 // 用户回调：返回 Ok(true) 则清除断点
-                match HookImplType::on_hwbp_hit(context, reg) {
+                match <HookImplType as HwbpHit>::on_hwbp_hit(context, reg) {
                     Ok(true) => crate::utils::hwbp::clear_hw_break_in_context(context, reg),
                     Ok(false) => {}
                     Err(e) => crate::debug!("on_hwbp_hit failed with {e:?}"),

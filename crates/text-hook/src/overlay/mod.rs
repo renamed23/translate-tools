@@ -168,7 +168,7 @@ pub fn win_event_callback(
 pub fn render() {
     OVERLAY_CTX.with_borrow_mut(|ctx| {
         if let Some(context) = ctx
-            && let Err(e) = HookImplType::on_overlay_render(context)
+            && let Err(e) = <HookImplType as OverlayRender>::on_overlay_render(context)
         {
             crate::debug!("on_overlay_render failed with {e:?}");
         }

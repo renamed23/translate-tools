@@ -96,7 +96,7 @@ unsafe extern "system" fn win_event_hook_proc(
         dwms_event_time,
     );
 
-    if let Err(e) = HookImplType::on_win_event_triggered(
+    if let Err(e) = <HookImplType as WinEventTriggered>::on_win_event_triggered(
         event,
         hwnd,
         id_object,

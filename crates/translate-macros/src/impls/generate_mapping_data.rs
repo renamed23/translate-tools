@@ -4,9 +4,9 @@ use serde::Deserialize;
 use std::collections::HashMap;
 use syn::LitInt;
 
-use crate::utils::{input::SinglePath, read_json_file, resolve_manifest_path};
+use crate::utils::{input::SinglePath, read_optional_json_file, resolve_manifest_path};
 
-#[derive(Deserialize)]
+#[derive(Default, Deserialize)]
 struct MappingConfig {
     #[serde(default)]
     code_page: Option<u32>,
@@ -27,7 +27,7 @@ pub fn generate_mapping_data(input: TokenStream) -> syn::Result<TokenStream> {
     let parsed = syn::parse2::<SinglePath>(input)?;
 
     let mapping_path = resolve_manifest_path(&parsed.path)?;
-    let config: MappingConfig = read_json_file(&mapping_path)?;
+    let config: MappingConfig = read_optional_json_file(&mapping_path)?;
 
     // 确定代码页
     let code_page = if let Some(cp) = config.code_page {

@@ -110,7 +110,8 @@ pub fn byte_slice(input: TokenStream) -> TokenStream {
 /// 宏会基于方法签名自动生成两类项：
 ///
 /// 1. 一个 `pub unsafe extern "system" fn <wrapper_name>(...) -> Ret` 的 C-ABI 风格 wrapper，
-///    wrapper 内部通过 `crate::hook::impls::HookImplType::<method>(...)` 转发到当前的 Hook 实现，并使用 `ffi_guard`
+///    wrapper 内部通过 `<crate::hook::impls::HookImplType as TraitName>::<method>(...)` 这种完全限定语法
+///    转发到当前的 Hook 实现，以消除同名方法带来的分发歧义，并使用 `ffi_guard`
 ///    或等价保护在 panic/unwind 时返回 `fallback` 指定的值；若内部返回 `Err(...)`，则自动回退到
 ///    `crate::call!(HOOK_<METHOD>, ...)` 调用原始 HOOK。
 ///
@@ -162,7 +163,8 @@ pub fn byte_slice(input: TokenStream) -> TokenStream {
 /// ```
 ///
 /// 注意：这个默认实现只是为了让 trait 接口书写更简洁；实际生成的 detour wrapper 仍然会调用
-/// `crate::hook::impls::HookImplType::<method>(...)`，不会把这个 `unimplemented!()` 当作运行时 fallback。
+/// `<crate::hook::impls::HookImplType as TraitName>::<method>(...)`，不会把这个 `unimplemented!()`
+/// 当作运行时 fallback。
 #[proc_macro_attribute]
 pub fn detour_trait(attr: TokenStream, item: TokenStream) -> TokenStream {
     match impls::detour::detour_trait::detour_trait(attr.into(), item.into()) {
@@ -448,6 +450,7 @@ pub fn generate_constants_from_json(input: TokenStream) -> TokenStream {
 /// 接受一个字符串字面量参数：
 ///
 /// - `mapping_path`：映射配置文件路径（相对于 `CARGO_MANIFEST_DIR`）
+///   - 如果该文件不存在，则自动使用默认配置（空映射，且 `ANSI_CODE_PAGE = 0`）
 ///
 /// # 配置文件格式
 ///
@@ -474,6 +477,7 @@ pub fn generate_constants_from_json(input: TokenStream) -> TokenStream {
 ///
 /// 若同时提供 `code_page` 与 `src_encoding`，优先使用 `code_page`。
 /// 若两者都未提供，则 `ANSI_CODE_PAGE` 为 `0`。
+/// 若整个 JSON 文件不存在，也等价于使用上述默认行为。
 ///
 /// # 输出
 ///
@@ -501,6 +505,7 @@ pub fn generate_constants_from_json(input: TokenStream) -> TokenStream {
 /// # 注意事项
 ///
 /// - 路径相对于 `CARGO_MANIFEST_DIR`
+/// - 若 `mapping_path` 对应文件不存在，不会报错，而是退回默认配置
 /// - 所有字符必须位于 BMP 范围内（`<= 0xFFFF`），否则编译失败
 /// - `mapping` 会按键排序后生成，以保证输出稳定
 /// - `src_encoding` 目前只支持少量预设值，传入其他值会直接报编译错误

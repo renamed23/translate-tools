@@ -91,7 +91,7 @@ fn worker_main() {
                 DispatchMessageW(&msg);
             }
 
-            match HookImplType::on_worker_main_tick() {
+            match <HookImplType as WorkerMainTick>::on_worker_main_tick() {
                 Ok(LoopAction::Continue) => {
                     #[cfg(feature = "enable_overlay")]
                     crate::overlay::render();

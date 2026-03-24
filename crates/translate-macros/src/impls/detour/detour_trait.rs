@@ -12,6 +12,7 @@ use crate::{
 
 pub fn detour_trait(_attr: TokenStream, item: TokenStream) -> syn::Result<TokenStream> {
     let mut input = syn::parse2::<ItemTrait>(item)?;
+    let trait_name = input.ident.clone();
 
     // 保留原始 trait
     let mut generated = TokenStream::new();
@@ -97,7 +98,7 @@ pub fn detour_trait(_attr: TokenStream, item: TokenStream) -> syn::Result<TokenS
 
             // 生成 wrapper + static
             generated.extend(quote! {
-                    // 自动生成：导出 wrapper
+                    // 自动生成：导出 wrapper，使用完全限定语法调用 trait 实现以消除方法分发歧义
                     #[translate_macros::ffi_guard(
                         on_panic = #fallback_tokens,
                         on_err = unsafe {crate::call!(#static_ident, #(#call_args_tokens),*)}
@@ -105,7 +106,7 @@ pub fn detour_trait(_attr: TokenStream, item: TokenStream) -> syn::Result<TokenS
                     #[cfg_attr(feature = "export_hook_symbols", unsafe(no_mangle))]
                     pub unsafe extern #calling_convention fn #export_ident( #(#param_pairs_iter),* ) #output {
                        unsafe {
-                            crate::hook::impls::HookImplType::#method_ident( #(#call_args_tokens),* )
+                            <crate::hook::impls::HookImplType as #trait_name>::#method_ident( #(#call_args_tokens),* )
                         }
                     }
 

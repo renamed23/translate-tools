@@ -5,7 +5,10 @@ use windows_sys::{
 
 #[cfg(feature = "enable_attach_cleanup")]
 use crate::hook::internal_hooks::ProcessAttachCleanup;
-use crate::hook::internal_hooks::{ProcessAttach, ProcessDetach};
+use crate::hook::{
+    impls::HookImplType,
+    internal_hooks::{ProcessAttach, ProcessDetach},
+};
 
 #[cfg(feature = "export_default_dll_main")]
 #[translate_macros::ffi_guard(on_err_or_panic = FALSE)]
@@ -76,14 +79,14 @@ pub fn default_dll_main(
             #[cfg(feature = "enable_delayed_attach")]
             crate::delayed_attach::enable_entry_point_hook();
 
-            if let Err(e) = crate::hook::impls::HookImplType::on_process_attach(hinst_dll) {
+            if let Err(e) = <HookImplType as ProcessAttach>::on_process_attach(hinst_dll) {
                 crate::debug!("on_process_attach failed with {e:?}");
             }
         }
         PROCESS_DETACH => {
             crate::debug!("Process detach");
 
-            if let Err(e) = crate::hook::impls::HookImplType::on_process_detach(
+            if let Err(e) = <HookImplType as ProcessDetach>::on_process_detach(
                 hinst_dll,
                 !lpv_reserved.is_null(),
             ) {
@@ -145,7 +148,7 @@ pub fn attach_cleanup() {
 
     crate::hook::disable_hooks_from_lists();
 
-    if let Err(e) = crate::hook::impls::HookImplType::on_process_attach_cleanup() {
+    if let Err(e) = <HookImplType as ProcessAttachCleanup>::on_process_attach_cleanup() {
         crate::debug!("on_process_attach_cleanup failed with {e:?}");
     }
 
