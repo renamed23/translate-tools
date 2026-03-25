@@ -1,4 +1,6 @@
-mod window;
+#[cfg(feature = "enable_overlay_egui")]
+pub(crate) mod egui_integration;
+pub(crate) mod window;
 
 use std::cell::RefCell;
 
@@ -12,7 +14,11 @@ use windows_sys::Win32::{
 };
 
 #[cfg(feature = "enable_overlay_gl")]
-use crate::gl::{GLContext, painter::GLPainter};
+use crate::gl::GLContext;
+#[cfg(feature = "enable_overlay_gl_painter")]
+use crate::gl::painter::GLPainter;
+#[cfg(feature = "enable_overlay_egui")]
+use crate::overlay::egui_integration::EguiOverlayState;
 use crate::{
     constant::{OVERLAY_TARGET_WINDOW_CLASS_NAME, OVERLAY_TARGET_WINDOW_TEXT},
     hook::{impls::HookImplType, internal_hooks::OverlayRender},
@@ -22,8 +28,12 @@ use crate::{
 
 /// Overlay上下文结构体
 pub struct OverlayContext {
+    /// egui overlay 状态
+    #[cfg(feature = "enable_overlay_egui")]
+    pub egui: EguiOverlayState,
+
     /// OpenGL 轻量级绘制器
-    #[cfg(feature = "enable_overlay_gl")]
+    #[cfg(feature = "enable_overlay_gl_painter")]
     pub gl_painter: GLPainter,
 
     /// OpenGL 上下文
@@ -39,7 +49,51 @@ pub struct OverlayContext {
 
 thread_local! {
     /// Overlay上下文
-    pub static OVERLAY_CTX: RefCell<Option<OverlayContext>> = const { RefCell::new(None) };
+    static OVERLAY_CTX: RefCell<Option<OverlayContext>> = const { RefCell::new(None) };
+}
+
+/// 以只读方式访问当前线程上的 overlay 上下文。
+///
+/// 当 overlay 尚未初始化，或当前线程并不持有对应的 overlay 上下文时，
+/// 返回 `Err`。
+///
+/// 该接口仅提供共享借用，不会把上下文从 thread-local 槽位中取出，因此适合
+/// 只读查询场景。
+#[allow(dead_code)]
+pub fn with_overlay_context<R>(f: impl FnOnce(&OverlayContext) -> R) -> crate::Result<R> {
+    OVERLAY_CTX.with_borrow(|ctx| {
+        let Some(ctx) = ctx.as_ref() else {
+            crate::bail!("overlay context is unavailable");
+        };
+
+        Ok(f(ctx))
+    })
+}
+
+/// 以独占可变方式访问当前线程上的 overlay 上下文。
+///
+/// 此函数会先把上下文从 thread-local 槽位中 `take()` 出来，再把 `&mut OverlayContext`
+/// 传给调用方回调；回调返回后，无论结果是 `Ok` 还是 `Err`，都会把上下文重新放回槽位。
+///
+/// 如果在调用开始时上下文不存在，或者同一线程上已经有外层逻辑把上下文 `take()` 走了
+/// （即发生了重入访问），则直接返回 `Err`。
+///
+/// 这个语义是刻意的：它避免了 `RefCell` 运行时借用冲突，也避免在重入路径中拿到第二个
+/// 可变借用。
+pub fn with_overlay_context_mut<R>(
+    f: impl FnOnce(&mut OverlayContext) -> crate::Result<R>,
+) -> crate::Result<R> {
+    OVERLAY_CTX.with(|ctx| {
+        let Some(mut context) = ctx.take() else {
+            crate::bail!("overlay context is unavailable");
+        };
+
+        let result = f(&mut context);
+
+        ctx.replace(Some(context));
+
+        result
+    })
 }
 
 /// 根据窗口事件获取目标窗口的hwnd并创建overlay窗口，并根据目标窗口同步overlay窗口
@@ -94,15 +148,22 @@ pub fn win_event_callback(
                         return;
                     };
 
-                    #[cfg(feature = "enable_overlay_gl")]
+                    #[cfg(feature = "enable_overlay_gl_painter")]
                     let Ok(gl_painter) = GLPainter::new(gl_ctx.gl.clone()) else {
+                        return;
+                    };
+
+                    #[cfg(feature = "enable_overlay_egui")]
+                    let Ok(egui) = EguiOverlayState::new(gl_ctx.gl.clone()) else {
                         return;
                     };
 
                     crate::debug!("Initialize overlay context finished");
 
                     OVERLAY_CTX.set(Some(OverlayContext {
-                        #[cfg(feature = "enable_overlay_gl")]
+                        #[cfg(feature = "enable_overlay_egui")]
+                        egui,
+                        #[cfg(feature = "enable_overlay_gl_painter")]
                         gl_painter,
                         #[cfg(feature = "enable_overlay_gl")]
                         gl_ctx,
@@ -166,16 +227,16 @@ pub fn win_event_callback(
 
 /// Overlay 渲染函数
 pub fn render() {
-    OVERLAY_CTX.with_borrow_mut(|ctx| {
-        if let Some(context) = ctx
-            && let Err(e) = <HookImplType as OverlayRender>::on_overlay_render(context)
-        {
-            crate::debug!("on_overlay_render failed with {e:?}");
-        }
-    });
+    if let Err(e) = with_overlay_context_mut(|context| {
+        <HookImplType as OverlayRender>::on_overlay_render(context)
+    }) {
+        crate::debug!("on_overlay_render failed with {e:?}");
+    }
 }
 
 /// Overlay 清理函数
+///
+/// 清除当前线程上保存的 overlay 上下文，触发其资源释放。
 pub fn cleanup() {
     OVERLAY_CTX.with(|ctx| ctx.take());
 }

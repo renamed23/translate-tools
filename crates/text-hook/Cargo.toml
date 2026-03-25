@@ -29,6 +29,9 @@ bind_path_redirector = []
 # 使用 assume_text_out_arg_c_is_byte_len，将认为输入参数C是字节长度而不是字符长度
 bind_text_mapping = []
 bind_user_interface_patcher = ["enable_text_patch"]
+# 绑定 overlay egui I/O 处理器
+# 目前无法正确处理 OverlayWndProc 重入产生的消息，因为 RefCell 的限制
+bind_egui_io = ["enable_overlay_egui"]
 # Hook `DefWindowProc` 并对窗口标题进行处理，
 # 如果开启了 enable_window_title_override，使用`assets/config.json`的`WINDOW_TITLE`覆写标题
 # 否则将其根据 ANSI_CODE 转码为u16并进行映射处理，然后传递给 W 版本的 DefWindowProc
@@ -61,11 +64,15 @@ auto_apply_1337_patch_on_hwbp_hit = [
 # 对应于 PROCESS_ATTACH 阶段的清理工作
 # 默认不会执行清理，因为进程内资源系统可以正确进行清理回收
 enable_attach_cleanup = []
-# 启用独立透明覆盖层，使用OpenGL绘制
-enable_overlay_gl = ["enable_overlay", "enable_gl_painter"]
+# 启用 overlay 的 egui 集成，依赖 OpenGL overlay
+enable_overlay_egui = ["enable_overlay_gl", "dep:egui", "dep:egui_glow"]
+# 启用 overlay 的 轻量级 OpenGL 绘制器集成，依赖 OpenGL overlay
+enable_overlay_gl_painter = ["enable_overlay_gl", "enable_gl_painter"]
+# 启用独立透明覆盖层，使用 OpenGL 绘制
+enable_overlay_gl = ["enable_overlay"]
 # 启用独立透明覆盖层（同进程）
 enable_overlay = ["enable_win_event_hook", "enable_worker_thread"]
-# 启用轻量的OpenGL绘制器
+# 启用轻量的 OpenGL 绘制器
 enable_gl_painter = []
 # 窗口事件钩子(windows的SetWinEventHook的钩子机制)
 enable_win_event_hook = ["enable_worker_thread"]
@@ -80,7 +87,7 @@ enable_veh = []
 # 在DLL detach时，会将临时目录删除
 # 若exe所在目录的同名文件存在于临时目录中
 # 则重定向到临时目录中，否则直接转发
-enable_resource_pack = []
+enable_resource_pack = ["dep:path-clean"]
 # 内嵌资源包而不是外置
 embed_resource_pack = ["enable_resource_pack"]
 # 使用IAT HOOK，而不是Inline Hook
@@ -146,6 +153,7 @@ natsu_natsu = [
 seraph = ["export_default_dll_main"]
 g0win = ["export_default_dll_main", "enable_text_patch"]
 hitocos2 = ["export_default_dll_main", "enable_text_patch"]
+egui_overlay_demo = ["export_default_dll_main", "bind_egui_io"]
 
 [dependencies]
 translate-macros.workspace = true
@@ -155,6 +163,8 @@ serde_json.workspace = true
 windows-sys = { version = "0.61", features = [
     "Win32_Foundation",
     "Win32_UI_WindowsAndMessaging",
+    "Win32_UI_Input_KeyboardAndMouse",
+    "Win32_UI_HiDpi",
     "Win32_Graphics_Gdi",
     "Win32_Graphics_Dwm",
     "Win32_Graphics_OpenGL",
@@ -184,11 +194,13 @@ indexmap = { version = "2", features = ["serde"] }
 ntapi = "0.4"
 scopeguard = "1"
 const-str = "1"
-path-clean = "1"
+path-clean = { version = "1", optional = true }
 ruzstd = "0.8"
-glow = "0.17"
+glow = "0.16"
 bytemuck = { version = "1.25", features = ["derive"] }
 cfg-if = "1.0"
+egui = { version = "0.33.3", optional = true, default-features = false }
+egui_glow = { version = "0.33.3", optional = true }
 
 [build-dependencies]
 anyhow.workspace = true

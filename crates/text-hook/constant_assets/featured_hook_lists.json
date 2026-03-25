@@ -95,5 +95,11 @@
     "fn": [
       "ExitProcess"
     ]
+  },
+  "feature = \"bind_egui_io\"": {
+    "trait": [
+      "OverlayWndProc"
+    ],
+    "fn": []
   }
 }

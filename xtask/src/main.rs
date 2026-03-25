@@ -475,7 +475,12 @@ fn build_scenarios() -> Vec<Scenario> {
             features: feature_set(
                 all_functional_impl_base(),
                 &["default_impl"],
-                &["enable_overlay_gl"],
+                &[
+                    "enable_overlay_gl",
+                    "enable_overlay_gl_painter",
+                    "enable_overlay_egui",
+                    "bind_egui_io",
+                ],
             ),
             run_x64: true,
         },
@@ -483,7 +488,13 @@ fn build_scenarios() -> Vec<Scenario> {
             name: "default_impl/overlay_gl/on".to_string(),
             features: feature_set(
                 all_functional_impl_base(),
-                &["default_impl", "enable_overlay_gl"],
+                &[
+                    "default_impl",
+                    "enable_overlay_gl",
+                    "enable_overlay_gl_painter",
+                    "enable_overlay_egui",
+                    "bind_egui_io",
+                ],
                 &[],
             ),
             run_x64: true,

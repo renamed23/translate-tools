@@ -3,6 +3,9 @@ pub mod path_redirector;
 pub mod text_mapping;
 pub mod window_title_overrider;
 
+#[cfg(feature = "enable_overlay_egui")]
+pub mod egui_io;
+
 #[cfg(feature = "enable_attach_cleanup")]
 pub mod lifecycle_guard;
 

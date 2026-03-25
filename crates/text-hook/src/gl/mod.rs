@@ -4,18 +4,18 @@ pub(crate) mod painter;
 use glow::HasContext;
 use std::sync::Arc;
 use windows_sys::{
-    s, w,
     Win32::{
         Foundation::HWND,
         Graphics::{
             Gdi::{GetDC, HDC},
             OpenGL::{
-                wglCreateContext, wglGetProcAddress, wglMakeCurrent, ChoosePixelFormat,
-                GetPixelFormat, SetPixelFormat, HGLRC, PFD_DOUBLEBUFFER, PFD_DRAW_TO_WINDOW,
+                ChoosePixelFormat, GetPixelFormat, HGLRC, PFD_DOUBLEBUFFER, PFD_DRAW_TO_WINDOW,
                 PFD_MAIN_PLANE, PFD_SUPPORT_OPENGL, PFD_TYPE_RGBA, PIXELFORMATDESCRIPTOR,
+                SetPixelFormat, SwapBuffers, wglCreateContext, wglGetProcAddress, wglMakeCurrent,
             },
         },
     },
+    s, w,
 };
 
 use crate::{
@@ -60,8 +60,11 @@ use crate::{
 ///
 /// 本结构不会自动在多线程间迁移上下文绑定。
 pub struct GLContext {
+    /// WGL 渲染上下文句柄。
     pub hglrc: OwnedHGLRC,
+    /// 绑定窗口的设备上下文句柄。
     pub hdc: OwnedHDC,
+    /// 已加载 OpenGL 函数的 `glow` 上下文。
     pub gl: Arc<glow::Context>,
 }
 
@@ -100,6 +103,30 @@ impl GLContext {
 
             Ok(Self { hdc, hglrc, gl })
         }
+    }
+
+    /// 绑定当前 OpenGL 上下文到调用线程。
+    pub fn make_current(&self) -> crate::Result<()> {
+        unsafe {
+            if wglMakeCurrent(*self.hdc, *self.hglrc) == 0 {
+                print_last_error_message!();
+                crate::bail!("wglMakeCurrent failed");
+            }
+        }
+
+        Ok(())
+    }
+
+    /// 提交当前帧到窗口前台缓冲区。
+    pub fn swap_buffers(&self) -> crate::Result<()> {
+        unsafe {
+            if SwapBuffers(*self.hdc) == 0 {
+                print_last_error_message!();
+                crate::bail!("SwapBuffers failed");
+            }
+        }
+
+        Ok(())
     }
 }
 
@@ -232,6 +259,9 @@ unsafe fn create_glow_context() -> crate::Result<glow::Context> {
 /// - `gl`: OpenGL 上下文引用，用于执行 GPU 操作
 /// - `shader_type`: 着色器类型，应为 `glow::VERTEX_SHADER` 或 `glow::FRAGMENT_SHADER` 等常量
 /// - `source`: GLSL 源代码字符串
+///
+/// # 返回
+/// 返回一个拥有所有权的着色器对象，失败时返回错误。
 pub fn compile_shader(
     gl: &Arc<glow::Context>,
     shader_type: u32,
@@ -260,6 +290,9 @@ pub fn compile_shader(
 ///
 /// VAO 用于存储顶点属性配置（如顶点坐标、颜色、法线的内存布局），
 /// 绑定 VAO 后可快速切换整组顶点状态，避免重复配置。
+///
+/// # 返回
+/// 返回一个拥有所有权的顶点数组对象。
 pub fn create_vertex_array(gl: &Arc<glow::Context>) -> crate::Result<OwnedVertexArray> {
     let raw_vao = unsafe {
         gl.create_vertex_array()
@@ -276,6 +309,9 @@ pub fn create_vertex_array(gl: &Arc<glow::Context>) -> crate::Result<OwnedVertex
 ///
 /// 缓冲区用于存储顶点数据（坐标、颜色、UV）或索引数据，
 /// 创建后需通过 `gl.bind_buffer()` 和 `gl.buffer_data()` 上传实际数据。
+///
+/// # 返回
+/// 返回一个拥有所有权的缓冲区对象。
 pub fn create_buffer(gl: &Arc<glow::Context>) -> crate::Result<OwnedBuffer> {
     let raw_buffer = unsafe {
         gl.create_buffer()
@@ -291,6 +327,9 @@ pub fn create_buffer(gl: &Arc<glow::Context>) -> crate::Result<OwnedBuffer> {
 ///
 /// 程序对象用于链接多个着色器阶段（顶点、片段、几何等），
 /// 是 GPU 渲染管线的最终执行单元。
+///
+/// # 返回
+/// 返回一个拥有所有权的程序对象。
 pub fn create_program(gl: &Arc<glow::Context>) -> crate::Result<OwnedProgram> {
     let raw_program = unsafe {
         gl.create_program()
@@ -308,6 +347,9 @@ pub fn create_program(gl: &Arc<glow::Context>) -> crate::Result<OwnedProgram> {
 /// 纹理用于存储图像数据（颜色、深度、模板等），可被着色器采样。
 /// 创建后需通过 `gl.bind_texture()` 和 `gl.tex_image_2d()` 等函数
 /// 上传实际数据并配置纹理参数。
+///
+/// # 返回
+/// 返回一个拥有所有权的纹理对象。
 pub fn create_texture(gl: &Arc<glow::Context>) -> crate::Result<OwnedTexture> {
     let raw_texture = unsafe {
         gl.create_texture()

@@ -2,13 +2,13 @@
 pub(crate) mod debug_impl {
     use std::sync::Once;
     use windows_sys::Win32::{
-        Foundation::{GetLastError, RtlNtStatusToDosError, NTSTATUS},
+        Foundation::{GetLastError, NTSTATUS, RtlNtStatusToDosError},
         Globalization::CP_UTF8,
         System::{
             Console::{AllocConsole, SetConsoleCP, SetConsoleOutputCP},
             Diagnostics::Debug::{
-                FormatMessageW, OutputDebugStringW, FORMAT_MESSAGE_FROM_SYSTEM,
-                FORMAT_MESSAGE_IGNORE_INSERTS,
+                FORMAT_MESSAGE_FROM_SYSTEM, FORMAT_MESSAGE_IGNORE_INSERTS, FormatMessageW,
+                OutputDebugStringW,
             },
         },
     };
@@ -17,6 +17,7 @@ pub(crate) mod debug_impl {
 
     static CONSOLE_INIT: Once = Once::new();
 
+    /// 输出调试信息到调试器与控制台。
     pub fn debug(args: core::fmt::Arguments) {
         use core::fmt::Write;
 
@@ -41,6 +42,7 @@ pub(crate) mod debug_impl {
         println!("{s}");
     }
 
+    /// 获取线程最近一次 Win32 错误码对应的系统消息。
     pub fn get_last_error_message() -> Option<String> {
         unsafe {
             let error_code = GetLastError();
@@ -48,6 +50,7 @@ pub(crate) mod debug_impl {
         }
     }
 
+    /// 将 NTSTATUS 转换为系统错误消息。
     pub fn get_last_error_message_from_ntstatus(status: NTSTATUS) -> Option<String> {
         unsafe {
             let error_code = RtlNtStatusToDosError(status);
@@ -55,6 +58,7 @@ pub(crate) mod debug_impl {
         }
     }
 
+    /// 根据指定错误码获取系统错误消息。
     pub fn get_last_error_message_from_ec(ec: u32) -> Option<String> {
         unsafe {
             let mut buffer = [0u16; 1024];
