@@ -261,6 +261,8 @@ impl OverlayRender for EguiOverlayDemoHook {
                         egui_ctx.inspection_ui(ui);
                     });
                 });
+
+            Ok(())
         })?;
 
         context.gl_ctx.swap_buffers()

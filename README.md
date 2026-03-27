@@ -15,6 +15,8 @@ cargo build-text-hook --features default_impl
 
 更多`features`请看[crates/text-hook/Cargo.toml](crates/text-hook/Cargo.toml)
 
+可以使用 `cargo xtask use-test-assets` 抑制过程宏编译错误。
+
 注意，`text-hook`重度依赖于编译期代码生成和运算，所以不太可能对不同游戏复用DLL二进制。
 
 ## crates/text-hook/assets

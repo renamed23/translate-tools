@@ -15,14 +15,35 @@ fn main() -> anyhow::Result<()> {
     let mut args = std::env::args().skip(1);
     match args.next().as_deref() {
         Some("check") => run_check_command(),
+        Some("use-test-assets") => run_use_test_assets_command(),
         Some(cmd_name) => bail!("未知的 xtask 命令: {cmd_name}"),
         None => {
             println!("用法: cargo xtask <命令>");
             println!("可用命令:");
             println!("  check    执行 text-hook feature 组合检查");
+            println!("  use-test-assets    用 test_assets 覆盖 assets");
             Ok(())
         }
     }
+}
+
+fn run_use_test_assets_command() -> anyhow::Result<()> {
+    let source = Path::new(TEST_ASSETS_DIR);
+    let target = Path::new(TARGET_ASSETS_DIR);
+
+    if !source.exists() {
+        bail!("未找到测试资产目录: {}", source.display());
+    }
+
+    println!(
+        "正在覆盖 assets: {} -> {}",
+        source.display(),
+        target.display()
+    );
+    remove_dir_if_exists(target)?;
+    copy_dir_contents(source, target)?;
+
+    Ok(())
 }
 
 fn run_check_command() -> anyhow::Result<()> {
@@ -497,6 +518,11 @@ fn build_scenarios() -> Vec<Scenario> {
                 ],
                 &[],
             ),
+            run_x64: true,
+        },
+        Scenario {
+            name: "egui_overlay_demo/on".to_string(),
+            features: feature_set(all_functional_impl_base(), &["egui_overlay_demo"], &[]),
             run_x64: true,
         },
     ];

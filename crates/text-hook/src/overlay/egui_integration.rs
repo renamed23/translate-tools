@@ -172,9 +172,13 @@ impl EguiOverlayState {
     }
 
     /// 执行一整帧 egui：开始帧、构建 UI、结束帧并绘制。
-    pub fn run(&mut self, hwnd: HWND, run_ui: impl FnOnce(&EguiContext)) -> crate::Result<()> {
+    pub fn run(
+        &mut self,
+        hwnd: HWND,
+        run_ui: impl FnOnce(&EguiContext) -> crate::Result<()>,
+    ) -> crate::Result<()> {
         self.begin_frame(hwnd)?;
-        run_ui(&self.context);
+        run_ui(&self.context)?;
         self.end_frame(hwnd)?;
         self.paint()
     }
@@ -186,11 +190,6 @@ impl EguiOverlayState {
 
     fn push_event(&mut self, event: EguiEvent) {
         self.raw_input.events.push(event);
-    }
-
-    fn client_pos_to_egui_pos(&self, pos_px: Pos2) -> Pos2 {
-        let pixels_per_point = self.frame_data.pixels_per_point.max(1.0);
-        Pos2::new(pos_px.x / pixels_per_point, pos_px.y / pixels_per_point)
     }
 
     fn update_pointer_position(&mut self, pos: Option<Pos2>) {
@@ -635,7 +634,10 @@ impl OverlayContext {
     ///
     /// 该方法会使用当前 overlay 窗口句柄驱动 egui 一帧，并在回调中提供
     /// [`EguiContext`] 供调用方构建界面。
-    pub fn run_egui(&mut self, run_ui: impl FnOnce(&EguiContext)) -> crate::Result<()> {
+    pub fn run_egui(
+        &mut self,
+        run_ui: impl FnOnce(&EguiContext) -> crate::Result<()>,
+    ) -> crate::Result<()> {
         self.egui.run(*self.overlay, run_ui)
     }
 }
