@@ -89,11 +89,6 @@ impl EguiOverlayState {
         self.frame_data.screen_size_px
     }
 
-    /// 获取内部 egui 上下文的共享引用。
-    pub fn egui_ctx(&self) -> &EguiContext {
-        &self.context
-    }
-
     /// 开始一帧 egui 处理并同步输入状态。
     pub fn begin_frame(&mut self, hwnd: HWND) -> crate::Result<()> {
         let screen_size_px = overlay_client_size(hwnd)?;

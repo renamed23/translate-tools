@@ -40,6 +40,9 @@ pub(crate) mod debug_impl {
         });
 
         println!("{s}");
+
+        #[cfg(feature = "enable_egui_logger")]
+        crate::overlay::egui::components::logger::push_log_line(s.as_str());
     }
 
     /// 获取线程最近一次 Win32 错误码对应的系统消息。

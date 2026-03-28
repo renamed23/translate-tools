@@ -26,7 +26,7 @@ impl OverlayWndProc for EguiIOSlot {
                 return Ok(None);
             }
 
-            crate::overlay::egui_integration::handle_egui_wnd_proc(
+            crate::overlay::egui::integration::handle_egui_wnd_proc(
                 &mut context.egui,
                 hwnd,
                 msg,

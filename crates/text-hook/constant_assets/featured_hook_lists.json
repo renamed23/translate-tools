@@ -101,5 +101,11 @@
       "OverlayWndProc"
     ],
     "fn": []
+  },
+  "feature = \"bind_egui_default_ui\"": {
+    "trait": [
+      "OverlayRender"
+    ],
+    "fn": []
   }
 }

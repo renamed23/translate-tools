@@ -32,10 +32,17 @@ bind_user_interface_patcher = ["enable_text_patch"]
 # 绑定 overlay egui I/O 处理器
 # 目前无法正确处理 OverlayWndProc 重入产生的消息，因为 RefCell 的限制
 bind_egui_io = ["enable_overlay_egui"]
+# 绑定默认的 overlay egui UI 渲染器，显示所有组件并提供组件可见性控制面板
+bind_egui_default_ui = ["enable_overlay_egui"]
 # Hook `DefWindowProc` 并对窗口标题进行处理，
 # 如果开启了 enable_window_title_override，使用`assets/config.json`的`WINDOW_TITLE`覆写标题
 # 否则将其根据 ANSI_CODE 转码为u16并进行映射处理，然后传递给 W 版本的 DefWindowProc
 bind_window_title_overrider = []
+
+# 开启 egui 日志组件的支持
+enable_egui_logger = ["enable_overlay_egui", "enable_debug_output"]
+# 开启 egui demo 组件的支持
+enable_egui_demo = ["enable_overlay_egui"]
 
 # 开启后，仅对命中过滤器的字体执行替换；未命中过滤器的字体保持原样。
 # 此时 `FONT_FILTER` 的语义等价于黑名单，而不是白名单。
@@ -153,7 +160,6 @@ natsu_natsu = [
 seraph = ["export_default_dll_main"]
 g0win = ["export_default_dll_main", "enable_text_patch"]
 hitocos2 = ["export_default_dll_main", "enable_text_patch"]
-egui_overlay_demo = ["export_default_dll_main", "bind_egui_io"]
 
 [dependencies]
 translate-macros.workspace = true

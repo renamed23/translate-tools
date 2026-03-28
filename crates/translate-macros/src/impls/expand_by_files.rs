@@ -1,9 +1,9 @@
 use convert_case::{Case, Casing};
-use proc_macro2::{Group, Ident, Literal, Span, TokenStream, TokenTree};
+use proc_macro2::{Delimiter, Group, Ident, Literal, Span, TokenStream, TokenTree};
 use quote::{ToTokens, TokenStreamExt};
 use std::{collections::HashSet, fs};
 use syn::{
-    Block, LitStr, Token,
+    Block, Expr, Lit, LitStr, Token,
     parse::{Parse, ParseStream},
     punctuated::Punctuated,
 };
@@ -104,7 +104,7 @@ pub fn expand_by_files(input: TokenStream) -> syn::Result<TokenStream> {
                 file_lit,
                 pascal_ident,
             },
-        );
+        )?;
 
         output.extend(replaced);
     }
@@ -112,6 +112,7 @@ pub fn expand_by_files(input: TokenStream) -> syn::Result<TokenStream> {
     Ok(output)
 }
 
+#[derive(Clone)]
 struct Replacement {
     file_ident: Ident,
     file_lit: Literal,
@@ -119,14 +120,37 @@ struct Replacement {
 }
 
 /// 递归遍历 tokenstream，遇到特定 Ident 时尝试替换
-fn replace_tokens(ts: TokenStream, r: Replacement) -> TokenStream {
+fn replace_tokens(ts: TokenStream, r: Replacement) -> syn::Result<TokenStream> {
     let mut out = TokenStream::new();
+    let mut iter = ts.into_iter();
 
-    for tt in ts {
+    while let Some(tt) = iter.next() {
         match tt {
             TokenTree::Ident(id) => {
                 let name = id.to_string();
                 match name.as_str() {
+                    "__concat__" => {
+                        let next = iter.next().ok_or_else(|| {
+                            syn_err!(
+                                id.clone(),
+                                "`__concat__` 后必须紧跟括号参数，如 `__concat__(\"a\", \
+                                 __file_str__)`",
+                            )
+                        })?;
+
+                        let group = match next {
+                            TokenTree::Group(g) if g.delimiter() == Delimiter::Parenthesis => g,
+                            other => {
+                                syn_bail!(
+                                    other,
+                                    "`__concat__` 只支持括号调用语法：`__concat__(...)`",
+                                );
+                            }
+                        };
+
+                        let concat_lit = parse_concat_group(&group, &r)?;
+                        out.append(TokenTree::Literal(concat_lit));
+                    }
                     "__file__" => {
                         out.append(TokenTree::Ident(r.file_ident.clone()));
                     }
@@ -143,14 +167,7 @@ fn replace_tokens(ts: TokenStream, r: Replacement) -> TokenStream {
             }
             TokenTree::Group(g) => {
                 let stream = g.stream();
-                let replaced = replace_tokens(
-                    stream,
-                    Replacement {
-                        file_ident: r.file_ident.clone(),
-                        file_lit: r.file_lit.clone(),
-                        pascal_ident: r.pascal_ident.clone(),
-                    },
-                );
+                let replaced = replace_tokens(stream, r.clone())?;
                 let mut new_group = Group::new(g.delimiter(), replaced);
                 new_group.set_span(g.span());
                 out.append(TokenTree::Group(new_group));
@@ -161,5 +178,86 @@ fn replace_tokens(ts: TokenStream, r: Replacement) -> TokenStream {
         }
     }
 
-    out
+    Ok(out)
+}
+
+/// 解析 `__concat__(...)`：参数会先做占位符替换，然后按 `_` 连接为字符串字面量。
+fn parse_concat_group(group: &Group, r: &Replacement) -> syn::Result<Literal> {
+    let args = split_concat_args(group.stream())?;
+
+    if args.len() < 2 {
+        syn_bail!(
+            group,
+            "`__concat__` 至少需要两个参数，例如 `__concat__(\"enable_egui\", __file_str__)`",
+        );
+    }
+
+    let mut parts = Vec::with_capacity(args.len());
+    for arg in args {
+        let replaced = replace_tokens(arg, r.clone())?;
+        let part = concat_arg_to_string(replaced)?;
+        if part.is_empty() {
+            syn_bail!(group, "`__concat__` 参数展开后不能为空字符串",);
+        }
+        parts.push(part);
+    }
+
+    Ok(Literal::string(&parts.join("")))
+}
+
+/// 将 `__concat__` 的参数切分为逗号分隔的 tokenstream 列表。
+fn split_concat_args(ts: TokenStream) -> syn::Result<Vec<TokenStream>> {
+    let mut args = Vec::new();
+    let mut current = TokenStream::new();
+
+    for tt in ts {
+        if let TokenTree::Punct(p) = &tt
+            && p.as_char() == ','
+        {
+            if current.is_empty() {
+                syn_bail2!("`__concat__` 参数列表存在空参数",);
+            }
+            args.push(current);
+            current = TokenStream::new();
+            continue;
+        }
+
+        current.extend([tt]);
+    }
+
+    if current.is_empty() {
+        if args.is_empty() {
+            syn_bail2!("`__concat__` 不能为空，至少需要两个参数",);
+        }
+
+        syn_bail2!("`__concat__` 参数列表末尾存在多余逗号",);
+    }
+
+    args.push(current);
+    Ok(args)
+}
+
+/// 将单个 `__concat__` 参数转换为字符串片段。
+///
+/// 支持：
+/// - 字符串字面量（如：`"enable_egui"`）
+/// - 单个标识符（如：`__file__` 展开后的 `logger`）
+fn concat_arg_to_string(ts: TokenStream) -> syn::Result<String> {
+    let expr: Expr = syn::parse2(ts.clone())
+        .map_err(|_| syn_err!(ts, "`__concat__` 参数必须是字符串字面量或单个标识符"))?;
+
+    match expr {
+        Expr::Lit(expr_lit) => match expr_lit.lit {
+            Lit::Str(s) => Ok(s.value()),
+            other => syn_bail!(other, "`__concat__` 只支持字符串字面量",),
+        },
+        Expr::Path(expr_path) if expr_path.qself.is_none() => {
+            if let Some(ident) = expr_path.path.get_ident() {
+                Ok(ident.to_string())
+            } else {
+                syn_bail!(expr_path, "`__concat__` 路径参数必须是单个标识符",)
+            }
+        }
+        other => syn_bail!(other, "`__concat__` 参数必须是字符串字面量或单个标识符",),
+    }
 }

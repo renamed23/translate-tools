@@ -515,14 +515,12 @@ fn build_scenarios() -> Vec<Scenario> {
                     "enable_overlay_gl_painter",
                     "enable_overlay_egui",
                     "bind_egui_io",
+                    "bind_egui_default_ui",
+                    "enable_egui_logger",
+                    "enable_egui_demo",
                 ],
                 &[],
             ),
-            run_x64: true,
-        },
-        Scenario {
-            name: "egui_overlay_demo/on".to_string(),
-            features: feature_set(all_functional_impl_base(), &["egui_overlay_demo"], &[]),
             run_x64: true,
         },
     ];

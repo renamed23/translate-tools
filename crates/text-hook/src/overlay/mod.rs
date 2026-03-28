@@ -1,5 +1,5 @@
 #[cfg(feature = "enable_overlay_egui")]
-pub(crate) mod egui_integration;
+pub(crate) mod egui;
 pub(crate) mod window;
 
 use std::cell::RefCell;
@@ -18,7 +18,7 @@ use crate::gl::GLContext;
 #[cfg(feature = "enable_overlay_gl_painter")]
 use crate::gl::painter::GLPainter;
 #[cfg(feature = "enable_overlay_egui")]
-use crate::overlay::egui_integration::EguiOverlayState;
+use crate::overlay::egui::integration::EguiOverlayState;
 use crate::{
     constant::{OVERLAY_TARGET_WINDOW_CLASS_NAME, OVERLAY_TARGET_WINDOW_TEXT},
     hook::{impls::HookImplType, internal_hooks::OverlayRender},

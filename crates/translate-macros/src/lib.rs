@@ -596,6 +596,7 @@ pub fn generate_patch_data(input: TokenStream) -> TokenStream {
 ///     // - __file__: 文件名的下划线标识符 (如: my_module)
 ///     // - __file_str__: 文件名字符串字面量 (如: "my_module")
 ///     // - __file_pascal__: 文件名的大驼峰标识符 (如: MyModule)
+///     // - __concat__(a, b, ...): 将参数展开成字符串片段后，拼接成字符串字面量
 /// }, { Optional, Exclude, Idents });
 /// ```
 ///
@@ -615,7 +616,7 @@ pub fn generate_patch_data(input: TokenStream) -> TokenStream {
 ///
 /// // 带排除列表（忽略 code_cvt_hook.rs 和 file_hook.rs）
 /// expand_by_files!("src/hook/api_hooks" => {
-///     #[cfg(feature = __file_str__)]
+///     #[cfg(feature = __concat__("enable_egui_", __file_str__))]
 ///     impl crate::hook::api_hooks::__file_pascal__ for #name {}
 /// }, {CodeCvtHook, FileHook});
 /// ```
