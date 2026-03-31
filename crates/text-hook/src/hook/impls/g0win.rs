@@ -1,7 +1,4 @@
-use std::{
-    collections::HashMap,
-    sync::{LazyLock, Mutex},
-};
+use std::{borrow::Cow, sync::LazyLock};
 
 use translate_macros::{DefaultHook, byte_slice};
 use windows_sys::Win32::Foundation::HMODULE;
@@ -9,9 +6,12 @@ use windows_sys::Win32::Foundation::HMODULE;
 use crate::{
     constant::ARG_GAME_TYPE,
     hook::internal_hooks::ProcessAttach,
-    utils::exts::{
-        ptr_ext::{PtrExt, PtrWriteExt},
-        slice_ext::{ByteSliceExt, WideSliceExt},
+    utils::{
+        exts::{
+            ptr_ext::{PtrExt, PtrWriteExt},
+            slice_ext::{ByteSliceExt, WideSliceExt},
+        },
+        interner::Interner,
     },
 };
 
@@ -67,20 +67,7 @@ unsafe extern "system" fn trampoline() {
     )
 }
 
-#[allow(clippy::type_complexity)]
-static TEXT_CACHE: LazyLock<Mutex<HashMap<Box<[u8]>, &'static [u8]>>> =
-    LazyLock::new(|| Mutex::new(HashMap::new()));
-
-fn intern_bytes(bytes: Vec<u8>) -> &'static [u8] {
-    if let Some(&cached) = TEXT_CACHE.lock().unwrap().get(bytes.as_slice()) {
-        return cached;
-    }
-
-    let leaked = Box::leak(bytes.into_boxed_slice()) as &'static mut [u8];
-    let leaked = leaked as &'static [u8];
-    TEXT_CACHE.lock().unwrap().insert(leaked.into(), leaked);
-    leaked
-}
+static TEXT_CACHE: LazyLock<Interner> = LazyLock::new(Interner::new);
 
 #[translate_macros::ffi_guard(on_err_or_panic = ptr)]
 unsafe extern "system" fn hook_text(ptr: *const u8) -> crate::Result<*const u8> {
@@ -93,7 +80,7 @@ unsafe extern "system" fn hook_text(ptr: *const u8) -> crate::Result<*const u8> 
             crate::debug!("Get translated slice {}", text.to_string_lossy());
             let translated_bytes = text.try_to_multi_byte_null(936)?;
 
-            let text_ptr = intern_bytes(translated_bytes);
+            let text_ptr = TEXT_CACHE.intern(translated_bytes);
             return Ok(text_ptr.as_ptr());
         }
         Ok(ptr)

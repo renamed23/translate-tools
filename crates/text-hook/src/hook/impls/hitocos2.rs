@@ -1,7 +1,6 @@
 use std::{
-    collections::HashMap,
     ffi::{c_char, c_int, c_uint},
-    sync::{LazyLock, Mutex},
+    sync::LazyLock,
 };
 
 use translate_macros::DefaultHook;
@@ -10,9 +9,12 @@ use windows_sys::Win32::Foundation::HMODULE;
 use crate::{
     constant::ARG_GAME_TYPE,
     hook::internal_hooks::ProcessAttach,
-    utils::exts::{
-        ptr_ext::{PtrExt, PtrWriteExt},
-        slice_ext::{ByteSliceExt, WideSliceExt},
+    utils::{
+        exts::{
+            ptr_ext::{PtrExt, PtrWriteExt},
+            slice_ext::{ByteSliceExt, WideSliceExt},
+        },
+        interner::Interner,
     },
 };
 
@@ -118,20 +120,8 @@ fn invert(bytes: &[u8]) -> Vec<u8> {
     bytes.iter().map(|&b| !b).collect()
 }
 
-type Cache = LazyLock<Mutex<HashMap<Box<[u8]>, &'static [u8]>>>;
-static NAME_CACHE: Cache = LazyLock::new(|| Mutex::new(HashMap::new()));
-static TEXT_CACHE: Cache = LazyLock::new(|| Mutex::new(HashMap::new()));
-
-fn intern_bytes(cache: &Cache, bytes: Vec<u8>) -> &'static [u8] {
-    if let Some(&cached) = cache.lock().unwrap().get(bytes.as_slice()) {
-        return cached;
-    }
-
-    let leaked = Box::leak(bytes.into_boxed_slice()) as &'static mut [u8];
-    let leaked = leaked as &'static [u8];
-    cache.lock().unwrap().insert(leaked.into(), leaked);
-    leaked
-}
+static NAME_CACHE: LazyLock<Interner> = LazyLock::new(Interner::new);
+static TEXT_CACHE: LazyLock<Interner> = LazyLock::new(Interner::new);
 
 #[translate_macros::ffi_guard(on_err_or_panic = ())]
 unsafe extern "system" fn hook_name(string_ptr: *mut MsvcString) -> crate::Result<()> {
@@ -156,7 +146,7 @@ unsafe extern "system" fn hook_name(string_ptr: *mut MsvcString) -> crate::Resul
         crate::debug!("Get raw slice {}", wide_name.to_string_lossy());
         if let Some(name) = wide_name.lookup_or_store()? {
             crate::debug!("Get translated slice {}", name.to_string_lossy());
-            let name_b = intern_bytes(&NAME_CACHE, name.to_ansi_null());
+            let name_b = NAME_CACHE.intern(name.to_ansi_null());
             sub_402b70(string_ptr, 0, name_b.as_ptr() as _, name_b.len() as _);
         }
 
@@ -172,7 +162,7 @@ unsafe extern "system" fn hook_text(ptr: *const u8) -> crate::Result<*const u8> 
         crate::debug!("Get raw slice {}", wide_text.to_string_lossy());
         if let Some(text) = wide_text.lookup_or_store()? {
             crate::debug!("Get translated slice {}", text.to_string_lossy());
-            let text_b = intern_bytes(&TEXT_CACHE, invert(&text.to_ansi()).with_null());
+            let text_b = TEXT_CACHE.intern(invert(&text.to_ansi()).with_null());
             return Ok(text_b.as_ptr());
         }
         Ok(ptr)
