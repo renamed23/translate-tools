@@ -20,6 +20,54 @@
     "type": "u8",
     "optional": true
   },
+  "CREATE_FONT_C_HEIGHT": {
+    "type": "i32",
+    "optional": true
+  },
+  "CREATE_FONT_C_WIDTH": {
+    "type": "i32",
+    "optional": true
+  },
+  "CREATE_FONT_C_ESCAPEMENT": {
+    "type": "i32",
+    "optional": true
+  },
+  "CREATE_FONT_C_ORIENTATION": {
+    "type": "i32",
+    "optional": true
+  },
+  "CREATE_FONT_C_WEIGHT": {
+    "type": "i32",
+    "optional": true
+  },
+  "CREATE_FONT_B_ITALIC": {
+    "type": "u32",
+    "optional": true
+  },
+  "CREATE_FONT_B_UNDERLINE": {
+    "type": "u32",
+    "optional": true
+  },
+  "CREATE_FONT_B_STRIKE_OUT": {
+    "type": "u32",
+    "optional": true
+  },
+  "CREATE_FONT_I_OUT_PRECISION": {
+    "type": "u32",
+    "optional": true
+  },
+  "CREATE_FONT_I_CLIP_PRECISION": {
+    "type": "u32",
+    "optional": true
+  },
+  "CREATE_FONT_I_QUALITY": {
+    "type": "u32",
+    "optional": true
+  },
+  "CREATE_FONT_I_PITCH_AND_FAMILY": {
+    "type": "u32",
+    "optional": true
+  },
   "OVERLAY_TARGET_WINDOW_TEXT": {
     "type": "&[u16]",
     "optional": true,

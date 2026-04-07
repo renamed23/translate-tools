@@ -11,7 +11,13 @@ use windows_sys::Win32::{
 };
 
 use crate::{
-    constant::{CHAR_SET, FONT_FACE, FONT_FILTER},
+    constant::{
+        CHAR_SET, FONT_FACE, FONT_FILTER, CREATE_FONT_C_HEIGHT, CREATE_FONT_C_WIDTH,
+        CREATE_FONT_C_ESCAPEMENT, CREATE_FONT_C_ORIENTATION, CREATE_FONT_C_WEIGHT,
+        CREATE_FONT_B_ITALIC, CREATE_FONT_B_UNDERLINE, CREATE_FONT_B_STRIKE_OUT,
+        CREATE_FONT_I_OUT_PRECISION, CREATE_FONT_I_CLIP_PRECISION, CREATE_FONT_I_QUALITY,
+        CREATE_FONT_I_PITCH_AND_FAMILY,
+    },
     debug,
     hook::api_hooks::gdi_text::{
         CreateFont, CreateFontIndirect, HOOK_CREATE_FONT_INDIRECT_A, HOOK_CREATE_FONT_INDIRECT_W,
@@ -121,6 +127,20 @@ impl CreateFont for FontManagerSlot {
             u16_slice = buf.as_ref().unwrap().as_slice();
         }
 
+        // 使用配置的参数覆盖传入的参数
+        let c_height = CREATE_FONT_C_HEIGHT.unwrap_or(c_height);
+        let c_width = CREATE_FONT_C_WIDTH.unwrap_or(c_width);
+        let c_escapement = CREATE_FONT_C_ESCAPEMENT.unwrap_or(c_escapement);
+        let c_orientation = CREATE_FONT_C_ORIENTATION.unwrap_or(c_orientation);
+        let c_weight = CREATE_FONT_C_WEIGHT.unwrap_or(c_weight);
+        let b_italic = CREATE_FONT_B_ITALIC.unwrap_or(b_italic);
+        let b_underline = CREATE_FONT_B_UNDERLINE.unwrap_or(b_underline);
+        let b_strike_out = CREATE_FONT_B_STRIKE_OUT.unwrap_or(b_strike_out);
+        let i_out_precision = CREATE_FONT_I_OUT_PRECISION.unwrap_or(i_out_precision);
+        let i_clip_precision = CREATE_FONT_I_CLIP_PRECISION.unwrap_or(i_clip_precision);
+        let i_quality = CREATE_FONT_I_QUALITY.unwrap_or(i_quality);
+        let i_pitch_and_family = CREATE_FONT_I_PITCH_AND_FAMILY.unwrap_or(i_pitch_and_family);
+
         unsafe {
             crate::call!(
                 HOOK_CREATE_FONT_W,
@@ -211,6 +231,44 @@ impl CreateFontIndirect for FontManagerSlot {
         if FONT_FILTER.contains(&u16_slice) {
             let face_u16 = FONT_FACE.with_null();
             logfontw.lfFaceName[..face_u16.len()].copy_from_slice(face_u16.as_slice());
+        }
+
+        // 使用配置的参数覆盖 LOGFONTW 结构体的字段
+        if let Some(height) = CREATE_FONT_C_HEIGHT {
+            logfontw.lfHeight = height;
+        }
+        if let Some(width) = CREATE_FONT_C_WIDTH {
+            logfontw.lfWidth = width;
+        }
+        if let Some(escapement) = CREATE_FONT_C_ESCAPEMENT {
+            logfontw.lfEscapement = escapement;
+        }
+        if let Some(orientation) = CREATE_FONT_C_ORIENTATION {
+            logfontw.lfOrientation = orientation;
+        }
+        if let Some(weight) = CREATE_FONT_C_WEIGHT {
+            logfontw.lfWeight = weight;
+        }
+        if let Some(italic) = CREATE_FONT_B_ITALIC {
+            logfontw.lfItalic = italic as u8;
+        }
+        if let Some(underline) = CREATE_FONT_B_UNDERLINE {
+            logfontw.lfUnderline = underline as u8;
+        }
+        if let Some(strike_out) = CREATE_FONT_B_STRIKE_OUT {
+            logfontw.lfStrikeOut = strike_out as u8;
+        }
+        if let Some(out_precision) = CREATE_FONT_I_OUT_PRECISION {
+            logfontw.lfOutPrecision = out_precision as u8;
+        }
+        if let Some(clip_precision) = CREATE_FONT_I_CLIP_PRECISION {
+            logfontw.lfClipPrecision = clip_precision as u8;
+        }
+        if let Some(quality) = CREATE_FONT_I_QUALITY {
+            logfontw.lfQuality = quality as u8;
+        }
+        if let Some(pitch_and_family) = CREATE_FONT_I_PITCH_AND_FAMILY {
+            logfontw.lfPitchAndFamily = pitch_and_family as u8;
         }
 
         let ptr = &logfontw as *const LOGFONTW;
