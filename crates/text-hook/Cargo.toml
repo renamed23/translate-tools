@@ -110,8 +110,10 @@ enable_patch = []
 # 提取补丁而不是替换补丁
 extract_patch = ["enable_patch"]
 
-# 嵌入`assets/font`的自定义字体，会使用`AddFontMemResourceEx`让GDI识别
+# 允许使用自定义字体进行GDI的文本渲染，而不是宿主程序的字体
 enable_custom_font = []
+# 嵌入`assets/font`的自定义字体，会使用`AddFontMemResourceEx`让GDI识别
+enable_embedded_font = []
 # 导出默认的DllMain，内部使用`default_dll_main`，
 # 使用`HookImplType::default()`作为钩子实例
 export_default_dll_main = []

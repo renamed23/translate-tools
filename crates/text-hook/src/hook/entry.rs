@@ -53,8 +53,8 @@ pub fn default_dll_main(
                 crate::debug!("Relaunch with Locale Emulator failed with {e:?}");
             }
 
-            #[cfg(feature = "enable_custom_font")]
-            if let Err(e) = unsafe { crate::custom_font::add_font() } {
+            #[cfg(feature = "enable_embedded_font")]
+            if let Err(e) = unsafe { crate::embedded_font::add_font() } {
                 crate::debug!("add_font failed with {e:?}");
             }
 
@@ -144,8 +144,8 @@ pub fn attach_cleanup() {
         crate::debug!("Uninstall VEH handler failed with {e:?}");
     }
 
-    #[cfg(feature = "enable_custom_font")]
-    if let Err(e) = unsafe { crate::custom_font::remove_font() } {
+    #[cfg(feature = "enable_embedded_font")]
+    if let Err(e) = unsafe { crate::embedded_font::remove_font() } {
         crate::debug!("remove_font failed with {e:?}");
     }
 

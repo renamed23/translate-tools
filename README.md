@@ -135,7 +135,7 @@ cargo build-text-hook --features default_impl
 
 ### font
 
-`font`目录应该只存放一个字体文件，该字体文件会被内嵌到DLL，需要开启`enable_custom_font`特性
+`font`目录应该只存放一个字体文件，该字体文件会被内嵌到DLL，需要开启`enable_embedded_font`特性
 
 ### mapping.json
 

@@ -26,6 +26,9 @@ pub(crate) mod win_event_hook;
 #[cfg(feature = "enable_patch")]
 pub(crate) mod patch;
 
+#[cfg(feature = "enable_embedded_font")]
+pub(crate) mod embedded_font;
+
 #[cfg(feature = "enable_custom_font")]
 pub(crate) mod custom_font;
 

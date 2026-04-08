@@ -533,6 +533,7 @@ fn build_scenarios() -> Vec<Scenario> {
         "seraph",
         "g0win",
         "hitocos2",
+        "hitocos",
     ];
 
     for imp in game_impls {
@@ -591,6 +592,7 @@ fn all_functional_impl_base<'a>() -> &'a [&'a str] {
         "enable_x64dbg_1337_patch",
         "enable_text_patch",
         "enable_patch",
+        "enable_embedded_font",
         "enable_custom_font",
         "export_default_dll_main",
         "enable_locale_emulator",

@@ -246,10 +246,6 @@ pub fn detour_fn(attr: TokenStream, item: TokenStream) -> TokenStream {
 ///     // 原始函数体保持不变；若内部 panic 则返回 FALSE
 ///     const PROCESS_ATTACH: DWORD = 1;
 ///     if fdw_reason == PROCESS_ATTACH {
-///
-///         #[cfg(feature = "custom_font")]
-///         crate::custom_font::add_font();
-///
 ///         crate::hook::enable_text_hooks();
 ///     }
 ///
