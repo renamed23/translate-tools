@@ -166,6 +166,7 @@ hitocos = ["export_default_dll_main", "enable_text_patch"]
 translate-macros.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+tap.workspace = true
 
 windows-sys = { version = "0.61", features = [
     "Win32_Foundation",
