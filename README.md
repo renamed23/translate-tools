@@ -19,6 +19,14 @@ cargo build-text-hook --features default_impl
 
 注意，`text-hook`重度依赖于编译期代码生成和运算，所以不太可能对不同游戏复用DLL二进制。
 
+## egui叠加层
+
+![overlay_egui_example](media/overlay_egui_example.jpg)
+
+如上图是使用egui作为UI，在运行期修改自定义字体并在游戏中动态显示的示例。
+
+> 目前egui相关代码还不够完善（写的很糙），不过作为轻量级的debug工具还是可以
+
 ## crates/text-hook/assets
 
 下面介绍assets每个文件的作用和用法（具体可以参考一下`xtask/test_assets`）

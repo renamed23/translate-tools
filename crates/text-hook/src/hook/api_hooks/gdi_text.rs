@@ -235,3 +235,26 @@ pub trait EnumFonts {
         l_param: LPARAM,
     ) -> i32;
 }
+
+#[detour_trait]
+pub trait GetTextMetrics {
+    #[detour(
+        dll = "gdi32.dll",
+        symbol = "GetTextMetricsA",
+        fallback = "windows_sys::Win32::Foundation::FALSE"
+    )]
+    unsafe fn get_text_metrics_a(
+        hdc: HDC,
+        lptm: *mut windows_sys::Win32::Graphics::Gdi::TEXTMETRICA,
+    ) -> BOOL;
+
+    #[detour(
+        dll = "gdi32.dll",
+        symbol = "GetTextMetricsW",
+        fallback = "windows_sys::Win32::Foundation::FALSE"
+    )]
+    unsafe fn get_text_metrics_w(
+        hdc: HDC,
+        lptm: *mut windows_sys::Win32::Graphics::Gdi::TEXTMETRICW,
+    ) -> BOOL;
+}

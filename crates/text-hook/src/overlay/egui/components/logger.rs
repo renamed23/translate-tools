@@ -1,12 +1,13 @@
 use std::{
     collections::VecDeque,
-    sync::{Mutex, OnceLock},
+    sync::{LazyLock, Mutex},
 };
 
 use std::sync::atomic::{AtomicBool, Ordering};
 
 static IS_VISIBLE: AtomicBool = AtomicBool::new(true);
-static LOGGER_STATE: OnceLock<Mutex<LoggerState>> = OnceLock::new();
+static LOGGER_STATE: LazyLock<Mutex<LoggerState>> =
+    LazyLock::new(|| Mutex::new(LoggerState::default()));
 
 const DEFAULT_MAX_LINES: usize = 500;
 
@@ -43,39 +44,35 @@ impl LoggerState {
     }
 }
 
-fn logger_state() -> &'static Mutex<LoggerState> {
-    LOGGER_STATE.get_or_init(|| Mutex::new(LoggerState::default()))
-}
-
 pub fn render(egui_ctx: &egui::Context) {
     if !is_visible() {
         return;
     }
 
-    egui::Window::new("text-hook logger")
+    egui::Window::new("text-hook 日志器")
         .default_pos([24.0, 220.0])
         .default_size([620.0, 320.0])
         .resizable(true)
         .vscroll(false)
         .show(egui_ctx, |ui| {
-            let Ok(mut state) = logger_state().lock() else {
-                ui.label("logger state lock failed");
+            let Ok(mut state) = LOGGER_STATE.lock() else {
+                ui.label("日志状态锁定失败");
                 return;
             };
 
             ui.horizontal(|ui| {
-                if ui.button("Clear").clicked() {
+                if ui.button("清空").clicked() {
                     state.lines.clear();
                 }
 
-                ui.checkbox(&mut state.auto_scroll, "Auto Scroll");
+                ui.checkbox(&mut state.auto_scroll, "自动滚动");
 
                 let mut max_lines = state.max_lines as u32;
                 if ui
                     .add(
                         egui::DragValue::new(&mut max_lines)
                             .range(50..=10_000)
-                            .prefix("Max: "),
+                            .prefix("最大行数: "),
                     )
                     .changed()
                 {
@@ -84,7 +81,7 @@ pub fn render(egui_ctx: &egui::Context) {
                 }
 
                 ui.separator();
-                ui.label(format!("Lines: {}", state.lines.len()));
+                ui.label(format!("行数: {}", state.lines.len()));
             });
 
             ui.separator();
@@ -104,7 +101,7 @@ pub fn render(egui_ctx: &egui::Context) {
 pub fn push_log_line(line: impl Into<String>) {
     let line: String = line.into();
 
-    let Ok(mut state) = logger_state().lock() else {
+    let Ok(mut state) = LOGGER_STATE.lock() else {
         return;
     };
 
@@ -114,12 +111,10 @@ pub fn push_log_line(line: impl Into<String>) {
 }
 
 pub fn init() -> crate::Result<()> {
-    let _ = logger_state();
     crate::debug!("logger component initialized");
     Ok(())
 }
 
-#[cfg(feature = "enable_attach_cleanup")]
 pub fn attach_cleanup() -> crate::Result<()> {
     crate::debug!("logger component cleanup");
     Ok(())

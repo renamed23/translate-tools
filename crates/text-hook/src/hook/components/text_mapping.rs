@@ -18,6 +18,11 @@ use crate::{
     },
 };
 
+#[cfg(feature = "enable_custom_font")]
+use crate::hook::api_hooks::gdi_text::{
+    GetTextMetrics, HOOK_GET_TEXT_METRICS_A, HOOK_GET_TEXT_METRICS_W,
+};
+
 #[allow(dead_code)]
 pub struct TextMapping;
 
@@ -43,7 +48,9 @@ impl TextOut for TextMappingSlot {
                 buf.to_string_lossy()
             );
 
-            crate::call!(HOOK_TEXT_OUT_W, hdc, x, y, buf.as_ptr(), buf.len() as i32)
+            with_font(hdc, || {
+                crate::call!(HOOK_TEXT_OUT_W, hdc, x, y, buf.as_ptr(), buf.len() as i32)
+            })
         }
     }
 
@@ -56,7 +63,9 @@ impl TextOut for TextMappingSlot {
             #[cfg(feature = "enable_text_mapping_debug")]
             crate::debug!("draw text '{}' at ({x}, {y})", buf.to_string_lossy());
 
-            crate::call!(HOOK_TEXT_OUT_W, hdc, x, y, buf.as_ptr(), buf.len() as i32)
+            with_font(hdc, || {
+                crate::call!(HOOK_TEXT_OUT_W, hdc, x, y, buf.as_ptr(), buf.len() as i32)
+            })
         }
     }
 }
@@ -84,17 +93,19 @@ impl ExtTextOut for TextMappingSlot {
                 buf.to_string_lossy()
             );
 
-            crate::call!(
-                HOOK_EXT_TEXT_OUT_W,
-                hdc,
-                x,
-                y,
-                options,
-                lprect,
-                buf.as_ptr(),
-                buf.len() as u32,
-                core::ptr::null()
-            )
+            with_font(hdc, || {
+                crate::call!(
+                    HOOK_EXT_TEXT_OUT_W,
+                    hdc,
+                    x,
+                    y,
+                    options,
+                    lprect,
+                    buf.as_ptr(),
+                    buf.len() as u32,
+                    core::ptr::null()
+                )
+            })
         }
     }
 
@@ -119,17 +130,19 @@ impl ExtTextOut for TextMappingSlot {
                 buf.to_string_lossy()
             );
 
-            crate::call!(
-                HOOK_EXT_TEXT_OUT_W,
-                hdc,
-                x,
-                y,
-                options,
-                lprect,
-                buf.as_ptr(),
-                buf.len() as u32,
-                core::ptr::null()
-            )
+            with_font(hdc, || {
+                crate::call!(
+                    HOOK_EXT_TEXT_OUT_W,
+                    hdc,
+                    x,
+                    y,
+                    options,
+                    lprect,
+                    buf.as_ptr(),
+                    buf.len() as u32,
+                    core::ptr::null()
+                )
+            })
         }
     }
 }
@@ -150,13 +163,15 @@ impl GetTextExtentPoint32 for TextMappingSlot {
             #[cfg(feature = "enable_text_mapping_debug")]
             crate::debug!("result: {}, input: {input_slice:?}", buf.to_string_lossy());
 
-            crate::call!(
-                HOOK_GET_TEXT_EXTENT_POINT_32_W,
-                hdc,
-                buf.as_ptr(),
-                buf.len() as i32,
-                lp_size
-            )
+            with_font(hdc, || {
+                crate::call!(
+                    HOOK_GET_TEXT_EXTENT_POINT_32_W,
+                    hdc,
+                    buf.as_ptr(),
+                    buf.len() as i32,
+                    lp_size
+                )
+            })
         }
     }
 
@@ -174,13 +189,15 @@ impl GetTextExtentPoint32 for TextMappingSlot {
             #[cfg(feature = "enable_text_mapping_debug")]
             crate::debug!("result: {}", buf.to_string_lossy());
 
-            crate::call!(
-                HOOK_GET_TEXT_EXTENT_POINT_32_W,
-                hdc,
-                buf.as_ptr(),
-                buf.len() as i32,
-                lp_size
-            )
+            with_font(hdc, || {
+                crate::call!(
+                    HOOK_GET_TEXT_EXTENT_POINT_32_W,
+                    hdc,
+                    buf.as_ptr(),
+                    buf.len() as i32,
+                    lp_size
+                )
+            })
         }
     }
 }
@@ -211,7 +228,7 @@ impl GetGlyphOutline for TextMappingSlot {
 
         // 直接使用第一个UTF-16字符（假设都在BMP内，不需要代理对）
         if let Some(&wchar) = buf.first() {
-            return unsafe {
+            return with_font(hdc, || unsafe {
                 crate::call!(
                     HOOK_GET_GLYPH_OUTLINE_W,
                     hdc,
@@ -222,7 +239,7 @@ impl GetGlyphOutline for TextMappingSlot {
                     lpv_buffer,
                     lpmat2
                 )
-            };
+            });
         }
 
         0
@@ -245,7 +262,7 @@ impl GetGlyphOutline for TextMappingSlot {
 
         // 直接使用第一个UTF-16字符（假设都在BMP内，不需要代理对）
         if let Some(&wchar) = buf.first() {
-            return unsafe {
+            return with_font(hdc, || unsafe {
                 crate::call!(
                     HOOK_GET_GLYPH_OUTLINE_W,
                     hdc,
@@ -256,11 +273,47 @@ impl GetGlyphOutline for TextMappingSlot {
                     lpv_buffer,
                     lpmat2
                 )
-            };
+            });
         }
 
         0
     }
+}
+
+#[cfg(feature = "enable_custom_font")]
+impl GetTextMetrics for TextMappingSlot {
+    unsafe fn get_text_metrics_a(
+        hdc: HDC,
+        lptm: *mut windows_sys::Win32::Graphics::Gdi::TEXTMETRICA,
+    ) -> BOOL {
+        with_font(hdc, || unsafe {
+            crate::call!(HOOK_GET_TEXT_METRICS_A, hdc, lptm)
+        })
+    }
+
+    unsafe fn get_text_metrics_w(
+        hdc: HDC,
+        lptm: *mut windows_sys::Win32::Graphics::Gdi::TEXTMETRICW,
+    ) -> BOOL {
+        with_font(hdc, || unsafe {
+            crate::call!(HOOK_GET_TEXT_METRICS_W, hdc, lptm)
+        })
+    }
+}
+
+/// 如果开启了自定义字体，则自动select该字体然后调用闭包，否则直接调用闭包
+#[allow(clippy::needless_return)]
+fn with_font<F, R>(_hdc: HDC, f: F) -> R
+where
+    F: FnOnce() -> R,
+{
+    cfg_if!(
+        if #[cfg(feature = "enable_custom_font")] {
+            return crate::custom_font::with_font(_hdc, f);
+        } else {
+            return f();
+        }
+    );
 }
 
 /// 根据字符数计算传入ANSI字符串的字节长度

@@ -46,6 +46,15 @@
       "GetTextExtentPoint32W"
     ]
   },
+  "all(feature = \"bind_text_mapping\", feature = \"enable_custom_font\")": {
+    "trait": [
+      "GetTextMetrics"
+    ],
+    "fn": [
+      "GetTextMetricsA",
+      "GetTextMetricsW"
+    ]
+  },
   "all(feature = \"bind_font_manager\", feature = \"disable_forced_font\")": {
     "trait": [
       "EnumFontFamiliesEx",

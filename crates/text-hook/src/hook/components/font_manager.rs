@@ -1,3 +1,9 @@
+#[cfg(feature = "enable_collect_host_font_config")]
+use std::{
+    collections::HashSet,
+    sync::{LazyLock, RwLock},
+};
+
 use cfg_if::cfg_if;
 use windows_sys::{
     Win32::Graphics::Gdi::{HFONT, LF_FACESIZE, LOGFONTA, LOGFONTW},
@@ -12,11 +18,11 @@ use windows_sys::Win32::{
 
 use crate::{
     constant::{
-        CHAR_SET, FONT_FACE, FONT_FILTER, CREATE_FONT_C_HEIGHT, CREATE_FONT_C_WIDTH,
-        CREATE_FONT_C_ESCAPEMENT, CREATE_FONT_C_ORIENTATION, CREATE_FONT_C_WEIGHT,
-        CREATE_FONT_B_ITALIC, CREATE_FONT_B_UNDERLINE, CREATE_FONT_B_STRIKE_OUT,
-        CREATE_FONT_I_OUT_PRECISION, CREATE_FONT_I_CLIP_PRECISION, CREATE_FONT_I_QUALITY,
-        CREATE_FONT_I_PITCH_AND_FAMILY,
+        CHAR_SET, CREATE_FONT_B_ITALIC, CREATE_FONT_B_STRIKE_OUT, CREATE_FONT_B_UNDERLINE,
+        CREATE_FONT_C_ESCAPEMENT, CREATE_FONT_C_HEIGHT, CREATE_FONT_C_ORIENTATION,
+        CREATE_FONT_C_WEIGHT, CREATE_FONT_C_WIDTH, CREATE_FONT_I_CLIP_PRECISION,
+        CREATE_FONT_I_OUT_PRECISION, CREATE_FONT_I_PITCH_AND_FAMILY, CREATE_FONT_I_QUALITY,
+        FONT_FACE, FONT_FILTER,
     },
     debug,
     hook::api_hooks::gdi_text::{
@@ -110,6 +116,34 @@ impl CreateFont for FontManagerSlot {
     ) -> HFONT {
         let mut u16_slice: &[u16] =
             unsafe { psz_face_name.to_slice_until_null((LF_FACESIZE - 1) as usize) };
+
+        #[cfg(feature = "enable_collect_host_font_config")]
+        {
+            let mut face_name = [0u16; 32];
+            let len = u16_slice.len();
+            face_name[..len].copy_from_slice(&u16_slice[..len]);
+
+            let log_font = crate::utils::log_font::LogFont {
+                height: c_height,
+                width: c_width,
+                escapement: c_escapement,
+                orientation: c_orientation,
+                weight: c_weight,
+                italic: b_italic as u8,
+                underline: b_underline as u8,
+                strike_out: b_strike_out as u8,
+                char_set: CHAR_SET,
+                out_precision: i_out_precision as u8,
+                clip_precision: i_clip_precision as u8,
+                quality: i_quality as u8,
+                pitch_and_family: i_pitch_and_family as u8,
+                face_name,
+            };
+            COLLECTED_FONTS
+                .write()
+                .expect("RwLock poisoned")
+                .insert(log_font);
+        }
 
         debug!("Requested font name: {}", u16_slice.to_string_lossy());
 
@@ -210,6 +244,15 @@ impl CreateFontIndirect for FontManagerSlot {
 
         let mut logfontw = unsafe { *lplf };
         logfontw.lfCharSet = CHAR_SET;
+
+        #[cfg(feature = "enable_collect_host_font_config")]
+        {
+            let log_font = crate::utils::log_font::LogFont::from_sys_w(&logfontw);
+            COLLECTED_FONTS
+                .write()
+                .expect("RwLock poisoned")
+                .insert(log_font);
+        }
 
         let u16_slice = unsafe {
             logfontw
@@ -536,3 +579,7 @@ pub unsafe extern "system" fn enum_fonts_proc_w(
         original_proc(&modified_lf, lptm, font_type, info.original_lparam)
     }
 }
+
+#[cfg(feature = "enable_collect_host_font_config")]
+pub static COLLECTED_FONTS: LazyLock<RwLock<HashSet<crate::utils::log_font::LogFont>>> =
+    LazyLock::new(|| RwLock::new(HashSet::new()));

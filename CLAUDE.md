@@ -11,6 +11,4 @@
   - 如果是pub unsafe函数，那么还需要`# Safety`
 
 ## 2. 测试与脚本调用
-- 如果需要运行py脚本，请使用`uv run python`，而不是`python`
-- 如果临时脚本超过一行，请创建临时脚本然后运行，不要使用`uv run python -c`
 - 如果需要测试代码，请使用`cargo check --features default_impl`，或者其他`impl`

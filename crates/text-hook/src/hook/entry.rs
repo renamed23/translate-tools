@@ -3,11 +3,9 @@ use windows_sys::{
     core::BOOL,
 };
 
-#[cfg(feature = "enable_attach_cleanup")]
-use crate::hook::internal_hooks::ProcessAttachCleanup;
 use crate::hook::{
     impls::HookImplType,
-    internal_hooks::{ProcessAttach, ProcessDetach},
+    internal_hooks::{ProcessAttach, ProcessAttachCleanup, ProcessDetach},
 };
 
 #[cfg(feature = "export_default_dll_main")]
@@ -104,7 +102,6 @@ pub fn default_dll_main(
 ///
 /// 进程退出时，进程内资源是可以被系统正确处理回收。
 /// 如果一定需要进行处理，那么应该HOOK ExitProcess，FreeLibrary相关函数，再调用该函数。
-#[cfg(feature = "enable_attach_cleanup")]
 pub fn attach_cleanup() {
     use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -157,4 +154,14 @@ pub fn attach_cleanup() {
 
     #[cfg(feature = "enable_delayed_attach")]
     crate::delayed_attach::disable_entry_point_hook();
+
+    #[cfg(feature = "enable_custom_font")]
+    if let Err(e) = crate::custom_font::save_and_cleanup() {
+        crate::debug!("save_and_cleanup failed with {e:?}");
+    }
+
+    #[cfg(feature = "enable_storage")]
+    if let Err(e) = crate::storage::flush() {
+        crate::debug!("flush failed with {e:?}");
+    }
 }

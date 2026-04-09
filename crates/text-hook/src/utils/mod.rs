@@ -2,6 +2,7 @@ pub(crate) mod error_handling;
 pub(crate) mod exts;
 pub(crate) mod hwbp;
 pub(crate) mod interner;
+pub(crate) mod log_font;
 pub(crate) mod mem;
 pub(crate) mod nt;
 pub(crate) mod panic;

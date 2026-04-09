@@ -21,7 +21,7 @@ bind_font_manager = []
 # 通过 HOOK ExitProcess 以及相关函数
 # 实现对应于 PROCESS_ATTACH 阶段的清理工作
 # 默认不会执行清理，因为进程内资源系统可以正确进行清理回收
-bind_lifecycle_guard = ["enable_attach_cleanup"]
+bind_lifecycle_guard = []
 # Hook `CreateFileA`，将匹配 `REDIRECTION_SRC_PATH` 的文件重定向到 `REDIRECTION_TARGET_PATH`
 # 目前的实现十分简陋，需要确保 `REDIRECTION_SRC_PATH`，`REDIRECTION_TARGET_PATH`均为ascii
 bind_path_redirector = []
@@ -39,11 +39,15 @@ bind_egui_default_ui = ["enable_overlay_egui"]
 # 否则将其根据 ANSI_CODE 转码为u16并进行映射处理，然后传递给 W 版本的 DefWindowProc
 bind_window_title_overrider = []
 
+# 开启 egui 自定义字体属性编译器的支持
+enable_egui_font_property_editor = ["enable_overlay_egui", "enable_custom_font"]
 # 开启 egui 日志组件的支持
 enable_egui_logger = ["enable_overlay_egui", "enable_debug_output"]
 # 开启 egui demo 组件的支持
 enable_egui_demo = ["enable_overlay_egui"]
 
+# 启用收集宿主游戏的 GDI 字体的配置，可用于作为自定义字体配置的基础
+enable_collect_host_font_config = []
 # 开启后，仅对命中过滤器的字体执行替换；未命中过滤器的字体保持原样。
 # 此时 `FONT_FILTER` 的语义等价于黑名单，而不是白名单。
 disable_forced_font = []
@@ -68,9 +72,8 @@ auto_apply_1337_patch_on_hwbp_hit = [
     "enable_x64dbg_1337_patch",
 ]
 
-# 对应于 PROCESS_ATTACH 阶段的清理工作
-# 默认不会执行清理，因为进程内资源系统可以正确进行清理回收
-enable_attach_cleanup = []
+# 启用运行期数据读取和存储，需要开启 bind_lifecycle_guard 或者显式调用 cleanup 才能正确保存数据
+enable_storage = ["dep:ron"]
 # 启用 overlay 的 egui 集成，依赖 OpenGL overlay
 enable_overlay_egui = ["enable_overlay_gl", "dep:egui", "dep:egui_glow"]
 # 启用 overlay 的 轻量级 OpenGL 绘制器集成，依赖 OpenGL overlay
@@ -104,14 +107,14 @@ enable_iat_hook = []
 # 截获并替换文本数据
 enable_text_patch = []
 # 提取文本而不是替换文本，需要开启 bind_lifecycle_guard 或者显式调用 cleanup 才能将原文输出
-extract_text = ["enable_text_patch", "enable_attach_cleanup"]
+extract_text = ["enable_text_patch"]
 # 截获并替换patch数据
 enable_patch = []
 # 提取补丁而不是替换补丁
 extract_patch = ["enable_patch"]
 
 # 允许使用自定义字体进行GDI的文本渲染，而不是宿主程序的字体
-enable_custom_font = []
+enable_custom_font = ["enable_storage"]
 # 嵌入`assets/font`的自定义字体，会使用`AddFontMemResourceEx`让GDI识别
 enable_embedded_font = []
 # 导出默认的DllMain，内部使用`default_dll_main`，
@@ -211,6 +214,7 @@ bytemuck = { version = "1.25", features = ["derive"] }
 cfg-if = "1.0"
 egui = { version = "0.33.3", optional = true, default-features = false }
 egui_glow = { version = "0.33.3", optional = true }
+ron = { version = "0.12", optional = true }
 
 [build-dependencies]
 anyhow.workspace = true

@@ -155,7 +155,7 @@ fn build_scenarios() -> Vec<Scenario> {
             features: feature_set(
                 all_functional_impl_base(),
                 &["default_impl", "bind_font_manager"],
-                &["disable_forced_font"],
+                &["disable_forced_font", "enable_collect_host_font_config"],
             ),
             run_x64: true,
         },
@@ -163,7 +163,12 @@ fn build_scenarios() -> Vec<Scenario> {
             name: "default_impl/bind_font_manager/on_with_arg".to_string(),
             features: feature_set(
                 all_functional_impl_base(),
-                &["default_impl", "bind_font_manager", "disable_forced_font"],
+                &[
+                    "default_impl",
+                    "bind_font_manager",
+                    "disable_forced_font",
+                    "enable_collect_host_font_config",
+                ],
                 &[],
             ),
             run_x64: true,
@@ -518,6 +523,8 @@ fn build_scenarios() -> Vec<Scenario> {
                     "bind_egui_default_ui",
                     "enable_egui_logger",
                     "enable_egui_demo",
+                    "enable_egui_font_property_editor",
+                    "enable_collect_host_font_config",
                 ],
                 &[],
             ),

@@ -133,12 +133,12 @@ pub fn setup_ui_style(egui_ctx: &egui::Context) {
 
 /// 渲染组件可见性控制面板。
 pub fn render_visibility_panel(egui_ctx: &egui::Context) {
-    egui::Window::new("text-hook components panel")
+    egui::Window::new("text-hook 组件面板")
         .default_pos([24.0, 24.0])
         .default_size([260.0, 220.0])
         .resizable(true)
         .show(egui_ctx, |ui| {
-            ui.label("Toggle components");
+            ui.label("切换组件");
             ui.separator();
 
             expand_by_files!("src/overlay/egui/components" => {
@@ -153,11 +153,11 @@ pub fn render_visibility_panel(egui_ctx: &egui::Context) {
 
             ui.separator();
             ui.horizontal(|ui| {
-                if ui.button("Show all").clicked() {
+                if ui.button("全部显示").clicked() {
                     request_show_all();
                 }
 
-                if ui.button("Hide all").clicked() {
+                if ui.button("全部隐藏").clicked() {
                     request_hide_all();
                 }
             });
@@ -165,7 +165,6 @@ pub fn render_visibility_panel(egui_ctx: &egui::Context) {
 }
 
 /// 在 attach cleanup 阶段通知所有已启用的 egui 组件执行清理。
-#[cfg(feature = "enable_attach_cleanup")]
 pub fn attach_cleanup_all() {
     expand_by_files!("src/overlay/egui/components" => {
         #[cfg(feature = __concat__("enable_egui_", __file_str__))]

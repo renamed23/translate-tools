@@ -160,5 +160,9 @@
   "SCAN_MAX_LEN": {
     "type": "usize",
     "value": 65536
+  },
+  "STORAGE_PATH": {
+    "type": "&str",
+    "value": "storage.ron"
   }
 }
