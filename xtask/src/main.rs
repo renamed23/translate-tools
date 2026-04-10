@@ -541,6 +541,7 @@ fn build_scenarios() -> Vec<Scenario> {
         "g0win",
         "hitocos2",
         "hitocos",
+        "old_minori",
     ];
 
     for imp in game_impls {
@@ -553,7 +554,7 @@ fn build_scenarios() -> Vec<Scenario> {
 
     // 非 default_impl 的特例补测
     #[allow(clippy::single_element_loop)]
-    for imp in ["c4"] {
+    for imp in ["c4", "old_minori"] {
         scenarios.push(Scenario {
             name: format!("{imp}/patch_extracting"),
             features: feature_set(all_functional_impl_base(), &[imp, "extract_patch"], &[]),
