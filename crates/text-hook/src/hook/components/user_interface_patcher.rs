@@ -10,9 +10,10 @@ use windows_sys::{
 
 use crate::{
     hook::api_hooks::windowing::{
-        HOOK_MESSAGE_BOX_A, HOOK_MODIFY_MENU_A, HOOK_PROPERTY_SHEET_A, HOOK_SEND_MESSAGE_A,
-        HOOK_SET_DLG_ITEM_TEXT_A, HOOK_SET_WINDOW_TEXT_A, MessageBox, ModifyMenu, PropertySheet,
-        SendMessage, SetDlgItemText, SetWindowText,
+        AppendMenu, HOOK_APPEND_MENU_A, HOOK_MESSAGE_BOX_A, HOOK_MODIFY_MENU_A,
+        HOOK_PROPERTY_SHEET_A, HOOK_SEND_MESSAGE_A, HOOK_SET_DLG_ITEM_TEXT_A,
+        HOOK_SET_WINDOW_TEXT_A, MessageBox, ModifyMenu, PropertySheet, SendMessage, SetDlgItemText,
+        SetWindowText,
     },
     utils::exts::{
         ptr_ext::PtrExt,
@@ -70,6 +71,45 @@ impl ModifyMenu for UserInterfacePatcherSlot {
                 HOOK_MODIFY_MENU_A,
                 h_menu,
                 u_position,
+                u_flags,
+                u_id_new_item,
+                lp_new_item
+            )
+        }
+    }
+}
+
+impl AppendMenu for UserInterfacePatcherSlot {
+    unsafe fn append_menu_a(
+        h_menu: HMENU,
+        u_flags: u32,
+        u_id_new_item: usize,
+        lp_new_item: *const u8,
+    ) -> BOOL {
+        unsafe {
+            use windows_sys::Win32::UI::WindowsAndMessaging::{MF_BITMAP, MF_OWNERDRAW};
+
+            if (u_flags & (MF_BITMAP | MF_OWNERDRAW)) == 0 && !lp_new_item.is_null() {
+                let text_slice = lp_new_item.to_slice_until_null_scan();
+
+                #[cfg(feature = "enable_debug_output")]
+                {
+                    let raw_text = text_slice.to_wide_ansi().to_string_lossy();
+                    crate::debug!("Get AppendMenuA text: {raw_text}");
+                }
+
+                let _opt_trans_msg = text_slice.to_wide_ansi().lookup_or_store_null();
+
+                #[cfg(not(feature = "extract_text"))]
+                if let Ok(Some(trans_msg)) = _opt_trans_msg {
+                    use windows_sys::Win32::UI::WindowsAndMessaging::AppendMenuW;
+                    return AppendMenuW(h_menu, u_flags, u_id_new_item, trans_msg.as_ptr());
+                }
+            }
+
+            crate::call!(
+                HOOK_APPEND_MENU_A,
+                h_menu,
                 u_flags,
                 u_id_new_item,
                 lp_new_item

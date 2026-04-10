@@ -39,6 +39,17 @@ pub trait ModifyMenu {
 }
 
 #[detour_trait]
+pub trait AppendMenu {
+    #[detour(dll = "user32.dll", symbol = "AppendMenuA", fallback = "0")]
+    unsafe fn append_menu_a(
+        h_menu: HMENU,
+        u_flags: u32,
+        u_id_new_item: usize,
+        lp_new_item: *const u8,
+    ) -> BOOL;
+}
+
+#[detour_trait]
 pub trait MessageBox {
     #[detour(dll = "user32.dll", symbol = "MessageBoxA", fallback = "0")]
     unsafe fn message_box_a(

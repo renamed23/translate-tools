@@ -83,6 +83,7 @@
     "trait": [
       "PropertySheet",
       "ModifyMenu",
+      "AppendMenu",
       "MessageBox",
       "SetDlgItemText",
       "SetWindowText",
@@ -91,6 +92,7 @@
     "fn": [
       "PropertySheetA",
       "ModifyMenuA",
+      "AppendMenuA",
       "MessageBoxA",
       "SetDlgItemTextA",
       "SetWindowTextA",
