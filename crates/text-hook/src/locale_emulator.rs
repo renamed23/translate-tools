@@ -37,7 +37,7 @@ struct TimeFields {
 
 impl TimeFields {
     #[inline]
-    fn from_system_time(st: SYSTEMTIME) -> Self {
+    const fn from_system_time(st: SYSTEMTIME) -> Self {
         Self {
             year: st.wYear as i16,
             month: st.wMonth as i16,

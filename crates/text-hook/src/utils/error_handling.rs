@@ -69,6 +69,6 @@ macro_rules! anyhow {
 impl<E: std::error::Error> From<E> for Error {
     fn from(e: E) -> Self {
         crate::debug!(raw "error: {e}");
-        Error
+        Self
     }
 }

@@ -101,12 +101,12 @@ impl ProtectGuard {
     }
 
     /// 获取原始地址
-    pub fn address(&self) -> *mut u8 {
+    pub const fn address(&self) -> *mut u8 {
         self.address
     }
 
     /// 获取内存区域大小
-    pub fn size(&self) -> usize {
+    pub const fn size(&self) -> usize {
         self.size
     }
 

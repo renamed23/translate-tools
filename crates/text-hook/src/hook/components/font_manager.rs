@@ -152,13 +152,13 @@ impl CreateFont for FontManagerSlot {
         #[cfg(not(feature = "disable_forced_font"))]
         if !FONT_FILTER.contains(&u16_slice) {
             buf = Some(FONT_FACE.with_null());
-            u16_slice = buf.as_ref().unwrap().as_slice();
+            u16_slice = buf.as_ref().expect("buf is Some").as_slice();
         }
 
         #[cfg(feature = "disable_forced_font")]
         if FONT_FILTER.contains(&u16_slice) {
             buf = Some(FONT_FACE.with_null());
-            u16_slice = buf.as_ref().unwrap().as_slice();
+            u16_slice = buf.as_ref().expect("buf is Some").as_slice();
         }
 
         // 使用配置的参数覆盖传入的参数

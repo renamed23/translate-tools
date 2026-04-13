@@ -14,7 +14,7 @@ struct CustomFontManager {
 }
 
 impl CustomFontManager {
-    fn load_from_storage() -> CustomFontManager {
+    fn load_from_storage() -> Self {
         let mut this = Self {
             current_font: crate::storage::get_value(CURRENT_FONT_KEY).unwrap_or_default(),
             current_handle: 0,
@@ -106,8 +106,7 @@ pub fn with_font<F, R>(hdc: HDC, f: F) -> R
 where
     F: FnOnce() -> R,
 {
-    let manager = FONT_MANAGER.read().expect("RwLock poisoned");
-    let handle = manager.current_handle as HFONT;
+    let handle = FONT_MANAGER.read().expect("RwLock poisoned").current_handle as HFONT;
 
     if handle.is_null() {
         crate::debug!("Try to use current font, but which is null");

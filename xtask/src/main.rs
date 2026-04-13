@@ -4,24 +4,37 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use anyhow::{Context, anyhow, bail};
+use anyhow::{Context, bail};
 use fs_extra::dir::{CopyOptions, copy as copy_dir, remove as remove_dir};
 use xshell::{Shell, cmd};
 
 const TEST_ASSETS_DIR: &str = "xtask/test_assets";
 const TARGET_ASSETS_DIR: &str = "crates/text-hook/assets";
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Action {
+    Check,
+    Fix,
+}
+
 fn main() -> anyhow::Result<()> {
     let mut args = std::env::args().skip(1);
+    let shell = Shell::new()?;
+
     match args.next().as_deref() {
-        Some("check") => run_check_command(),
+        Some("check") => run_xtask_action(&shell, Action::Check),
+        Some("fix") => {
+            ensure_git_clean(&shell)?;
+            run_xtask_action(&shell, Action::Fix)
+        }
         Some("use-test-assets") => run_use_test_assets_command(),
         Some(cmd_name) => bail!("未知的 xtask 命令: {cmd_name}"),
         None => {
             println!("用法: cargo xtask <命令>");
             println!("可用命令:");
-            println!("  check    执行 text-hook feature 组合检查");
-            println!("  use-test-assets    用 test_assets 覆盖 assets");
+            println!("  check           执行所有场景的 cargo check");
+            println!("  fix             执行所有场景的 clippy --fix (自动处理 dirty 状态)");
+            println!("  use-test-assets 用测试资产覆盖正式资产");
             Ok(())
         }
     }
@@ -46,52 +59,47 @@ fn run_use_test_assets_command() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn run_check_command() -> anyhow::Result<()> {
-    let shell = Shell::new()?;
-
-    let backup = backup_and_replace_assets()?;
-    let run_result = run_all_check_scenarios(&shell);
-    let restore_result = restore_assets(backup);
-
-    match (run_result, restore_result) {
-        (Ok(()), Ok(())) => Ok(()),
-        (Err(run_err), Ok(())) => Err(run_err),
-        (Ok(()), Err(restore_err)) => Err(restore_err),
-        (Err(run_err), Err(restore_err)) => Err(anyhow!(
-            "检查失败且资产恢复失败。\n检查错误: {run_err:#}\n恢复错误: {restore_err:#}"
-        )),
-    }
-}
-
-fn run_all_check_scenarios(shell: &Shell) -> anyhow::Result<()> {
+fn run_xtask_action(shell: &Shell, action: Action) -> anyhow::Result<()> {
+    let _backup_guard = backup_and_replace_assets()?;
     let scenarios = build_scenarios();
 
     for scenario in scenarios {
-        println!("\n=== 检查场景: {} ===", scenario.name);
-        println!("features = {}", scenario.features.join(","));
+        println!("\n>>> [{:?}] 正在处理场景: {}", action, scenario.name);
+        let features = scenario.features.join(",");
 
-        run_check_for_target(shell, "check-text-hook", &scenario.features)
-            .with_context(|| format!("x86 检查失败，场景: {}", scenario.name))?;
+        let targets = match action {
+            Action::Check => {
+                let mut targets = vec!["check-text-hook"];
+                if scenario.run_x64 {
+                    targets.push("check-text-hook64");
+                }
+                targets
+            }
+            Action::Fix => {
+                vec!["fix-text-hook"]
+            }
+        };
 
-        if scenario.run_x64 {
-            run_check_for_target(shell, "check-text-hook64", &scenario.features)
-                .with_context(|| format!("x64 检查失败，场景: {}", scenario.name))?;
+        for target in targets {
+            match action {
+                Action::Check => {
+                    println!("  执行 Check: {} --features {}", target, features);
+                    cmd!(shell, "cargo {target} --quiet --features {features}")
+                        .env("RUSTFLAGS", "-Awarnings")
+                        .run()
+                        .with_context(|| format!("场景 {} 检查失败", scenario.name))?;
+                }
+                Action::Fix => {
+                    println!("  执行 Fix: {} --features {}", target, features);
+                    cmd!(shell, "cargo {target} --allow-dirty --features {features}")
+                        .run()
+                        .with_context(|| format!("场景 {} 自动修复失败", scenario.name))?;
+                }
+            }
         }
     }
 
-    Ok(())
-}
-
-fn run_check_for_target(
-    shell: &Shell,
-    cargo_alias: &str,
-    features: &[String],
-) -> anyhow::Result<()> {
-    let joined = features.join(",");
-    // 仅关注是否有错误，抑制 warning 输出
-    cmd!(shell, "cargo {cargo_alias} --quiet --features {joined}")
-        .env("RUSTFLAGS", "-Awarnings")
-        .run()?;
+    println!("\n✅ 所有场景 {:?} 完成！", action);
     Ok(())
 }
 
@@ -589,7 +597,7 @@ fn dedup_scenarios(scenarios: Vec<Scenario>) -> Vec<Scenario> {
     out
 }
 
-fn all_functional_impl_base<'a>() -> &'a [&'a str] {
+fn all_functional_impl_base() -> &'static [&'static str] {
     &[
         // 功能类 feature
         "enable_text_mapping_debug",
@@ -624,12 +632,30 @@ fn feature_set(base: &[&str], add: &[&str], remove: &[&str]) -> Vec<String> {
     set.into_iter().collect()
 }
 
-#[derive(Debug)]
-struct AssetsBackup {
+struct AssetGuard {
     backup_dir: Option<PathBuf>,
 }
 
-fn backup_and_replace_assets() -> anyhow::Result<AssetsBackup> {
+impl Drop for AssetGuard {
+    fn drop(&mut self) {
+        if let Err(e) = restore_assets(self.backup_dir.take()) {
+            println!("恢复资产出现问题: {e}");
+        }
+    }
+}
+
+fn ensure_git_clean(shell: &Shell) -> anyhow::Result<()> {
+    let status = cmd!(shell, "git status --porcelain").read()?;
+    if !status.is_empty() {
+        bail!(
+            "Git 工作区有未提交的改动！为了防止 clippy --fix 覆盖你的代码，请先 Commit 或 \
+             Stash。\n{status}"
+        );
+    }
+    Ok(())
+}
+
+fn backup_and_replace_assets() -> anyhow::Result<AssetGuard> {
     let source = Path::new(TEST_ASSETS_DIR);
     let target = Path::new(TARGET_ASSETS_DIR);
 
@@ -670,13 +696,13 @@ fn backup_and_replace_assets() -> anyhow::Result<AssetsBackup> {
     remove_dir_if_exists(target)?;
     copy_dir_contents(source, target)?;
 
-    Ok(AssetsBackup { backup_dir })
+    Ok(AssetGuard { backup_dir })
 }
 
-fn restore_assets(backup: AssetsBackup) -> anyhow::Result<()> {
+fn restore_assets(backup_dir: Option<PathBuf>) -> anyhow::Result<()> {
     let target = Path::new(TARGET_ASSETS_DIR);
 
-    match backup.backup_dir {
+    match backup_dir {
         Some(backup_dir) => {
             println!(
                 "正在恢复 assets: {} -> {}",

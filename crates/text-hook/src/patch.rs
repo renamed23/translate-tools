@@ -21,7 +21,7 @@ pub fn get_patch(src: &[u8]) -> Option<&'static [u8]> {
     crate::debug!(
         "Got Patch file, len={}, filename={}",
         patch.len(),
-        get_filename(patch).unwrap()
+        get_filename(patch).expect("Get filename of patch")
     );
 
     Some(patch)

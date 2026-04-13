@@ -137,7 +137,7 @@ where
     }
 
     /// 获取原始函数指针（用于在 Hook 中调用原函数）
-    pub fn orig(&self) -> T {
+    pub const fn orig(&self) -> T {
         const {
             assert!(
                 core::mem::size_of::<T>() == core::mem::size_of::<usize>(),

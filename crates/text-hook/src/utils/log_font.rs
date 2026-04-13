@@ -58,7 +58,7 @@ impl Default for LogFont {
 
 impl LogFont {
     /// 转换为 windows-sys 的 LOGFONTW
-    pub fn to_sys_w(&self) -> LOGFONTW {
+    pub const fn to_sys_w(&self) -> LOGFONTW {
         LOGFONTW {
             lfHeight: self.height,
             lfWidth: self.width,
@@ -78,7 +78,7 @@ impl LogFont {
     }
 
     /// 从 W 参数生成
-    pub fn from_sys_w(lf: &LOGFONTW) -> Self {
+    pub const fn from_sys_w(lf: &LOGFONTW) -> Self {
         Self {
             height: lf.lfHeight,
             width: lf.lfWidth,

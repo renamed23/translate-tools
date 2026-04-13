@@ -8,19 +8,19 @@ cfg_if! {
 
         /// 存储一项条目
         pub fn store_item(item: serde_json::Value) {
-            EXTRACTED_ITEMS.lock().unwrap().insert(item);
+            EXTRACTED_ITEMS.lock().expect("Lock poisoned").insert(item);
         }
 
         /// 读取raw.json（如果有），加载之前提取的数据
         pub fn load_initial_extracted_items_from_json() -> crate::Result<()> {
             let contents = std::fs::read_to_string("./raw.json")?;
-            *EXTRACTED_ITEMS.lock().unwrap() = serde_json::from_str(&contents)?;
+            *EXTRACTED_ITEMS.lock().expect("Lock poisoned") = serde_json::from_str(&contents)?;
             Ok(())
         }
 
         /// 将提取的条目输出到json文件中
         pub fn save_extracted_items_to_json() -> crate::Result<()> {
-            let text = EXTRACTED_ITEMS.lock().unwrap();
+            let text = EXTRACTED_ITEMS.lock().expect("Lock poisoned");
             let contents = serde_json::to_string_pretty(&*text)?;
             std::fs::write("./raw.json", contents)?;
 

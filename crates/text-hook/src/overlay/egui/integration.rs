@@ -75,7 +75,7 @@ impl EguiOverlayState {
     }
 
     /// 取出上一帧缓存的完整输出。
-    pub fn take_full_output(&mut self) -> Option<FullOutput> {
+    pub const fn take_full_output(&mut self) -> Option<FullOutput> {
         self.frame_data.full_output.take()
     }
 
@@ -85,7 +85,7 @@ impl EguiOverlayState {
     }
 
     /// 返回当前帧记录的屏幕像素尺寸。
-    pub fn screen_size_px(&self) -> [u32; 2] {
+    pub const fn screen_size_px(&self) -> [u32; 2] {
         self.frame_data.screen_size_px
     }
 
@@ -538,18 +538,18 @@ fn pos_px_to_points(pos_px: Pos2, pixels_per_point: f32) -> Pos2 {
     Pos2::new(pos_px.x / pixels_per_point, pos_px.y / pixels_per_point)
 }
 
-fn wheel_delta_from_wparam(w_param: WPARAM) -> i16 {
+const fn wheel_delta_from_wparam(w_param: WPARAM) -> i16 {
     ((w_param >> 16) & 0xffff) as i16
 }
 
-fn xbutton_to_egui_button(w_param: WPARAM) -> PointerButton {
+const fn xbutton_to_egui_button(w_param: WPARAM) -> PointerButton {
     match ((w_param >> 16) & 0xffff) as u16 {
         1 => PointerButton::Extra1,
         _ => PointerButton::Extra2,
     }
 }
 
-fn pointer_button_mask(button: PointerButton) -> u8 {
+const fn pointer_button_mask(button: PointerButton) -> u8 {
     match button {
         PointerButton::Primary => 1 << 0,
         PointerButton::Secondary => 1 << 1,
@@ -581,7 +581,7 @@ fn update_pointer_capture(hwnd: HWND, buttons_down: &mut u8, button: PointerButt
     }
 }
 
-fn update_modifiers(modifiers: &mut Modifiers, vk: u32, pressed: bool) {
+const fn update_modifiers(modifiers: &mut Modifiers, vk: u32, pressed: bool) {
     match vk as u16 {
         VK_SHIFT | VK_LSHIFT | VK_RSHIFT => modifiers.shift = pressed,
         VK_CONTROL | VK_LCONTROL | VK_RCONTROL => modifiers.ctrl = pressed,

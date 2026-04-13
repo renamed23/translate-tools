@@ -32,7 +32,7 @@ pub enum HwBreakpointType {
 
 impl HwBreakpointType {
     #[inline]
-    fn rw_bits(self) -> usize {
+    const fn rw_bits(self) -> usize {
         match self {
             Self::Execute => 0b00,
             Self::Write => 0b01,
@@ -65,7 +65,7 @@ impl HwBreakpointLen {
     }
 
     #[inline]
-    fn len_bits(self) -> usize {
+    const fn len_bits(self) -> usize {
         match self {
             Self::Byte1 => 0b00,
             Self::Byte2 => 0b01,
@@ -78,7 +78,7 @@ impl HwBreakpointLen {
 
 /// 清除 DR7 中指定寄存器的控制位（L/G/RW/LEN）
 #[inline]
-pub fn clear_dr7_slot(dr7: &mut usize, reg: HwReg) {
+pub const fn clear_dr7_slot(dr7: &mut usize, reg: HwReg) {
     let idx = reg as usize;
     // 1. 清除局部使能位 (L0-L3) 和 全局使能位 (G0-G3)
     // 每个寄存器占用 2 bits (L, G)，从 bit 0 开始
@@ -91,7 +91,12 @@ pub fn clear_dr7_slot(dr7: &mut usize, reg: HwReg) {
 
 /// 配置 DR7 中指定寄存器的控制位
 #[inline]
-pub fn set_dr7_slot(dr7: &mut usize, reg: HwReg, kind: HwBreakpointType, len: HwBreakpointLen) {
+pub const fn set_dr7_slot(
+    dr7: &mut usize,
+    reg: HwReg,
+    kind: HwBreakpointType,
+    len: HwBreakpointLen,
+) {
     let idx = reg as usize;
 
     // 先清理旧状态
@@ -150,7 +155,7 @@ pub fn set_hw_break_in_context(
 }
 
 /// 在 CONTEXT 中清除指定硬件断点
-pub fn clear_hw_break_in_context(ctx: &mut CONTEXT, reg: HwReg) {
+pub const fn clear_hw_break_in_context(ctx: &mut CONTEXT, reg: HwReg) {
     ctx.ContextFlags |= CONTEXT_DEBUG;
 
     match reg {
