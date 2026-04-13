@@ -221,4 +221,14 @@ ron = { version = "0.12", optional = true }
 anyhow.workspace = true
 
 [lints.clippy]
+all = "warn"
+pedantic = "warn"
+nursery = "warn"
+cargo = "warn"
+
+arithmetic_side_effects = "warn"
+unwrap_used = "deny"
+float_cmp_const = "deny"
+missing_safety_doc = "deny"
+
 too_many_arguments = "allow"
