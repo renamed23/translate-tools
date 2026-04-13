@@ -147,7 +147,7 @@ impl EguiOverlayState {
     }
 
     /// 将当前帧的 egui 图元提交到 glow 绘制器。
-    pub fn paint(&mut self) -> crate::Result<()> {
+    pub fn paint(&mut self) {
         let clipped_primitives = self.take_clipped_primitives();
         let full_output = self.take_full_output().unwrap_or_default();
 
@@ -157,8 +157,6 @@ impl EguiOverlayState {
             &clipped_primitives,
             &full_output.textures_delta,
         );
-
-        Ok(())
     }
 
     /// 清空当前渲染目标为指定颜色。
@@ -175,7 +173,9 @@ impl EguiOverlayState {
         self.begin_frame(hwnd)?;
         run_ui(&self.context)?;
         self.end_frame(hwnd)?;
-        self.paint()
+        self.paint();
+
+        Ok(())
     }
 
     /// 销毁内部 glow painter 持有的 GPU 资源。
@@ -428,7 +428,7 @@ pub fn handle_egui_wnd_proc(
 fn overlay_client_size(hwnd: HWND) -> crate::Result<[u32; 2]> {
     let mut rect = RECT::default();
     unsafe {
-        if GetClientRect(hwnd, &mut rect) == 0 {
+        if GetClientRect(hwnd, &raw mut rect) == 0 {
             crate::print_last_error_message!();
             crate::bail!("GetClientRect failed");
         }
@@ -459,7 +459,7 @@ fn ensure_tracking_mouse_leave(hwnd: HWND) -> crate::Result<()> {
     };
 
     unsafe {
-        if TrackMouseEvent(&mut track) == 0 {
+        if TrackMouseEvent(&raw mut track) == 0 {
             crate::print_last_error_message!();
             crate::bail!("TrackMouseEvent failed");
         }
@@ -471,12 +471,12 @@ fn ensure_tracking_mouse_leave(hwnd: HWND) -> crate::Result<()> {
 fn cursor_pos_in_client(hwnd: HWND, pixels_per_point: f32) -> crate::Result<Option<Pos2>> {
     let mut screen_pos = POINT::default();
     unsafe {
-        if GetCursorPos(&mut screen_pos) == 0 {
+        if GetCursorPos(&raw mut screen_pos) == 0 {
             crate::print_last_error_message!();
             crate::bail!("GetCursorPos failed");
         }
 
-        if ScreenToClient(hwnd, &mut screen_pos) == 0 {
+        if ScreenToClient(hwnd, &raw mut screen_pos) == 0 {
             crate::print_last_error_message!();
             crate::bail!("ScreenToClient failed");
         }
@@ -513,7 +513,7 @@ fn wheel_lparam_to_client_pos(
     };
 
     unsafe {
-        if ScreenToClient(hwnd, &mut screen_pos) == 0 {
+        if ScreenToClient(hwnd, &raw mut screen_pos) == 0 {
             crate::print_last_error_message!();
             crate::bail!("ScreenToClient failed while convert wheel cursor pos");
         }
@@ -593,7 +593,10 @@ const fn update_modifiers(modifiers: &mut Modifiers, vk: u32, pressed: bool) {
 }
 
 fn vk_to_egui_key(vk: u32) -> Option<Key> {
-    use windows_sys::Win32::UI::Input::KeyboardAndMouse::*;
+    use windows_sys::Win32::UI::Input::KeyboardAndMouse::{
+        VK_BACK, VK_DELETE, VK_DOWN, VK_END, VK_ESCAPE, VK_F1, VK_F12, VK_HOME, VK_INSERT, VK_LEFT,
+        VK_NEXT, VK_PRIOR, VK_RETURN, VK_RIGHT, VK_SPACE, VK_TAB, VK_UP,
+    };
     Some(match vk as u16 {
         VK_DOWN => Key::ArrowDown,
         VK_LEFT => Key::ArrowLeft,

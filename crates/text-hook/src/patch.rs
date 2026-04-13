@@ -47,7 +47,7 @@ fn is_patch_len(len: usize) -> bool {
     patch_data::LEN_FILTER.contains(&len)
 }
 
-/// 根据目标数据，获取补丁数据对应的原始文件名（仅在 debug_output 特性启用时可用）
+/// 根据目标数据，获取补丁数据对应的原始文件名（仅在 `debug_output` 特性启用时可用）
 #[cfg(feature = "enable_debug_output")]
 fn get_filename(src: &[u8]) -> Option<&str> {
     if !is_patch_len(src.len()) {

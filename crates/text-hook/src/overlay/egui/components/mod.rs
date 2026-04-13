@@ -147,7 +147,7 @@ pub fn render_visibility_panel(egui_ctx: &egui::Context) {
                     let mut visible = __file__::is_visible();
                     if ui.checkbox(&mut visible, __file_str__).changed() {
                         __file__::set_visible(visible);
-                    }
+                    };
                 }
             });
 

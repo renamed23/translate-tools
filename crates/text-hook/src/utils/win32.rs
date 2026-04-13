@@ -39,9 +39,8 @@ pub fn get_module_handle(module_name: PCWSTR) -> crate::Result<HMODULE> {
                 "GetModuleHandleW for {} failed",
                 module_name.to_slice_until_null_scan().to_string_lossy()
             );
-        } else {
-            Ok(handle)
         }
+        Ok(handle)
     }
 }
 
@@ -167,7 +166,7 @@ pub fn load_hijacked_library(dll_name: &str) -> crate::Result<OwnedHMODULE> {
 /// 在禁用 WOW64 文件系统重定向的情况下执行回调函数。
 ///
 /// WOW64 文件系统重定向是 32 位应用程序在 64 位 Windows 上运行时，
-/// 将系统目录（如 System32）重定向到 SysWOW64 的机制。
+/// 将系统目录（如 System32）重定向到 `SysWOW64` 的机制。
 /// 此函数禁用该重定向，使得回调函数可以访问真实的系统目录，
 /// 然后在回调执行完毕后恢复重定向（仅在禁用成功的情况下）。
 ///
@@ -183,7 +182,7 @@ where
     F: FnOnce() -> R,
 {
     let mut old_state = core::ptr::null_mut();
-    let success = unsafe { Wow64DisableWow64FsRedirection(&mut old_state) != 0 };
+    let success = unsafe { Wow64DisableWow64FsRedirection(&raw mut old_state) != 0 };
 
     #[cfg(feature = "enable_debug_output")]
     if !success {
@@ -198,7 +197,6 @@ where
 }
 
 /// 判断消息是否需要文本转换/映射
-#[inline(always)]
 pub const fn needs_text_conversion(msg: u32) -> bool {
     matches!(
         msg,
@@ -278,7 +276,7 @@ where
 
     loop {
         let ptr = if cap <= STACK_CAP {
-            stack_buf.as_mut_ptr() as *mut T
+            stack_buf.as_mut_ptr().cast::<T>()
         } else {
             if heap_buf.capacity() < cap {
                 heap_buf.reserve_exact(cap - heap_buf.capacity());

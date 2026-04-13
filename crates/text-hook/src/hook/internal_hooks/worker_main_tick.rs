@@ -5,7 +5,7 @@ pub trait WorkerMainTick: Send + Sync + 'static {
     /// 工作线程的主循环 Tick 回调
     ///
     /// # 返回值
-    /// - `Ok(LoopAction)`: 用于控制worker_thread的行为
+    /// - `Ok(LoopAction)`: 用于控制 `worker_thread` 的行为
     /// - `Err`: 出现错误
     ///
     /// # 注意事项

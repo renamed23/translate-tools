@@ -145,7 +145,7 @@ pub fn set_hw_break_in_context(
         HwReg::Dr1 => ctx.Dr1 = addr as _,
         HwReg::Dr2 => ctx.Dr2 = addr as _,
         HwReg::Dr3 => ctx.Dr3 = addr as _,
-    };
+    }
 
     let mut dr7 = ctx.Dr7 as usize;
     set_dr7_slot(&mut dr7, reg, kind, len);
@@ -163,7 +163,7 @@ pub const fn clear_hw_break_in_context(ctx: &mut CONTEXT, reg: HwReg) {
         HwReg::Dr1 => ctx.Dr1 = 0,
         HwReg::Dr2 => ctx.Dr2 = 0,
         HwReg::Dr3 => ctx.Dr3 = 0,
-    };
+    }
 
     let mut dr7 = ctx.Dr7 as usize;
     clear_dr7_slot(&mut dr7, reg);

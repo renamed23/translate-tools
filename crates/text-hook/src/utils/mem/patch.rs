@@ -11,7 +11,7 @@ use crate::utils::{exts::ptr_ext::PtrWriteExt, mem::protect_guard::ProtectGuard}
 /// 刷新指令缓存（在修改代码段字节后必须调用）
 pub fn flush_icache(addr: *const u8, size: usize) {
     unsafe {
-        let ok = FlushInstructionCache(GetCurrentProcess(), addr as _, size as _);
+        let ok = FlushInstructionCache(GetCurrentProcess(), addr.cast(), size as _);
         if ok == 0 {
             crate::print_last_error_message!();
             crate::debug!("Warning: FlushInstructionCache failed");
@@ -105,7 +105,6 @@ pub unsafe fn resolve_patchable_addr(mut addr: usize) -> crate::Result<usize> {
                 let rel = unsafe { *((addr + 1) as *const i8) } as isize;
                 let next = (addr + 2) as isize;
                 addr = (next + rel) as usize;
-                continue;
             }
             _ => {
                 return Ok(addr);

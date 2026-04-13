@@ -33,19 +33,18 @@ pub unsafe fn add_font() -> crate::Result<()> {
         let mut c_fonts: u32 = 0;
 
         let handle = AddFontMemResourceEx(
-            font_data.as_ptr() as *const _,
+            font_data.as_ptr().cast(),
             font_data.len() as u32,
             core::ptr::null_mut(),
-            &mut c_fonts as *mut u32,
+            &raw mut c_fonts,
         );
 
         if handle.is_null() {
             print_last_error_message!();
             crate::bail!("AddFontMemResourceEx failed");
-        } else {
-            FONT_HANDLE = Some(handle);
-            Ok(())
         }
+        FONT_HANDLE = Some(handle);
+        Ok(())
     }
 }
 

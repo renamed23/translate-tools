@@ -1,3 +1,4 @@
+pub(crate) mod aligned_buf;
 pub(crate) mod iat;
 pub(crate) mod patch;
 pub(crate) mod protect_guard;
@@ -23,7 +24,7 @@ where
             return Ok(&[]);
         }
 
-        quick_memory_check(ptr as *const u8, max_len * size_of::<T>())?;
+        quick_memory_check(ptr.cast::<u8>(), max_len * size_of::<T>())?;
 
         let zero = T::default();
 
@@ -95,7 +96,7 @@ where
             return Ok(&[]);
         }
 
-        quick_memory_check(ptr as *const u8, len * size_of::<T>())?;
+        quick_memory_check(ptr.cast::<u8>(), len * size_of::<T>())?;
 
         Ok(core::slice::from_raw_parts(ptr, len))
     }
@@ -145,10 +146,10 @@ pub fn quick_memory_check(ptr: *const u8, len: usize) -> crate::Result<()> {
 
     // 2. 根据架构检查用户空间上限
     #[cfg(target_arch = "x86")]
-    let user_space_limit = 0x7FFEFFFF;
+    let user_space_limit = 0x7FFE_FFFF;
 
     #[cfg(target_arch = "x86_64")]
-    let user_space_limit = 0x00007FFFFFFFFFFF;
+    let user_space_limit = 0x0000_7FFF_FFFF_FFFF;
 
     // 3. 边界与溢出检查
     if addr > user_space_limit {

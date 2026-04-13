@@ -44,7 +44,7 @@ static mut SUB_402B70: usize = 0;
 impl ProcessAttach for Hitocos2Hook {
     fn on_process_attach(_hinst_dll: HMODULE) -> crate::Result<()> {
         let handle = crate::utils::win32::get_module_handle(core::ptr::null())?;
-        let module = handle as *mut u8;
+        let module = handle.cast::<u8>();
 
         unsafe {
             TEXT_RETURN_ADDR = module.add(0xE495) as usize;
@@ -136,7 +136,8 @@ unsafe extern "system" fn hook_name(string_ptr: *mut MsvcString) -> crate::Resul
             string.buf.as_ptr()
         } else {
             // 堆分配模式：buf 字段存储的是指针
-            *(string.buf.as_ptr() as *const *const u8)
+            #[allow(clippy::cast_ptr_alignment)]
+            *string.buf.as_ptr().cast::<*const u8>()
         };
 
         let slice = name_ptr.to_slice_until_null_scan();
@@ -147,7 +148,7 @@ unsafe extern "system" fn hook_name(string_ptr: *mut MsvcString) -> crate::Resul
         if let Some(name) = wide_name.lookup_or_store()? {
             crate::debug!("Get translated slice {}", name.to_string_lossy());
             let name_b = NAME_CACHE.intern(name.to_ansi_null());
-            sub_402b70(string_ptr, 0, name_b.as_ptr() as _, name_b.len() as _);
+            sub_402b70(string_ptr, 0, name_b.as_ptr().cast(), name_b.len() as _);
         }
 
         Ok(())

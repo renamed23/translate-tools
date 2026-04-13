@@ -50,7 +50,7 @@ pub fn mapping_impl(input_slice: &[u16], add_null: bool) -> Vec<u16> {
 ///
 /// # 参数
 /// - `bytes`: 输入的字节切片（不以0结尾）
-/// - `code_page`: 代码页，如 CP_ACP、CP_UTF8 等
+/// - `code_page`: 代码页，如 `CP_ACP、CP_UTF8` 等
 /// - `add_null`: 是否在结果末尾添加0结尾符
 ///
 /// # 返回
@@ -79,10 +79,10 @@ pub fn multi_byte_to_wide_char_impl(
             crate::bail!("MultiByteToWideChar Failed");
         }
 
-        let mut buf = Vec::with_capacity(required as usize + if add_null { 1 } else { 0 });
+        let mut buf = Vec::with_capacity(required as usize + usize::from(add_null));
 
         let spare = buf.spare_capacity_mut();
-        let ptr = spare.as_mut_ptr() as *mut u16;
+        let ptr = spare.as_mut_ptr().cast::<u16>();
 
         let written = MultiByteToWideChar(code_page, 0, bytes.as_ptr(), input_len, ptr, required);
         if written <= 0 {
@@ -105,7 +105,7 @@ pub fn multi_byte_to_wide_char_impl(
 ///
 /// # 参数
 /// - `wide_str`: 输入的宽字符切片（不以0结尾）
-/// - `code_page`: 代码页，如 CP_ACP、CP_UTF8 等
+/// - `code_page`: 代码页，如 `CP_ACP、CP_UTF8` 等
 /// - `add_null`: 是否在结果末尾添加0结尾符
 ///
 /// # 返回
@@ -137,10 +137,10 @@ pub fn wide_char_to_multi_byte_impl(
             crate::bail!("WideCharToMultiByte failed");
         }
 
-        let mut buf = Vec::<u8>::with_capacity(required as usize + if add_null { 1 } else { 0 });
+        let mut buf = Vec::<u8>::with_capacity(required as usize + usize::from(add_null));
 
         let spare = buf.spare_capacity_mut();
-        let ptr = spare.as_mut_ptr() as *mut u8;
+        let ptr = spare.as_mut_ptr().cast::<u8>();
 
         let written = WideCharToMultiByte(
             code_page,
@@ -169,7 +169,7 @@ pub fn wide_char_to_multi_byte_impl(
     }
 }
 
-/// 根据CharSet获取对应的代码页
+/// 根据 `CharSet` 获取对应的代码页
 pub const fn get_cp_by_char_set() -> u32 {
     match CHAR_SET {
         // 东亚语言（中日韩）
@@ -209,7 +209,7 @@ pub fn byte_len(ptr: *const u8, chars: usize, code_page: u16) -> usize {
             if next.is_null() {
                 break;
             }
-            byte_len += next.offset_from(cur) as usize;
+            byte_len += next.offset_from(cur).cast_unsigned();
             cur = next;
         }
     }

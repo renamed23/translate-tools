@@ -29,7 +29,7 @@ use crate::{
     },
 };
 
-/// Windows WGL OpenGL上下文封装
+/// Windows WGL OpenGL 上下文封装
 ///
 /// `GLContext`表示一个完整的OpenGL渲染环境，绑定到一个指定的窗口。
 /// 该结构负责管理WGL上下文、窗口设备上下文以及`glow`函数加载器，
@@ -41,19 +41,19 @@ use crate::{
 ///
 /// - 创建时：
 ///   - 设置窗口像素格式
-///   - 创建并激活OpenGL上下文
-///   - 加载所有OpenGL函数
+///   - 创建并激活 OpenGL 上下文
+///   - 加载所有 OpenGL 函数
 ///
 /// - 销毁时 (`Drop`)：
 ///   - 如果当前线程仍绑定该上下文，则先解绑
-///   - 删除OpenGL上下文 (`wglDeleteContext`)
+///   - 删除 OpenGL 上下文 (`wglDeleteContext`)
 ///   - 释放窗口设备上下文 (`ReleaseDC`)
 ///
 /// 因此调用者无需手动管理这些底层资源。
 ///
 /// # 线程模型
 ///
-/// OpenGL上下文是**线程局部绑定**的：
+/// OpenGL 上下文是**线程局部绑定**的：
 ///
 /// - 一个上下文在任意时刻只能绑定到一个线程
 /// - 在其他线程使用该上下文前必须调用`wglMakeCurrent`
@@ -69,19 +69,19 @@ pub struct GLContext {
 }
 
 impl GLContext {
-    /// 创建并初始化一个OpenGL 3.3 Core Profile上下文
+    /// 创建并初始化一个 OpenGL 3.3 Core Profile上下文
     ///
     /// 该函数完成以下步骤：
     ///
     /// 1. 为指定窗口创建WGL OpenGL上下文（内部使用Dummy Context技术）
     /// 2. 激活该上下文到当前线程
-    /// 3. 初始化`glow::Context`并加载所有OpenGL函数指针
+    /// 3. 初始化`glow::Context`并加载所有 OpenGL 函数指针
     /// 4. 构造`GLContext`对象用于后续渲染
     ///
     /// 创建成功后：
     ///
-    /// - OpenGL上下文已绑定到当前线程
-    /// - 所有OpenGL函数已可通过`glow`调用
+    /// - OpenGL 上下文已绑定到当前线程
+    /// - 所有 OpenGL 函数已可通过`glow`调用
     /// - 调用者可以立即执行渲染初始化（如创建shader、VAO等）
     ///
     /// # Safety
@@ -90,18 +90,18 @@ impl GLContext {
     ///
     /// - `hwnd`为有效窗口句柄
     /// - 窗口尚未销毁
-    /// - 调用线程允许创建并绑定OpenGL上下文
+    /// - 调用线程允许创建并绑定 OpenGL 上下文
     ///
     /// 同时需注意：
     ///
-    /// - OpenGL上下文绑定是**线程局部的**
+    /// - OpenGL 上下文绑定是**线程局部的**
     /// - 在其他线程使用该上下文前必须重新调用`wglMakeCurrent`
     pub unsafe fn new(hwnd: HWND) -> crate::Result<Self> {
         unsafe {
             let (hdc, hglrc) = create_gl_context(hwnd)?;
             let gl = Arc::new(create_glow_context()?);
 
-            Ok(Self { hdc, hglrc, gl })
+            Ok(Self { hglrc, hdc, gl })
         }
     }
 
@@ -146,13 +146,13 @@ unsafe fn set_pixel_format(hdc: HDC) -> crate::Result<()> {
     };
 
     unsafe {
-        let pf = ChoosePixelFormat(hdc, &pfd);
+        let pf = ChoosePixelFormat(hdc, &raw const pfd);
         if pf == 0 {
             print_last_error_message!();
             crate::bail!("ChoosePixelFormat failed");
         }
 
-        if SetPixelFormat(hdc, pf, &pfd) == 0 {
+        if SetPixelFormat(hdc, pf, &raw const pfd) == 0 {
             print_last_error_message!();
             crate::bail!("SetPixelFormat failed");
         }
@@ -161,8 +161,16 @@ unsafe fn set_pixel_format(hdc: HDC) -> crate::Result<()> {
     Ok(())
 }
 
-/// 为指定窗口创建现代OpenGL 3.3 Core Profile上下文
+/// 为指定窗口创建现代 OpenGL 3.3 Core Profile上下文
 unsafe fn create_gl_context(hwnd: HWND) -> crate::Result<(OwnedHDC, OwnedHGLRC)> {
+    type WglCreateContextAttribsARB = unsafe extern "system" fn(HDC, HGLRC, *const i32) -> HGLRC;
+
+    // OpenGL 3.3 core
+    const WGL_CONTEXT_MAJOR_VERSION_ARB: i32 = 0x2091;
+    const WGL_CONTEXT_MINOR_VERSION_ARB: i32 = 0x2092;
+    const WGL_CONTEXT_PROFILE_MASK_ARB: i32 = 0x9126;
+    const WGL_CONTEXT_CORE_PROFILE_BIT_ARB: i32 = 0x0000_0001;
+
     unsafe {
         let hdc_raw = GetDC(hwnd);
         if hdc_raw.is_null() {
@@ -189,20 +197,11 @@ unsafe fn create_gl_context(hwnd: HWND) -> crate::Result<(OwnedHDC, OwnedHGLRC)>
             crate::bail!("wglMakeCurrent failed");
         }
 
-        type WglCreateContextAttribsARB =
-            unsafe extern "system" fn(HDC, HGLRC, *const i32) -> HGLRC;
-
         let Some(proc) = wglGetProcAddress(s!("wglCreateContextAttribsARB")) else {
             crate::bail!("Get 'wglCreateContextAttribsARB' failed");
         };
 
         let wgl_create_context_attribs_arb: WglCreateContextAttribsARB = core::mem::transmute(proc);
-
-        // OpenGL 3.3 core
-        const WGL_CONTEXT_MAJOR_VERSION_ARB: i32 = 0x2091;
-        const WGL_CONTEXT_MINOR_VERSION_ARB: i32 = 0x2092;
-        const WGL_CONTEXT_PROFILE_MASK_ARB: i32 = 0x9126;
-        const WGL_CONTEXT_CORE_PROFILE_BIT_ARB: i32 = 0x00000001;
 
         let attribs = [
             WGL_CONTEXT_MAJOR_VERSION_ARB,

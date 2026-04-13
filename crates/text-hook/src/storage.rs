@@ -1,3 +1,4 @@
+use ron::ser::PrettyConfig;
 use serde::{Serialize, de::DeserializeOwned};
 use std::{
     collections::HashMap,
@@ -74,7 +75,7 @@ pub fn flush() -> crate::Result<()> {
         return Ok(());
     }
 
-    let config = ron::ser::to_string_pretty(&lock.data, Default::default())
+    let config = ron::ser::to_string_pretty(&lock.data, PrettyConfig::default())
         .map_err(|e| crate::anyhow!("RON serialization error: {e}"))?;
 
     fs::write(STORAGE_PATH, config).map_err(|e| crate::anyhow!("File write error: {e}"))?;
@@ -85,10 +86,9 @@ pub fn flush() -> crate::Result<()> {
 
 /// 删除指定值
 #[allow(dead_code)]
-pub fn remove(key: &str) -> crate::Result<()> {
+pub fn remove(key: &str) {
     let mut lock = STORAGE.write().expect("Storage lock poisoned");
     if lock.data.remove(key).is_some() {
         lock.dirty = true;
     }
-    Ok(())
 }

@@ -58,7 +58,7 @@ pub enum LoopAction {
     #[default]
     Continue,
 
-    /// 停止工作线程，触发清理流程并退出 worker_main
+    /// 停止工作线程，触发清理流程并退出 `worker_main`
     Exit,
 }
 
@@ -83,12 +83,12 @@ fn worker_main() {
     let mut msg = MSG::default();
     while !STOP_FLAG.load(Ordering::Acquire) {
         unsafe {
-            while PeekMessageW(&mut msg, core::ptr::null_mut(), 0, 0, PM_REMOVE) != 0 {
+            while PeekMessageW(&raw mut msg, core::ptr::null_mut(), 0, 0, PM_REMOVE) != 0 {
                 if msg.message == WM_QUIT {
                     return;
                 }
-                TranslateMessage(&msg);
-                DispatchMessageW(&msg);
+                TranslateMessage(&raw const msg);
+                DispatchMessageW(&raw const msg);
             }
 
             match <HookImplType as WorkerMainTick>::on_worker_main_tick() {
@@ -103,7 +103,7 @@ fn worker_main() {
                 Err(e) => {
                     crate::debug!("on_worker_main_tick failed with {e:?}");
                 }
-            };
+            }
         }
     }
 }

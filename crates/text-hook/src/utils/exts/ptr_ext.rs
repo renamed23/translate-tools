@@ -19,6 +19,7 @@ pub trait AsPtrExt<T> {
 macro_rules! bulk_impl_ptr {
     ($target:ty => $($src:ty),*) => {
         $(
+            #[allow(clippy::ptr_as_ptr, clippy::ptr_cast_constness)]
             impl AsPtrExt<$target> for $src {
                 #[inline(always)]
                 unsafe fn as_const_ptr(self) -> *const $target { self as _ }
@@ -123,7 +124,7 @@ where
         unsafe { self.try_to_slice_until_null(crate::constant::SCAN_MAX_LEN) }
     }
 
-    /// 将指针转换为以空值（T::default()）结尾的不可变切片引用。
+    /// 将指针转换为以空值（`T::default()`）结尾的不可变切片引用。
     ///
     /// 常用于处理以 null 结尾的 C 风格字符串或 Windows UTF-16 字符串。
     /// 扫描会在遇到 `T::default()`（通常为 0）或达到 `max_len` 时停止。
@@ -189,7 +190,7 @@ where
         unsafe { self.try_to_slice_until_null_mut(crate::constant::SCAN_MAX_LEN) }
     }
 
-    /// 将指针转换为以空值（T::default()）结尾的可变切片引用。
+    /// 将指针转换为以空值（`T::default()`）结尾的可变切片引用。
     ///
     /// 常用于修改以 null 结尾的 C 风格缓冲区。
     /// 扫描会在遇到 `T::default()`（通常为 0）或达到 `max_len` 时停止。

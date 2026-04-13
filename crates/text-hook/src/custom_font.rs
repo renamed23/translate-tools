@@ -41,7 +41,7 @@ impl CustomFontManager {
     fn apply_font(&mut self) -> crate::Result<()> {
         let sys_w = self.current_font.to_sys_w();
 
-        let handle = unsafe { crate::call!(HOOK_CREATE_FONT_INDIRECT_W, &sys_w) };
+        let handle = unsafe { crate::call!(HOOK_CREATE_FONT_INDIRECT_W, &raw const sys_w) };
 
         if handle.is_null() {
             print_last_error_message!();

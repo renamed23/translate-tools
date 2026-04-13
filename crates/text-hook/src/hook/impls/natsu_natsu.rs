@@ -3,7 +3,8 @@ use translate_macros::DefaultHook;
 use windows_sys::Win32::Foundation::HMODULE;
 
 use crate::{
-    constant::ARG_PATCH_TYPE, hook::internal_hooks::ProcessAttach, utils::exts::ptr_ext::PtrWriteExt,
+    constant::ARG_PATCH_TYPE, hook::internal_hooks::ProcessAttach,
+    utils::exts::ptr_ext::PtrWriteExt,
 };
 
 #[derive(DefaultHook)]
@@ -16,7 +17,7 @@ impl ProcessAttach for NatsuNatsuHook {
     fn on_process_attach(_hinst_dll: HMODULE) -> crate::Result<()> {
         let handle = crate::utils::win32::get_module_handle(core::ptr::null())?;
 
-        let module_addr = handle as *mut u8;
+        let module_addr = handle.cast::<u8>();
 
         match ARG_PATCH_TYPE {
             "natsu_natsu" => patch_natsu_natsu(module_addr),

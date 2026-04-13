@@ -83,7 +83,7 @@ pub fn enable_entry_point_hook() {
     unsafe {
         HOOK_ENTRY_POINT
             .enable()
-            .expect("Enable entry point hook failed")
+            .expect("Enable entry point hook failed");
     };
 }
 
@@ -96,6 +96,6 @@ pub fn disable_entry_point_hook() {
     unsafe {
         HOOK_ENTRY_POINT
             .disable()
-            .expect("Disable entry point hook failed")
+            .expect("Disable entry point hook failed");
     };
 }

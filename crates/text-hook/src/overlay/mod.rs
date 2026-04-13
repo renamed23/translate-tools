@@ -114,7 +114,7 @@ pub fn win_event_callback(
 
         match event {
             EVENT_OBJECT_SHOW => {
-                if OVERLAY_CTX.with_borrow(|ctx| ctx.is_some()) {
+                if OVERLAY_CTX.with_borrow(Option::is_some) {
                     return;
                 }
 
@@ -188,7 +188,7 @@ pub fn win_event_callback(
 
                 // 因为overlay的owner被设为了目标窗口（本身是POPUP）
                 // 所以不需要处理overlay的Z-Order
-                if GetWindowRect(hwnd, &mut rect) != 0 {
+                if GetWindowRect(hwnd, &raw mut rect) != 0 {
                     let width = rect.right - rect.left;
                     let height = rect.bottom - rect.top;
 
@@ -217,7 +217,7 @@ pub fn win_event_callback(
 
                 crate::debug!("Desotry overlay context");
 
-                OVERLAY_CTX.with(|ctx| ctx.take());
+                OVERLAY_CTX.with(RefCell::take);
             }
 
             _ => {}
@@ -238,5 +238,5 @@ pub fn render() {
 ///
 /// 清除当前线程上保存的 overlay 上下文，触发其资源释放。
 pub fn cleanup() {
-    OVERLAY_CTX.with(|ctx| ctx.take());
+    OVERLAY_CTX.with(RefCell::take);
 }

@@ -317,7 +317,6 @@ where
 }
 
 /// 根据字符数计算传入ANSI字符串的字节长度
-#[inline(always)]
 fn get_byte_len(_ptr: *const u8, chars: usize) -> usize {
     #[cfg(not(feature = "assume_text_out_arg_c_is_byte_len"))]
     {

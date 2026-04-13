@@ -233,7 +233,7 @@ impl CreateFontIndirect for FontManagerSlot {
 
         logfontw.lfFaceName[..face_u16.len()].copy_from_slice(face_u16.as_slice());
 
-        let ptr = &logfontw as *const LOGFONTW;
+        let ptr = &raw const logfontw;
         unsafe { Self::create_font_indirect_w(ptr) }
     }
 
@@ -314,7 +314,7 @@ impl CreateFontIndirect for FontManagerSlot {
             logfontw.lfPitchAndFamily = pitch_and_family as u8;
         }
 
-        let ptr = &logfontw as *const LOGFONTW;
+        let ptr = &raw const logfontw;
         unsafe { crate::call!(HOOK_CREATE_FONT_INDIRECT_W, ptr) }
     }
 }
@@ -340,7 +340,7 @@ impl EnumFontFamiliesEx for FontManagerSlot {
                 hdc,
                 lp_logfont,
                 Some(enum_fonts_proc_a),
-                &info as *const _ as LPARAM,
+                &raw const info as LPARAM,
                 dw_flags
             )
         }
@@ -364,7 +364,7 @@ impl EnumFontFamiliesEx for FontManagerSlot {
                 hdc,
                 lp_logfont,
                 Some(enum_fonts_proc_w),
-                &info as *const _ as LPARAM,
+                &raw const info as LPARAM,
                 dw_flags
             )
         }
@@ -387,7 +387,7 @@ impl EnumFontFamilies for FontManagerSlot {
                 hdc,
                 lpsz_family,
                 Some(enum_fonts_proc_a),
-                &info as *const _ as LPARAM
+                &raw const info as LPARAM
             )
         }
     }
@@ -406,7 +406,7 @@ impl EnumFontFamilies for FontManagerSlot {
                 hdc,
                 lpsz_family,
                 Some(enum_fonts_proc_w),
-                &info as *const _ as LPARAM
+                &raw const info as LPARAM
             )
         }
     }
@@ -428,7 +428,7 @@ impl EnumFonts for FontManagerSlot {
                 hdc,
                 lpsz_face,
                 Some(enum_fonts_proc_a),
-                &info as *const _ as LPARAM
+                &raw const info as LPARAM
             )
         }
     }
@@ -447,7 +447,7 @@ impl EnumFonts for FontManagerSlot {
                 hdc,
                 lpsz_face,
                 Some(enum_fonts_proc_w),
-                &info as *const _ as LPARAM
+                &raw const info as LPARAM
             )
         }
     }
@@ -455,26 +455,26 @@ impl EnumFonts for FontManagerSlot {
 
 #[cfg(feature = "disable_forced_font")]
 pub struct EnumFontInfo {
-    original_proc_a: FONTENUMPROCA,
-    original_proc_w: FONTENUMPROCW,
-    original_lparam: LPARAM,
+    proc_a: FONTENUMPROCA,
+    proc_w: FONTENUMPROCW,
+    lparam: LPARAM,
 }
 
 #[cfg(feature = "disable_forced_font")]
 impl EnumFontInfo {
     pub fn from_ansi(lparam: LPARAM, proc_a: FONTENUMPROCA) -> Self {
         Self {
-            original_lparam: lparam,
-            original_proc_a: proc_a,
-            original_proc_w: None,
+            lparam,
+            proc_a,
+            proc_w: None,
         }
     }
 
     pub fn from_wide(lparam: LPARAM, proc_w: FONTENUMPROCW) -> Self {
         Self {
-            original_lparam: lparam,
-            original_proc_a: None,
-            original_proc_w: proc_w,
+            lparam,
+            proc_a: None,
+            proc_w,
         }
     }
 }
@@ -493,7 +493,7 @@ pub unsafe extern "system" fn enum_fonts_proc_a(
 
         let info = &*(lparam as *const EnumFontInfo);
 
-        let Some(original_proc) = info.original_proc_a else {
+        let Some(original_proc) = info.proc_a else {
             debug!("original_proc_a is None");
             return 0;
         };
@@ -527,7 +527,7 @@ pub unsafe extern "system" fn enum_fonts_proc_a(
             );
         }
 
-        original_proc(&modified_lf, lptm, font_type, info.original_lparam)
+        original_proc(&raw const modified_lf, lptm, font_type, info.lparam)
     }
 }
 
@@ -545,7 +545,7 @@ pub unsafe extern "system" fn enum_fonts_proc_w(
 
         let info = &*(lparam as *const EnumFontInfo);
 
-        let Some(original_proc) = info.original_proc_w else {
+        let Some(original_proc) = info.proc_w else {
             debug!("original_proc_w is None");
             return 0;
         };
@@ -576,7 +576,7 @@ pub unsafe extern "system" fn enum_fonts_proc_w(
             debug!("Enuming font '{}'...", facename_slice.to_string_lossy());
         }
 
-        original_proc(&modified_lf, lptm, font_type, info.original_lparam)
+        original_proc(&raw const modified_lf, lptm, font_type, info.lparam)
     }
 }
 

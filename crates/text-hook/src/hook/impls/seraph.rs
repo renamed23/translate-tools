@@ -38,11 +38,8 @@ fn query_game_ini_string(section: &str, key: &str) -> Option<String> {
 
 fn query_game_ini_int(section: &str, key: &str) -> Option<i32> {
     match (section, key) {
-        ("Games", "InstCount") => Some(1),
-        (ARG_NAME, "Music") => Some(1),
-        (ARG_NAME, "Voice") => Some(1),
-        (ARG_NAME, "VoiceCD") => Some(0),
-        (ARG_NAME, "Data") => Some(0),
+        ("Games", "InstCount") | (ARG_NAME, "Music" | "Voice") => Some(1),
+        (ARG_NAME, "VoiceCD" | "Data") => Some(0),
         (ARG_NAME, "Verson") => Some(100),
         _ => None,
     }
@@ -53,21 +50,20 @@ unsafe fn matched_ini(file_name: PCSTR) -> bool {
 
     Path::new(file.as_ref())
         .file_name()
-        .map(|f| f.to_string_lossy().eq_ignore_ascii_case("Assemblage.INI"))
-        .unwrap_or(false)
+        .is_some_and(|f| f.to_string_lossy().eq_ignore_ascii_case("Assemblage.INI"))
 }
 
 unsafe fn to_string(app_name: PCSTR, key_name: PCSTR) -> (String, String) {
-    let section = if !app_name.is_null() {
-        unsafe { app_name.to_slice_until_null_scan() }.to_string_lossy()
-    } else {
+    let section = if app_name.is_null() {
         Cow::Borrowed("")
+    } else {
+        unsafe { app_name.to_slice_until_null_scan() }.to_string_lossy()
     };
 
-    let key = if !key_name.is_null() {
-        unsafe { key_name.to_slice_until_null_scan() }.to_string_lossy()
-    } else {
+    let key = if key_name.is_null() {
         Cow::Borrowed("")
+    } else {
+        unsafe { key_name.to_slice_until_null_scan() }.to_string_lossy()
     };
 
     (section.into_owned(), key.into_owned())

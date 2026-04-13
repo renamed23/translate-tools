@@ -39,14 +39,14 @@ impl TimeFields {
     #[inline]
     const fn from_system_time(st: SYSTEMTIME) -> Self {
         Self {
-            year: st.wYear as i16,
-            month: st.wMonth as i16,
-            day: st.wDay as i16,
-            hour: st.wHour as i16,
-            minute: st.wMinute as i16,
-            second: st.wSecond as i16,
-            milliseconds: st.wMilliseconds as i16,
-            weekday: st.wDayOfWeek as i16,
+            year: st.wYear.cast_signed(),
+            month: st.wMonth.cast_signed(),
+            day: st.wDay.cast_signed(),
+            hour: st.wHour.cast_signed(),
+            minute: st.wMinute.cast_signed(),
+            second: st.wSecond.cast_signed(),
+            milliseconds: st.wMilliseconds.cast_signed(),
+            weekday: st.wDayOfWeek.cast_signed(),
         }
     }
 }
@@ -148,9 +148,9 @@ fn query_reg_value_into<T: Copy>(
             hkey,
             value_name,
             core::ptr::null_mut(),
-            &mut data_type,
-            &mut value as *mut T as *mut u8,
-            &mut data_size,
+            &raw mut data_type,
+            (&raw mut value).cast::<u8>(),
+            &raw mut data_size,
         )
     };
 
@@ -178,8 +178,15 @@ fn load_timezone_info(
     let key_w = key.as_bytes().to_wide_null_utf8();
 
     let mut hkey: HKEY = core::ptr::null_mut();
-    let open_ret =
-        unsafe { RegOpenKeyExW(HKEY_LOCAL_MACHINE, key_w.as_ptr(), 0, KEY_READ, &mut hkey) };
+    let open_ret = unsafe {
+        RegOpenKeyExW(
+            HKEY_LOCAL_MACHINE,
+            key_w.as_ptr(),
+            0,
+            KEY_READ,
+            &raw mut hkey,
+        )
+    };
     if open_ret != 0 {
         crate::bail!("RegOpenKeyExW failed for timezone '{timezone}', code={open_ret}");
     }
@@ -237,12 +244,12 @@ unsafe fn relaunch(process_info: *mut MlProcessInformation) -> crate::Result<()>
 
     let ret = unsafe {
         le_create_process(
-            &mut leb,
+            &raw mut leb,
             exe_path.as_ptr(),
             GetCommandLineW(),
             current_directory.as_ptr(),
             0,
-            &mut startup_info,
+            &raw mut startup_info,
             target_process_info,
             core::ptr::null(),
             core::ptr::null(),
@@ -301,7 +308,7 @@ pub fn relaunch_with_locale_emulator() -> crate::Result<()> {
     );
 
     let mut process_info = MlProcessInformation::default();
-    unsafe { relaunch(&mut process_info)? };
+    unsafe { relaunch(&raw mut process_info)? };
 
     if crate::constant::EMULATE_LOCALE_WAIT_FOR_EXIT {
         let process_handle = process_info.process_information.hProcess;

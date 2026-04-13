@@ -227,9 +227,8 @@ impl WideSliceExt for [u16] {
     fn valid(&self) -> crate::Result<&[u16]> {
         if self.contains(&0xFFFD) {
             crate::bail!("Invalid wide char sequence contains U+FFFD");
-        } else {
-            Ok(self)
         }
+        Ok(self)
     }
 
     fn to_os_string(&self) -> OsString {

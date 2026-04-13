@@ -20,9 +20,9 @@ pub unsafe fn get_current_peb() -> crate::Result<*mut PEB> {
     let mut pbi: PROCESS_BASIC_INFORMATION = unsafe { core::mem::zeroed() };
     let status = unsafe {
         NtQueryInformationProcess(
-            GetCurrentProcess() as *mut _,
+            GetCurrentProcess().cast(),
             ProcessBasicInformation,
-            &mut pbi as *mut PROCESS_BASIC_INFORMATION as *mut _,
+            (&raw mut pbi).cast(),
             size_of::<PROCESS_BASIC_INFORMATION>() as u32,
             core::ptr::null_mut(),
         )

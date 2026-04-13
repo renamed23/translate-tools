@@ -63,7 +63,7 @@ fn render_contents(ui: &mut egui::Ui) {
             .face_name
             .iter()
             .take_while(|&&c| c != 0)
-            .cloned()
+            .copied()
             .collect::<Vec<_>>(),
     );
 
@@ -147,7 +147,7 @@ fn render_contents(ui: &mut egui::Ui) {
                             .face_name
                             .iter()
                             .take_while(|&&c| c != 0)
-                            .cloned()
+                            .copied()
                             .collect::<Vec<_>>(),
                     );
 

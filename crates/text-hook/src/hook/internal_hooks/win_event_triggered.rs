@@ -2,7 +2,7 @@
 use windows_sys::Win32::Foundation::HWND;
 
 pub trait WinEventTriggered: Send + Sync + 'static {
-    /// WinEvent 回调，在通用 WinEventHook 收到事件后调用
+    /// `WinEvent` 回调，在通用 `WinEventHook` 收到事件后调用
     ///
     /// # 参数
     /// - `_event`: 事件类型（如 `EVENT_SYSTEM_FOREGROUND`）

@@ -55,7 +55,7 @@ fn ensure_window_class() -> crate::Result<()> {
         ..WNDCLASSW::default()
     };
 
-    let atom = unsafe { RegisterClassW(&wc) };
+    let atom = unsafe { RegisterClassW(&raw const wc) };
     if atom == 0 {
         let err = unsafe { GetLastError() };
         if err != ERROR_CLASS_ALREADY_EXISTS {
@@ -71,7 +71,7 @@ pub(super) fn create_overlay_window(target_hwnd: HWND) -> crate::Result<OwnedHWN
     ensure_window_class()?;
 
     let mut rect = RECT::default();
-    if unsafe { GetWindowRect(target_hwnd, &mut rect) } == 0 {
+    if unsafe { GetWindowRect(target_hwnd, &raw mut rect) } == 0 {
         print_last_error_message!();
         crate::bail!("GetWindowRect failed while create window");
     }
@@ -116,7 +116,7 @@ pub(super) fn create_overlay_window(target_hwnd: HWND) -> crate::Result<OwnedHWN
         cyBottomHeight: -1,
     };
 
-    let hr = unsafe { DwmExtendFrameIntoClientArea(*hwnd, &margins) };
+    let hr = unsafe { DwmExtendFrameIntoClientArea(*hwnd, &raw const margins) };
     if hr < 0 {
         crate::debug!("DwmExtendFrameIntoClientArea failed: hr={hr:#x}");
     }

@@ -19,7 +19,7 @@ static mut HOOK_RETURN_ADDR: usize = 0;
 impl ProcessAttach for OldMinoriHook {
     fn on_process_attach(_hinst_dll: HMODULE) -> crate::Result<()> {
         let handle = crate::utils::win32::get_module_handle(core::ptr::null())?;
-        let module = handle as *mut u8;
+        let module = handle.cast::<u8>();
 
         unsafe {
             match ARG_GAME_TYPE {

@@ -11,7 +11,7 @@ use crate::hook::{impls::HookImplType, internal_hooks::WinEventTriggered};
 
 static mut WIN_EVENT_HOOK: Option<HWINEVENTHOOK> = None;
 
-/// 安装 WinEvent Hook 处理程序
+/// 安装 `WinEvent` Hook 处理程序
 ///
 /// # Safety
 /// - 必须在 worker thread 刚开始调用，且仅调用一次
@@ -45,7 +45,7 @@ pub unsafe fn install_win_event_hook() -> crate::Result<()> {
     Ok(())
 }
 
-/// 卸载 WinEvent Hook 处理程序
+/// 卸载 `WinEvent` Hook 处理程序
 ///
 /// # Safety
 /// - 必须在 worker thread 结束时调用，且仅调用一次
@@ -66,9 +66,9 @@ pub unsafe fn uninstall_win_event_hook() -> crate::Result<()> {
     }
 }
 
-/// WinEvent 通用回调函数
+/// `WinEvent` 通用回调函数
 ///
-/// 所有 WinEvent 事件都由该函数接收
+/// 所有 `WinEvent` 事件都由该函数接收
 unsafe extern "system" fn win_event_hook_proc(
     _h_win_event_hook: HWINEVENTHOOK,
     event: u32,

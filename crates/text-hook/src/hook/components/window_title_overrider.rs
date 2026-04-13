@@ -46,8 +46,8 @@ impl DefWindowProc for WindowTitleOverriderSlot {
                 );
 
                 core::ptr::copy_nonoverlapping(
-                    params_a as *const u8,
-                    &mut params_w as *mut _ as *mut u8,
+                    params_a.cast::<u8>(),
+                    (&raw mut params_w).cast::<u8>(),
                     core::mem::size_of::<CREATESTRUCTW>(),
                 );
 
@@ -77,7 +77,7 @@ impl DefWindowProc for WindowTitleOverriderSlot {
                     h_wnd,
                     u_msg,
                     w_param,
-                    &params_w as *const _ as LPARAM
+                    &raw const params_w as LPARAM
                 )
             },
             WM_SETTEXT => unsafe {
@@ -154,7 +154,7 @@ impl DefWindowProc for WindowTitleOverriderSlot {
                     h_wnd,
                     u_msg,
                     w_param,
-                    &modified_params as *const _ as LPARAM
+                    &raw const modified_params as LPARAM
                 )
             },
             WM_SETTEXT => unsafe {

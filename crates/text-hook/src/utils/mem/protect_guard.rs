@@ -44,7 +44,7 @@ impl ProtectGuard {
         // 获取系统 page size
         unsafe {
             let mut sys: SYSTEM_INFO = mem::zeroed();
-            GetSystemInfo(&mut sys as _);
+            GetSystemInfo(&raw mut sys);
             let page_size = sys.dwPageSize as usize;
             if page_size == 0 {
                 crate::bail!("GetSystemInfo returned page_size == 0");
@@ -65,17 +65,13 @@ impl ProtectGuard {
                 // 设置长度为 page_size（VirtualProtect 对齐到页面），
                 // 对最后一页也用 page_size 是安全的（系统按页处理）
                 let mut old: u32 = 0;
-                let ok = VirtualProtect(page as _, page_size as _, new_protect as _, &mut old as _);
+                let ok = VirtualProtect(page as _, page_size as _, new_protect as _, &raw mut old);
                 if ok == 0 {
                     // 出错：尝试回滚已经成功修改过的页面（尽量恢复）
                     let mut _tmp: u32 = 0;
                     for p in &pages {
-                        let _ = VirtualProtect(
-                            p.base as _,
-                            p.size as _,
-                            p.protect as _,
-                            &mut _tmp as _,
-                        );
+                        let _ =
+                            VirtualProtect(p.base as _, p.size as _, p.protect as _, &raw mut _tmp);
                     }
                     crate::bail!("VirtualProtect failed for page {:p}", page as *const u8);
                 }
@@ -93,7 +89,7 @@ impl ProtectGuard {
             }
 
             Ok(Self {
-                address: address as _,
+                address,
                 size,
                 pages,
             })
@@ -132,7 +128,7 @@ impl ProtectGuard {
             assert!(elem > 0, "ZST not supported");
             self.assert_in_bound(offset, elem);
 
-            let target_addr = self.address.add(offset) as *mut U;
+            let target_addr = self.address.add(offset).cast::<U>();
             assert!(
                 (target_addr as usize).is_multiple_of(mem::align_of::<U>()),
                 "write: target not aligned for type"
@@ -162,7 +158,7 @@ impl ProtectGuard {
             assert!(elem > 0, "ZST not supported");
             self.assert_in_bound(offset, elem);
 
-            let source_addr = self.address.add(offset) as *mut U;
+            let source_addr = self.address.add(offset).cast::<U>();
             assert!(
                 (source_addr as usize).is_multiple_of(mem::align_of::<U>()),
                 "read: target not aligned for type"
@@ -193,7 +189,7 @@ impl ProtectGuard {
             assert!(elem > 0, "ZST not supported");
             self.assert_in_bound(offset, elem);
 
-            let target_addr = self.address.add(offset) as *mut U;
+            let target_addr = self.address.add(offset).cast::<U>();
             target_addr.write_unaligned(value);
         }
     }
@@ -219,7 +215,7 @@ impl ProtectGuard {
             assert!(elem > 0, "ZST not supported");
             self.assert_in_bound(offset, elem);
 
-            let source_addr = self.address.add(offset) as *mut U;
+            let source_addr = self.address.add(offset).cast::<U>();
             source_addr.read_unaligned()
         }
     }
@@ -269,7 +265,7 @@ impl ProtectGuard {
         );
 
         let count = self.size / elem;
-        unsafe { core::slice::from_raw_parts_mut(self.address as *mut U, count) }
+        unsafe { core::slice::from_raw_parts_mut(self.address.cast::<U>(), count) }
     }
 
     /// 写入字节切片到受保护的内存
@@ -407,7 +403,7 @@ impl Drop for ProtectGuard {
         unsafe {
             let mut _tmp: u32 = 0;
             for p in &self.pages {
-                let _ok = VirtualProtect(p.base as _, p.size as _, p.protect as _, &mut _tmp as _);
+                let _ok = VirtualProtect(p.base as _, p.size as _, p.protect as _, &raw mut _tmp);
 
                 #[cfg(feature = "enable_debug_output")]
                 if _ok == 0 {

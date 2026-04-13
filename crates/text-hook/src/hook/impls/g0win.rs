@@ -1,4 +1,4 @@
-use std::{borrow::Cow, sync::LazyLock};
+use std::sync::LazyLock;
 
 use translate_macros::{DefaultHook, byte_slice};
 use windows_sys::Win32::Foundation::HMODULE;
@@ -22,7 +22,7 @@ pub struct G0WinHook;
 impl ProcessAttach for G0WinHook {
     fn on_process_attach(_hinst_dll: HMODULE) -> crate::Result<()> {
         let handle = crate::utils::win32::get_module_handle(core::ptr::null())?;
-        let module = handle as *mut u8;
+        let module = handle.cast::<u8>();
 
         unsafe {
             match ARG_GAME_TYPE {

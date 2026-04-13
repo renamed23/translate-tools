@@ -56,8 +56,7 @@ impl ModifyMenu for UserInterfacePatcherSlot {
 
                 #[cfg(not(feature = "extract_text"))]
                 if let Ok(Some(trans_msg)) = _opt_trans_msg {
-                    use windows_sys::Win32::UI::WindowsAndMessaging::ModifyMenuW;
-                    return ModifyMenuW(
+                    return windows_sys::Win32::UI::WindowsAndMessaging::ModifyMenuW(
                         h_menu,
                         u_position,
                         u_flags,
@@ -102,8 +101,12 @@ impl AppendMenu for UserInterfacePatcherSlot {
 
                 #[cfg(not(feature = "extract_text"))]
                 if let Ok(Some(trans_msg)) = _opt_trans_msg {
-                    use windows_sys::Win32::UI::WindowsAndMessaging::AppendMenuW;
-                    return AppendMenuW(h_menu, u_flags, u_id_new_item, trans_msg.as_ptr());
+                    return windows_sys::Win32::UI::WindowsAndMessaging::AppendMenuW(
+                        h_menu,
+                        u_flags,
+                        u_id_new_item,
+                        trans_msg.as_ptr(),
+                    );
                 }
             }
 
@@ -171,8 +174,12 @@ impl MessageBox for UserInterfacePatcherSlot {
                     wide_caption.as_ptr()
                 };
 
-                use windows_sys::Win32::UI::WindowsAndMessaging::MessageBoxW;
-                return MessageBoxW(h_wnd, wide_text_ptr, wide_caption_ptr, u_type);
+                return windows_sys::Win32::UI::WindowsAndMessaging::MessageBoxW(
+                    h_wnd,
+                    wide_text_ptr,
+                    wide_caption_ptr,
+                    u_type,
+                );
             }
             crate::call!(HOOK_MESSAGE_BOX_A, h_wnd, lp_text, lp_caption, u_type)
         }
@@ -202,8 +209,11 @@ impl SetDlgItemText for UserInterfacePatcherSlot {
 
             #[cfg(not(feature = "extract_text"))]
             if let Some(trans_msg) = _opt_trans_msg {
-                use windows_sys::Win32::UI::WindowsAndMessaging::SetDlgItemTextW;
-                return SetDlgItemTextW(h_dlg, n_id_dlg_item, trans_msg.as_ptr());
+                return windows_sys::Win32::UI::WindowsAndMessaging::SetDlgItemTextW(
+                    h_dlg,
+                    n_id_dlg_item,
+                    trans_msg.as_ptr(),
+                );
             }
             crate::call!(HOOK_SET_DLG_ITEM_TEXT_A, h_dlg, n_id_dlg_item, lp_string)
         }
@@ -233,8 +243,10 @@ impl SetWindowText for UserInterfacePatcherSlot {
 
             #[cfg(not(feature = "extract_text"))]
             if let Some(trans_msg) = _opt_trans_msg {
-                use windows_sys::Win32::UI::WindowsAndMessaging::SetWindowTextW;
-                return SetWindowTextW(h_wnd, trans_msg.as_ptr());
+                return windows_sys::Win32::UI::WindowsAndMessaging::SetWindowTextW(
+                    h_wnd,
+                    trans_msg.as_ptr(),
+                );
             }
             crate::call!(HOOK_SET_WINDOW_TEXT_A, h_wnd, lp_string)
         }
@@ -261,8 +273,12 @@ impl SendMessage for UserInterfacePatcherSlot {
 
                 #[cfg(not(feature = "extract_text"))]
                 if let Some(trans_msg) = _opt_trans_msg {
-                    use windows_sys::Win32::UI::WindowsAndMessaging::SendMessageW;
-                    return SendMessageW(h_wnd, msg, w_param, trans_msg.as_ptr() as LPARAM);
+                    return windows_sys::Win32::UI::WindowsAndMessaging::SendMessageW(
+                        h_wnd,
+                        msg,
+                        w_param,
+                        trans_msg.as_ptr() as LPARAM,
+                    );
                 }
             }
             crate::call!(HOOK_SEND_MESSAGE_A, h_wnd, msg, w_param, l_param)
@@ -302,22 +318,27 @@ impl PropertySheet for UserInterfacePatcherSlot {
 
             #[cfg(not(feature = "extract_text"))]
             if let Some(trans) = _opt_trans {
+                use crate::utils::mem::aligned_buf::AlignedBuffer;
                 use windows_sys::Win32::UI::Controls::PROPSHEETHEADERA_V2;
 
                 let dw_size = header.dwSize as usize;
-
-                let mut new_buf = Box::<[u8]>::new_uninit_slice(dw_size);
+                let mut new_buf = match AlignedBuffer::new_aligned_for::<usize>(dw_size) {
+                    Ok(buf) => buf,
+                    Err(e) => {
+                        crate::debug!("Alloc mem failed: {e:?}");
+                        return crate::call!(HOOK_PROPERTY_SHEET_A, ppsh);
+                    }
+                };
                 let new_hdr_slice = new_buf
+                    .as_uninit_mut_slice()
                     .write_copy_of_slice(core::slice::from_raw_parts(ppsh.cast::<u8>(), dw_size));
 
-                let new_hdr_ptr = new_hdr_slice.as_mut_ptr() as *mut PROPSHEETHEADERA_V2;
+                #[allow(clippy::cast_ptr_alignment)]
+                let new_hdr_ptr = new_hdr_slice.as_mut_ptr().cast::<PROPSHEETHEADERA_V2>();
 
                 (*new_hdr_ptr).pszCaption = trans.as_ptr();
 
-                return crate::call!(
-                    HOOK_PROPERTY_SHEET_A,
-                    new_hdr_ptr as *const PROPSHEETHEADERA_V2
-                );
+                return crate::call!(HOOK_PROPERTY_SHEET_A, new_hdr_ptr.cast_const());
             }
             crate::call!(HOOK_PROPERTY_SHEET_A, ppsh)
         }

@@ -12,7 +12,7 @@ use windows_sys::Win32::{
 
 use crate::print_last_error_message;
 
-/// 拥有所有权的窗口句柄，销毁时自动调用 DestroyWindow
+/// 拥有所有权的窗口句柄，销毁时自动调用 `DestroyWindow`
 pub struct OwnedHWND(pub HWND);
 
 impl Drop for OwnedHWND {
@@ -100,7 +100,7 @@ impl Deref for OwnedHMODULE {
     }
 }
 
-/// 拥有所有权的 glow::Buffer
+/// 拥有所有权的 `glow::Buffer`
 pub struct OwnedBuffer {
     pub gl: Arc<glow::Context>,
     pub buffer: glow::Buffer,
@@ -119,7 +119,7 @@ impl Deref for OwnedBuffer {
     }
 }
 
-/// 拥有所有权的 glow::VertexArray
+/// 拥有所有权的 `glow::VertexArray`
 pub struct OwnedVertexArray {
     pub gl: Arc<glow::Context>,
     pub vao: glow::VertexArray,
@@ -138,7 +138,7 @@ impl Deref for OwnedVertexArray {
     }
 }
 
-/// 拥有所有权的 glow::Program
+/// 拥有所有权的 `glow::Program`
 pub struct OwnedProgram {
     pub gl: Arc<glow::Context>,
     pub program: glow::Program,
@@ -157,7 +157,7 @@ impl Deref for OwnedProgram {
     }
 }
 
-/// 拥有所有权的 glow::Shader
+/// 拥有所有权的 `glow::Shader`
 pub struct OwnedShader {
     pub gl: Arc<glow::Context>,
     pub shader: glow::Shader,
@@ -176,7 +176,7 @@ impl Deref for OwnedShader {
     }
 }
 
-/// 拥有所有权的 glow::Texture
+/// 拥有所有权的 `glow::Texture`
 pub struct OwnedTexture {
     pub gl: Arc<glow::Context>,
     pub texture: glow::Texture,

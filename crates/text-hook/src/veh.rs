@@ -60,8 +60,8 @@ pub unsafe fn uninstall_veh_handler() -> crate::Result<()> {
 
 /// 自定义异常代码：请求在当前线程设置硬件断点
 ///
-/// 使用 RaiseException 触发，参数传递断点配置（地址/类型/长度/寄存器）
-pub const EXCEPTION_SET_HW_BREAK: NTSTATUS = 0xEABC0001u32 as _;
+/// 使用 `RaiseException` 触发，参数传递断点配置（地址/类型/长度/寄存器）
+pub const EXCEPTION_SET_HW_BREAK: NTSTATUS = 0xEABC_0001_u32.cast_signed();
 
 /// 请求在当前线程上下文设置硬件断点
 ///
@@ -82,22 +82,22 @@ pub fn request_set_hw_breakpoint_on_current_thread(
     let args = [addr, kind as usize, len as usize, reg as usize];
     unsafe {
         RaiseException(
-            EXCEPTION_SET_HW_BREAK as u32,
+            EXCEPTION_SET_HW_BREAK.cast_unsigned(),
             0,
             args.len() as u32,
             args.as_ptr(),
-        )
+        );
     };
 }
 
 /// VEH 异常处理函数
 ///
 /// 处理两类异常：
-/// 1. EXCEPTION_SET_HW_BREAK: 响应设置断点请求，解包参数并调用 `set_hw_break_in_context`
-/// 2. EXCEPTION_SINGLE_STEP: 处理断点命中，回调用户逻辑，管理 DR6/EFlags.RF 位
+/// 1. `EXCEPTION_SET_HW_BREAK`: 响应设置断点请求，解包参数并调用 `set_hw_break_in_context`
+/// 2. `EXCEPTION_SINGLE_STEP`: 处理断点命中，回调用户逻辑，管理 DR6/EFlags.RF 位
 ///
 /// # 死锁警告
-/// SINGLE_STEP 处理中若触发堆分配（String/Vec/线程创建），且目标线程已持有堆锁，将导致死锁。
+/// `SINGLE_STEP` 处理中若触发堆分配（String/Vec/线程创建），且目标线程已持有堆锁，将导致死锁。
 /// 生产环境建议改用无锁通知机制。
 unsafe extern "system" fn veh_handler(exception_info: *mut EXCEPTION_POINTERS) -> i32 {
     // 基础校验

@@ -28,8 +28,9 @@ pub unsafe fn patch_iat(
     hook_addr: usize,
 ) -> crate::Result<()> {
     unsafe {
-        let iat_entry_ptr = find_iat_entry(target_module_base, original_addr)?;
-        (iat_entry_ptr as *mut u8).patch_bytes(&hook_addr.to_ne_bytes())?;
+        find_iat_entry(target_module_base, original_addr)?
+            .cast::<u8>()
+            .patch_bytes(&hook_addr.to_ne_bytes())?;
         Ok(())
     }
 }

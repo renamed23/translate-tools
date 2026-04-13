@@ -32,7 +32,7 @@ pub fn get_executable_dir() -> &'static Path {
     static EXECUTABLE_DIR: LazyLock<PathBuf> = LazyLock::new(|| {
         crate::utils::win32::get_module_file_name(core::ptr::null_mut(), false)
             .ok()
-            .and_then(|p| p.to_path_buf().parent().map(|p| p.to_path_buf()))
+            .and_then(|p| p.to_path_buf().parent().map(Path::to_path_buf))
             .expect("Failed to get executable directory")
     });
 

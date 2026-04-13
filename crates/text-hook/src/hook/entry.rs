@@ -19,7 +19,7 @@ pub unsafe extern "system" fn DllMain(
     default_dll_main(_hinst_dll, fdw_reason, _lpv_reserved)
 }
 
-/// 默认的 DllMain 实现
+/// 默认的 `DllMain` 实现
 pub fn default_dll_main(
     hinst_dll: HMODULE,
     fdw_reason: u32,
@@ -97,8 +97,8 @@ pub fn default_dll_main(
     Ok(TRUE)
 }
 
-/// 对应于 PROCESS_ATTACH 阶段的清理操作。
-/// DllMain PROCESS_DETACH 阶段执行该清理操作非常危险。
+/// 对应于 `PROCESS_ATTACH` 阶段的清理操作。
+/// `DllMain` `PROCESS_DETACH` 阶段执行该清理操作非常危险。
 ///
 /// 进程退出时，进程内资源是可以被系统正确处理回收。
 /// 如果一定需要进行处理，那么应该HOOK ExitProcess，FreeLibrary相关函数，再调用该函数。

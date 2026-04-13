@@ -1,6 +1,6 @@
 cfg_if::cfg_if! {
     if #[cfg(feature = "enable_debug_output")] {
-        /// 设置自定义 panic hook，仅在启用 "enable_debug_output" 特性时有效
+        /// 设置自定义 panic hook，仅在启用 `enable_debug_output` 特性时有效
         /// 这个 hook 会使用 `debug!` 宏记录详细的 panic 信息
         pub fn set_debug_panic_hook() {
             std::panic::set_hook(Box::new(|panic_info| {

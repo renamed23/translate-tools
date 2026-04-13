@@ -26,7 +26,7 @@ impl ProcessAttach for HitocosHook {
         fix_game_ini()?;
 
         let handle = crate::utils::win32::get_module_handle(core::ptr::null())?;
-        let module = handle as *mut u8;
+        let module = handle.cast::<u8>();
 
         unsafe {
             TEXT_RETURN_ADDR = module.add(0x189B5) as usize;
@@ -134,7 +134,7 @@ fn fix_game_ini() -> crate::Result<()> {
         .parent()
         .map(|dir| {
             let mut dir = dir.to_string_lossy().into_owned();
-            if !dir.ends_with("\\") {
+            if !dir.ends_with('\\') {
                 dir.push('\\');
             }
             dir
@@ -142,8 +142,7 @@ fn fix_game_ini() -> crate::Result<()> {
         .ok_or_else(|| crate::anyhow!("Failed to get executable_dir"))?;
 
     let buf = format!(
-        "[PATH]\r\nSetupType=\"1\"\r\nCurrent=\"{}\"\r\nCDDrive=\".\\\"\r\n\r\n",
-        current_dir
+        "[PATH]\r\nSetupType=\"1\"\r\nCurrent=\"{current_dir}\"\r\nCDDrive=\".\\\"\r\n\r\n"
     );
 
     std::fs::write(

@@ -33,9 +33,9 @@ fn to_unix_clean_path(path: &Path) -> String {
 
     // 1. 剥离前缀（因为已经全小写且换了斜杠，所以匹配 //?/）
     if let Some(stripped) = s.strip_prefix("//?/") {
-        s = stripped.to_string()
+        s = stripped.to_string();
     } else if let Some(stripped) = s.strip_prefix("//./") {
-        s = stripped.to_string()
+        s = stripped.to_string();
     }
 
     // 2. 强制加尾部斜杠用于前缀匹配，防止 MyGame 和 MyGameLauncher 混淆
@@ -52,7 +52,7 @@ fn to_windows_path(path: &Path) -> String {
 
     // 加上 \\?\ 前缀给 CreateFileW 使用
     if !s.starts_with(r"\\") {
-        s = format!(r"\\?\{}", s)
+        s = format!(r"\\?\{s}");
     }
 
     s
