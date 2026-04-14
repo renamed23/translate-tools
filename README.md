@@ -3,7 +3,8 @@
 [![MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/renamed23/translate-tools/blob/main/LICENSE)
 [![xtask-check](https://github.com/renamed23/translate-tools/actions/workflows/xtask-check.yml/badge.svg)](https://github.com/renamed23/translate-tools/actions/workflows/xtask-check.yml)
 
-## 使用方式
+
+# 使用方式
 
 `text-hook` 是用于游戏翻译的HOOK DLL，它包含很多功能，下面介绍如何使用它。
 
@@ -31,7 +32,7 @@ cargo build-text-hook64 --features default_impl,enable_debug_output
 > 注意，`text-hook`重度依赖于编译期代码生成和运算，所以不太可能对不同游戏复用DLL二进制。如果需要修改某个配置，必须重新编译。
 
 
-### DLL注入方式
+## DLL注入方式
 
 DLL 必须注入到游戏的进程才可以发挥作用，`text-hook` 可以有两种注入方式
 - 修改目标exe的导入表
@@ -39,7 +40,7 @@ DLL 必须注入到游戏的进程才可以发挥作用，`text-hook` 可以有�
 
 当然也可以通过其他程序（比如一些启动器）或者DLL将 `text-hook` 注入游戏进程，但是这里只介绍非第三方注入的方式。
 
-#### 修改目标exe的导入表
+### 修改目标exe的导入表
 
 - 当 `text-hook` 编译好之后，将它复制到游戏exe的目录（请确认游戏exe是32位还是64位）
 - 假设游戏exe的名字叫 `folk.exe`，然后我们复制一份并改名为 `folk_chs.exe`。
@@ -51,7 +52,7 @@ DLL 必须注入到游戏的进程才可以发挥作用，`text-hook` 可以有�
 
 根据上述步骤后，打开 `folk_chs.exe` 后，应该会弹出一个黑色的控制台，说明 `text-hook` 注入成功
 
-#### DLL 劫持
+### DLL 劫持
 
 
 - 需要准备一个需要劫持的DLL，一般来说游戏都会使用winmm.dll，所以可以直接在系统目录复制要劫持的DLL到`crates/text-hook/assets/hijacked/winmm.dll`，请确认游戏是32位还是64位，如果是32位，那么复制`C:/Windows/SysWOW64/winmm.dll`，否则复制`C:/Windows/System32/winmm.dll`
@@ -74,7 +75,7 @@ DLL 必须注入到游戏的进程才可以发挥作用，`text-hook` 可以有�
 这里假设游戏的DLL名字叫`game.dll`，需要将编译好的text-hook改名为`game.dll`，然后将真实的`game.dll`改名为`game_real.dll`，这样游戏会加载 `text_hook`，然后 `text-hook` 会自动加载游戏真实的DLL，并转发导出函数。
 
 
-### 使用常见功能
+## 使用常见功能
 
 这类HOOK DLL最常见的功能是
 - [日繁替换](#日繁替换)
@@ -86,7 +87,7 @@ DLL 必须注入到游戏的进程才可以发挥作用，`text-hook` 可以有�
 通过 `--features default_impl,enable_debug_output` 编译出来的 `text-hook` 只是单纯的打印调试信息，不做任何事情。下面介绍如何添加这些功能。
 
 
-#### 日繁替换
+### 日繁替换
 
 在`crates/text-hook/assets`创建一个文件`mapping.json`
 
@@ -117,13 +118,13 @@ cargo build-text-hook --features default_impl,bind_text_mapping
 
 > 如果游戏显示有问题，可以尝试添加`assume_text_out_arg_c_is_byte_len`这个feature，对于一些老游戏很有用
 
-#### 修改字体
+### 修改字体
 
 `text-hook` 提供了两种方式
 - 固定字体，如果游戏没有选择字体的功能，请选择这种
 - 非固定字体，如果游戏有选择字体的功能，请选择这种
 
-##### 固定字体
+#### 固定字体
 
 在`crates/text-hook/assets`创建一个文件`config.json`
 
@@ -145,7 +146,7 @@ cargo build-text-hook --features default_impl,bind_text_mapping
 cargo build-text-hook --features default_impl,bind_font_manager
 ```
 
-##### 非固定字体
+#### 非固定字体
 
 非固定字体的话，除了`bind_font_manager`，还需要添加`disable_forced_font`
 
@@ -170,7 +171,7 @@ cargo build-text-hook --features default_impl,bind_font_manager,disable_forced_f
 }
 ```
 
-#### 覆盖主窗口标题
+### 覆盖主窗口标题
 
 在`crates/text-hook/assets`创建一个文件`config.json`
 
@@ -187,7 +188,7 @@ cargo build-text-hook --features default_impl,bind_font_manager,disable_forced_f
 cargo build-text-hook --features default_impl,bind_window_title_overrider,enable_window_title_override
 ```
 
-#### 注入字体
+### 注入字体
 
 将自定义字体放在 `crates/text-hook/assets/font` 文件夹下，编译时需要添加`enable_embedded_font`
 
@@ -198,7 +199,7 @@ cargo build-text-hook --features default_impl,enable_embedded_font
 注意，如果想要游戏使用这个字体，那么还需要固定字体，并且`FONT_FACE`设置为该字体的Font face，比如SE的`MSGothic_WenQuanYi_cnjp.ttf`，它的font face就是`MS Gothic`
 
 
-#### 转区运行
+### 转区运行
 
 需要添加 `enable_locale_emulator`
 
@@ -221,14 +222,14 @@ cargo build-text-hook --features default_impl,enable_locale_emulator
 
 注意别忘了将LE的`LoaderDll.dll`，`LocaleEmulator.dll`复制到`text-hook`所在位置。
 
-## 减少 DLL 大小
+# 减少 DLL 大小
 
 `text-hook` 大量使用了编译期运算和代码生成，并根据`features`裁剪了不需要的代码。
 
 可以更进一步，有多种方式可以将DLL裁剪到最小大小，一个具有日繁映射+修改字体+覆盖游戏主标题功能的DLL的通过如下的方法可以裁剪到25KB左右。
 
 
-### 尝试使用 IAT HOOK
+## 尝试使用 IAT HOOK
 
 `text-hook` 默认使用 inline hook，该hook方式非常全面，但是也更重。IAT HOOK更快，也更轻，通过添加 `enable_iat_hook` 使用 IAT HOOK。
 
@@ -239,7 +240,7 @@ cargo build-text-hook --features default_impl,enable_iat_hook
 IAT HOOK 在大部分情况下都能有效工作，但是如果发现IAT HOOK不起作用，那么请删除这个 feature。
 
 
-### 基于 `panic=immediate-abort` 编译
+## 基于 `panic=immediate-abort` 编译
 
 `immediate-abort`编译选项会剔除所有无关的错误信息，极大的减少DLL的体积，一般来说可直接使用。
 
