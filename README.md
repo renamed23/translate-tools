@@ -3,149 +3,92 @@
 [![MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/renamed23/translate-tools/blob/main/LICENSE)
 [![xtask-check](https://github.com/renamed23/translate-tools/actions/workflows/xtask-check.yml/badge.svg)](https://github.com/renamed23/translate-tools/actions/workflows/xtask-check.yml)
 
-## 编译方式
+## 使用方式
 
-### 编译text-hook
+`text-hook` 是用于游戏翻译的HOOK DLL，它包含很多功能，下面介绍如何使用它。
 
-```ps
-cargo build-text-hook --features default_impl
+最简单的编译
+
+32位DLL，编译的DLL在`target/i686-pc-windows-msvc/release/`
+
+```powershell
+cargo build-text-hook --features default_impl,enable_debug_output
 ```
 
-编译的DLL在`target/i686-pc-windows-msvc/release`
+64位DLL，编译的DLL在`target/x86_64-pc-windows-msvc/release/`
 
-更多`features`请看[crates/text-hook/Cargo.toml](crates/text-hook/Cargo.toml)
+```powershell
+cargo build-text-hook64 --features default_impl,enable_debug_output
+```
 
-可以使用 `cargo xtask use-test-assets` 抑制过程宏编译错误。
 
-注意，`text-hook`重度依赖于编译期代码生成和运算，所以不太可能对不同游戏复用DLL二进制。
+编译出来的 `text-hook` 仅仅只是一个显示控制台窗口的空壳。通过添加`crates/text-hook/assets`的内容，以及在编译时添加对应的`features`，可以获得想要的功能。
 
-## egui叠加层
 
-![overlay_egui_example](media/overlay_egui_example.jpg)
+> `crates/text-hook/assets`的完整介绍，请参考[docs/assets.md](docs/assets.md)
+> 更多`features`请参考[crates/text-hook/Cargo.toml](crates/text-hook/Cargo.toml)
 
-如上图是使用egui作为UI，在运行期修改自定义字体并在游戏中动态显示的示例。
+> 注意，`text-hook`重度依赖于编译期代码生成和运算，所以不太可能对不同游戏复用DLL二进制。如果需要修改某个配置，必须重新编译。
 
-> 目前egui相关代码还不够完善（写的很糙），不过作为轻量级的debug工具还是可以
 
-## crates/text-hook/assets
+### DLL注入方式
 
-下面介绍assets每个文件的作用和用法（具体可以参考一下`xtask/test_assets`）
+DLL 必须注入到游戏的进程才可以发挥作用，`text-hook` 可以有两种注入方式
+- 修改目标exe的导入表
+- DLL劫持
 
-### config.json
+当然也可以通过其他程序（比如一些启动器）或者DLL将 `text-hook` 注入游戏进程，但是这里只介绍非第三方注入的方式。
+
+#### 修改目标exe的导入表
+
+- 当 `text-hook` 编译好之后，将它复制到游戏exe的目录（请确认游戏exe是32位还是64位）
+- 假设游戏exe的名字叫 `folk.exe`，然后我们复制一份并改名为 `folk_chs.exe`。
+- 运行 `CFF Explorer.exe`，并将刚复制的 `folk_chs.exe` 拖拽到 `CFF Explorer.exe`，在然后在左侧栏找到 `Import Adder`，然后点击右侧面板的 `Add` 按钮，找到 `text_hook.dll`并打开，会发现下面的 `Exported Functions` 会多出一个 `DllMain`，我们点击 `Import By Name`，然后点击 `Rebuild Import Table`，最后保存即可。
+
+![修改导入表](media/import_text_hook.jpg)
+
+> 注意：修改导入表的方法并非万能，如果游戏exe有检查导入表的机制，那么可能会失败，无法运行，此时可以尝试使用DLL劫持的方法
+
+根据上述步骤后，打开 `folk_chs.exe` 后，应该会弹出一个黑色的控制台，说明 `text-hook` 注入成功
+
+#### DLL 劫持
+
+
+- 需要准备一个需要劫持的DLL，一般来说游戏都会使用winmm.dll，所以可以直接在系统目录复制要劫持的DLL到`crates/text-hook/assets/hijacked/winmm.dll`，请确认游戏是32位还是64位，如果是32位，那么复制`C:/Windows/SysWOW64/winmm.dll`，否则复制`C:/Windows/System32/winmm.dll`
+- 编译的时候，`features`需要添加`enable_dll_hijacking`，如：
+  ```powershell
+  cargo build-text-hook --features default_impl,enable_debug_output,enable_dll_hijacking
+  ```
+- 将编译好的`text_hook.dll`改名为劫持的DLL的名字，这里就是`winmm.dll`，然后放到游戏目录即可
+
+一般来说劫持系统DLL已经够用了，不过也可以尝试劫持游戏的DLL，但请确保它是纯C导出，步骤和上述一致，但是需要在`crates/text-hook/assets/config.json`中确保指定了`HIJACKED_DLL_PATH`字段的值，比如
 
 ```json
 {
-  "FONT_FACE": "SimSun",
-  "CHAR_SET": 134,
-  "FONT_FILTER": [
-    "ＭＳ ゴシック",
-    "俵俽 僑僔僢僋",
-    "MS Gothic"
-  ],
-  "CHAR_FILTER": [
-    64
-  ],
-  "ENUM_FONT_PROC_CHAR_SET": 128,
-  "ENUM_FONT_PROC_PITCH": 1,
-  "ENUM_FONT_PROC_OUT_PRECISION": 3,
-  "CREATE_FONT_C_HEIGHT": -12,
-  "CREATE_FONT_C_WIDTH": 0,
-  "CREATE_FONT_C_ESCAPEMENT": 0,
-  "CREATE_FONT_C_ORIENTATION": 0,
-  "CREATE_FONT_C_WEIGHT": 400,
-  "CREATE_FONT_B_ITALIC": 0,
-  "CREATE_FONT_B_UNDERLINE": 0,
-  "CREATE_FONT_B_STRIKE_OUT": 0,
-  "CREATE_FONT_I_OUT_PRECISION": 3,
-  "CREATE_FONT_I_CLIP_PRECISION": 2,
-  "CREATE_FONT_I_QUALITY": 1,
-  "CREATE_FONT_I_PITCH_AND_FAMILY": 49,
-  "WINDOW_TITLE": "游戏窗口",
-  "HIJACKED_DLL_PATH": "some_path/your_dll.dll",
-  "REDIRECTION_SRC_PATH": "DATA2.TCD",
-  "REDIRECTION_TARGET_PATH": "DATA_chs.TCD",
-  "RESOURCE_PACK_NAME": "MOZU_chs",
-  "HWBP_REG": "crate::utils::hwbp::HwReg::Dr2",
-  "HWBP_TYPE": "crate::utils::hwbp::HwBreakpointType::Execute",
-  "HWBP_LEN": "crate::utils::hwbp::HwBreakpointLen::Byte1",
-  "HWBP_MODULE": "::core::ptr::null()",
-  "HWBP_RVA": 4000000,
-  "EMULATE_LOCALE_CODEPAGE": 932,
-  "EMULATE_LOCALE_LOCALE": 1041,
-  "EMULATE_LOCALE_CHARSET": 128,
-  "EMULATE_LOCALE_TIMEZONE": "Tokyo Standard Time",
-  "EMULATE_LOCALE_WAIT_FOR_EXIT": false,
-  "OVERLAY_TARGET_WINDOW_TEXT": "some_window_text",
-  "OVERLAY_TARGET_WINDOW_CLASS_NAME": "some_window_class_name"
+  "HIJACKED_DLL_PATH": "game_real.dll",
+  // 其他配置
 }
 ```
 
-若未开启`disable_forced_font`特性，如果传入字体非`FONT_FILTER`则使用`FONT_FACE`固定字体；若开启了`disable_forced_font`，那么传入字体命中`FONT_FILTER`时才使用`FONT_FACE`，否则使用传入的字体。
 
-> 当未开启`disable_forced_font`特性时，`FONT_FILTER`是白名单；开启后则变成黑名单。
-
-`CHAR_SET`对应于GDI函数的`CharSet`
-
-`ENUM_FONT_PROC_CHAR_SET`，`ENUM_FONT_PROC_PITCH`，`ENUM_FONT_PROC_OUT_PRECISION`用于`EnumFonts`系列函数的回调函数，若未指定则不修改。
-
-`CREATE_FONT_C_HEIGHT`，`CREATE_FONT_C_WIDTH`，`CREATE_FONT_C_ESCAPEMENT`，`CREATE_FONT_C_ORIENTATION`，`CREATE_FONT_C_WEIGHT`，`CREATE_FONT_B_ITALIC`，`CREATE_FONT_B_UNDERLINE`，`CREATE_FONT_B_STRIKE_OUT`，`CREATE_FONT_I_OUT_PRECISION`，`CREATE_FONT_I_CLIP_PRECISION`，`CREATE_FONT_I_QUALITY`，`CREATE_FONT_I_PITCH_AND_FAMILY`用于`CreateFont`和`CreateFontIndirect`系列函数，若未指定则使用传入的原始值。
-
-`CHAR_FILTER`用于过滤一些字符(比如需要定长时的填充字符，注意输入的应该是字符的u16值(只支持BMP))，示例中`@`会被过滤，不会被显示出来
-
-`WINDOW_TITLE`在开启`enable_window_title_override`特性后会被用于覆写游戏标题
-
-`HIJACKED_DLL_PATH`用于指定被劫持的DLL的路径，若未指定，那么默认会在系统目录中寻找。需要开启`enable_dll_hijacking`特性，并将需要劫持的DLL放在`assets/hijacked`目录里(仅限一个)，最终编译的DLL需要手动改名，然后放在游戏EXE所在目录即可完成劫持，此时就不再需要改游戏的导入表了。
-
-`RESOURCE_PACK_NAME`在开启`enable_resource_pack`特性后有效，它代表解压到资源包文件的名字。
-
-开启`auto_apply_1337_patch_on_hwbp_hit`或者`enable_hwbp_from_constants`特性时候，使用如下值
-- `HWBP_REG`: 硬件断点的寄存器
-- `HWBP_TYPE`: 硬件断点的类型（写/访问/执行）
-- `HWBP_LEN`: 硬件断点的长度(1，2，4，8)
-- `HWBP_MODULE`：硬件断点的模块，也可以是`::windows_sys::w!("sc.dll")`
-- `HWBP_RVA`: 硬件断点的相对虚拟地址（相对于模块）
-
-开启`enable_locale_emulator`时，使用如下值
-- `EMULATE_LOCALE_CODEPAGE`: 转区的目标代码页
-- `EMULATE_LOCALE_LOCALE`: 转区的目标区域码
-- `EMULATE_LOCALE_CHARSET`: 转区的目标CharSet
-- `EMULATE_LOCALE_TIMEZONE`: 转区的目标时间区域
-- `EMULATE_LOCALE_WAIT_FOR_EXIT`: 等待转区后的进程结束再退出
-
-开启`enable_overlay`时，使用如下值
-- `OVERLAY_TARGET_WINDOW_TEXT`：目标窗口（需要overlay的窗口）标题
-- `OVERLAY_TARGET_WINDOW_CLASS_NAME`：目标窗口（需要overlay的窗口）窗口类名
+这里假设游戏的DLL名字叫`game.dll`，需要将编译好的text-hook改名为`game.dll`，然后将真实的`game.dll`改名为`game_real.dll`，这样游戏会加载 `text_hook`，然后 `text-hook` 会自动加载游戏真实的DLL，并转发导出函数。
 
 
+### 使用常见功能
 
-### hook_lists.json
+这类HOOK DLL最常见的功能是
+- [日繁替换](#日繁替换)
+- [修改字体](#修改字体)
+- [覆盖主窗口标题](#覆盖主窗口标题)
+- [注入字体](#注入字体)
+- [转区运行](#转区运行)
 
-```json
-{
-  "enable": ["TextOutA"],
-  "disable": [
-    "ExtTextOutA",
-    "ExtTextOutW"
-  ]
-}
-```
-
-哪些钩子会被启用取决于`hook_lists.json`以及开启了哪些feature，可以查看 [featured_hook_lists.json](crates/text-hook/constant_assets/featured_hook_lists.json) 了解。
-
-通过`hook_lists.json`来显式指定哪些钩子会被禁止，以及哪些钩子会被开启。
-
-1. `disable` 列表中的钩子会从任何条件中移除
-2. `enable` 列表中的钩子会无条件启用
-3. `hook_lists.json`中同一个钩子不能同时出现在 enable 和 disable 中
-
-> 例如，如果开启了`bind_font_manager`特性，那么`CreateFontA`钩子会自动启用，可以通过在`disable`指定`CreateFontA`来移除这个钩子。
+通过 `--features default_impl,enable_debug_output` 编译出来的 `text-hook` 只是单纯的打印调试信息，不做任何事情。下面介绍如何添加这些功能。
 
 
-### font
+#### 日繁替换
 
-`font`目录应该只存放一个字体文件，该字体文件会被内嵌到DLL，需要开启`enable_embedded_font`特性
-
-### mapping.json
+在`crates/text-hook/assets`创建一个文件`mapping.json`
 
 ```json
 {
@@ -161,70 +104,151 @@ cargo build-text-hook --features default_impl
 }
 ```
 
-`code_page`是可选的，将用于函数解码文本，如果未指定，那么会使用`src_encoding`，如果也没有`src_encoding`，那么会使用默认值`0`
+其中`code_page`指定了使用哪种代码页，一般来说固定为932即可，如果要做GBK的话，可以改为936，这样可以支持一些GBK不支持的字符显示。
+`mapping`是一个`KEY` -> `VALUE`结构，其中`KEY`为替身字符，也就是会被映射的字符，`VALUE`是真实字符，一般来说，左侧就是CP932支持的字符，右侧是CP932不支持的字符。
 
-`mapping`，字符映射规则，左边是替身字符，右边则是会被映射的字符
+然后我们编译的时候，需要添加`bind_text_mapping`这个feature，开启映射功能。
 
-### raw_patch & translated_patch
-
-raw_patch文件夹包含需要被替换的文件，translated_patch文件夹包含对应的替换文件
-
-若需使用需要开启`enable_patch`特性
-
-### raw_text & translated_text
-
-
-```json
-[
-  {
-    "name": "右京",
-    "message": "急に衝撃があったと思ったらいきなり机が話しかけてきたんでな。俺も少々驚いたよ。",
-  },
-  {
-    "message": "見る",
-  },
-]
+```powershell
+cargo build-text-hook --features default_impl,bind_text_mapping
 ```
 
-raw文件夹包含如上结构的json文件，translated文件夹包含对应的翻译后的json文件，会将文本嵌入到DLL中，使用原文条目调用`lookup`可以获得相对应的译文条目。
+此时 `text-hook` 拥有了日繁替换的功能。
 
-需要开启`enable_text_patch`功能，如果需要翻译exe的对话框以及其他exe的文本，则需要开启`bind_user_interface_patcher`功能，可以使用`extract_text` + `bind_lifecycle_guard`功能来从exe中提取出对话框的文本，提取的文本会输出到dll所在目录的`raw.json`中
+> 如果游戏显示有问题，可以尝试添加`assume_text_out_arg_c_is_byte_len`这个feature，对于一些老游戏很有用
 
+#### 修改字体
 
-### hijacked
+`text-hook` 提供了两种方式
+- 固定字体，如果游戏没有选择字体的功能，请选择这种
+- 非固定字体，如果游戏有选择字体的功能，请选择这种
 
-该目录应该仅有一个文件，并且是你需要劫持的DLL文件，比如`version.dll`，然后过程宏会自动读入该DLL生成对应的导出函数的代码。编译之后，将`text_hook.dll`改名为被劫持的DLL文件名即可，在这个例子中，就是`version.dll`
+##### 固定字体
 
-DLL会`inline hook`入口点，然后加载被劫持的DLL，并获取导出函数的地址，它通过内联汇编`jmp`指令直接跳转到被劫持的DLL对应的导出函数地址，实现转发功能。
-
-> 不只是系统DLL，实际上只要是无命名修饰的符号（比如C++命名修饰的导出符号并不支持）的DLL都可以劫持，也就是说游戏DLL一般也是可以的，不过需要将原始游戏DLL重命名，然后通过`HIJACKED_DLL_PATH`指定位置即可。比如说，游戏导入表有一个`tools.dll`，我们将`tools.dll`拖到`assets/hijacked`，将`HIJACKED_DLL_PATH`的值改为`./tools2.dll`，编译生成，然后将`text_hook.dll`改名为`tools.dll`并复制到游戏目录，将游戏目录原始的`tools.dll`改名为`tools2.dll`，然后就完成劫持游戏DLL了。
-
-> 补充，也不支持有无名导出符号的DLL（即纯序号导出）
-
-> 推荐使用修改导入表的方式注入DLL（比如使用`CFF Explorer`），因为可以精准影响到你想要影响的EXE，比如`chs`版本
-
-
-### x64dbg_1337_patch
-
-该目录应该包含由x64dbg生成的补丁文件，在开启`auto_apply_1337_patch_on_attach`特性后，会在DLL attach的时候进行修补，或者可以只开启`enable_x64dbg_1337_patch`并由自己选择修补时机。
-
-开启`auto_apply_1337_patch_on_hwbp_hit`特性后，会在硬件断点命中时进行修补。
-
-### bitmap_font.json
+在`crates/text-hook/assets`创建一个文件`config.json`
 
 ```json
 {
-    "font_path": "assets/font/MSGothic_WenQuanYi.ttf",
-    "font_size": 24,
-    "padding": 2,
-    "texture_max_width": 48,
-    "chars": "hello world\n你好世界"
+  "FONT_FACE": "SimHei",
+  "FONT_FILTER": ["Microsoft YaHei", "Microsoft YaHei UI"],
+  // 其他配置
 }
 ```
 
-在开启`enable_gl_painter`的时候，过程宏会根据`bitmap_font.json`生成位图字体，其中：
-- `font_path`: 字体路径，用于光栅化（支持TTF，OTF）
-- `font_size`: 字体大小
-- `padding`: 位图每个字符的padding
-- `texture_max_width`：位图纹理的最大宽度
-- `chars`：需要添加到位图里的字符，内部会进行去重
+`FONT_FACE` 为固定的字体的名字，`SimHei`，`SimSun`等等。
+
+`FONT_FILTER`为字体白名单，也就是说，如果传入的字体如果不匹配`FONT_FILTER`任意一个，则强制使用`FONT_FACE`的字体。该功能是为了防止完全固定所有字体，导致UI显示很难看。
+
+然后我们编译的时候，需要添加`bind_font_manager`这个feature。
+
+```powershell
+cargo build-text-hook --features default_impl,bind_font_manager
+```
+
+##### 非固定字体
+
+非固定字体的话，除了`bind_font_manager`，还需要添加`disable_forced_font`
+
+```powershell
+cargo build-text-hook --features default_impl,bind_font_manager,disable_forced_font
+```
+
+指定`disable_forced_font`后，`FONT_FILTER`会被解释为黑名单，而不是白名单，这样的话，就可以过滤掉不想要的日文字体了
+
+```json
+{
+  "FONT_FACE": "SimHei",
+  "FONT_FILTER": [
+      "ＭＳ ゴシック",
+      "俵俽 僑僔僢僋",
+      "MS Gothic",
+      "",
+      "俵俽僑僔僢僋",
+      "ＭＳゴシック",
+  ],
+  // 其他配置
+}
+```
+
+#### 覆盖主窗口标题
+
+在`crates/text-hook/assets`创建一个文件`config.json`
+
+```json
+{
+  "WINDOW_TITLE": "游戏窗口",
+  // 其他配置
+}
+```
+
+编译的时候，需要添加`bind_window_title_overrider`以及`enable_window_title_override`
+
+```powershell
+cargo build-text-hook --features default_impl,bind_window_title_overrider,enable_window_title_override
+```
+
+#### 注入字体
+
+将自定义字体放在 `crates/text-hook/assets/font` 文件夹下，编译时需要添加`enable_embedded_font`
+
+```powershell
+cargo build-text-hook --features default_impl,enable_embedded_font
+```
+
+注意，如果想要游戏使用这个字体，那么还需要固定字体，并且`FONT_FACE`设置为该字体的Font face，比如SE的`MSGothic_WenQuanYi_cnjp.ttf`，它的font face就是`MS Gothic`
+
+
+#### 转区运行
+
+需要添加 `enable_locale_emulator`
+
+```powershell
+cargo build-text-hook --features default_impl,enable_locale_emulator
+```
+
+可以在`crates/text-hook/assets/config.json`中添加字段控制行为（可选）
+
+```json
+{
+  "EMULATE_LOCALE_CODEPAGE": 932,
+  "EMULATE_LOCALE_LOCALE": 1041,
+  "EMULATE_LOCALE_CHARSET": 128,
+  "EMULATE_LOCALE_TIMEZONE": "Tokyo Standard Time",
+  "EMULATE_LOCALE_WAIT_FOR_EXIT": false,
+  // 其他配置
+}
+```
+
+注意别忘了将LE的`LoaderDll.dll`，`LocaleEmulator.dll`复制到`text-hook`所在位置。
+
+## 减少 DLL 大小
+
+`text-hook` 大量使用了编译期运算和代码生成，并根据`features`裁剪了不需要的代码。
+
+可以更进一步，有多种方式可以将DLL裁剪到最小大小，一个具有日繁映射+修改字体+覆盖游戏主标题功能的DLL的通过如下的方法可以裁剪到25KB左右。
+
+
+### 尝试使用 IAT HOOK
+
+`text-hook` 默认使用 inline hook，该hook方式非常全面，但是也更重。IAT HOOK更快，也更轻，通过添加 `enable_iat_hook` 使用 IAT HOOK。
+
+```powershell
+cargo build-text-hook --features default_impl,enable_iat_hook
+```
+
+IAT HOOK 在大部分情况下都能有效工作，但是如果发现IAT HOOK不起作用，那么请删除这个 feature。
+
+
+### 基于 `panic=immediate-abort` 编译
+
+`immediate-abort`编译选项会剔除所有无关的错误信息，极大的减少DLL的体积，一般来说可直接使用。
+
+将`RUSTFLAGS`环境变量设置为`-C panic=immediate-abort -Z unstable-options`，然后在编译命令中添加`-Z build-std`。
+
+例如，假设使用的shell是`powershell`
+
+```powershell
+$env:RUSTFLAGS = "-C panic=immediate-abort -Z unstable-options"
+cargo build-text-hook -Z build-std --fetures default_impl,enable_debug_output
+```
+
