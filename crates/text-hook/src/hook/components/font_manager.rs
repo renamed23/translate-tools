@@ -149,14 +149,7 @@ impl CreateFont for FontManagerSlot {
 
         let mut buf: Option<Vec<u16>>;
 
-        #[cfg(not(feature = "disable_forced_font"))]
-        if !FONT_FILTER.contains(&u16_slice) {
-            buf = Some(FONT_FACE.with_null());
-            u16_slice = buf.as_ref().expect("buf is Some").as_slice();
-        }
-
-        #[cfg(feature = "disable_forced_font")]
-        if FONT_FILTER.contains(&u16_slice) {
+        if should_replace_font_face(u16_slice) {
             buf = Some(FONT_FACE.with_null());
             u16_slice = buf.as_ref().expect("buf is Some").as_slice();
         }
@@ -263,15 +256,8 @@ impl CreateFontIndirect for FontManagerSlot {
 
         debug!("Requested font name: {}", u16_slice.to_string_lossy());
 
-        // `FONT_FACE` 长度确保不超过 LF_FACESIZE - 1，可以直接复制
-        #[cfg(not(feature = "disable_forced_font"))]
-        if !FONT_FILTER.contains(&u16_slice) {
-            let face_u16 = FONT_FACE.with_null();
-            logfontw.lfFaceName[..face_u16.len()].copy_from_slice(face_u16.as_slice());
-        }
-
-        #[cfg(feature = "disable_forced_font")]
-        if FONT_FILTER.contains(&u16_slice) {
+        if should_replace_font_face(u16_slice) {
+            // `FONT_FACE` 长度确保不超过 LF_FACESIZE - 1，可以直接复制
             let face_u16 = FONT_FACE.with_null();
             logfontw.lfFaceName[..face_u16.len()].copy_from_slice(face_u16.as_slice());
         }
@@ -583,3 +569,13 @@ pub unsafe extern "system" fn enum_fonts_proc_w(
 #[cfg(feature = "enable_collect_host_font_config")]
 pub static COLLECTED_FONTS: LazyLock<RwLock<HashSet<crate::utils::log_font::LogFont>>> =
     LazyLock::new(|| RwLock::new(HashSet::new()));
+
+fn should_replace_font_face(u16_slice: &[u16]) -> bool {
+    cfg_if!(
+        if #[cfg(feature = "disable_forced_font")] {
+            return FONT_FILTER.contains(&u16_slice);
+        } else {
+            return !FONT_FILTER.contains(&u16_slice);
+        }
+    );
+}

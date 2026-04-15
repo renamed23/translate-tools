@@ -28,6 +28,13 @@ bind_path_redirector = []
 # Hook `GDI` 相关的绘制函数，并将文本中的替身字符转换为正常字符，映射表由`translate_macros::generate_mapping_data!`生成
 # 使用 assume_text_out_arg_c_is_byte_len，将认为输入参数C是字节长度而不是字符长度
 bind_text_mapping = []
+# HOOK 并替换 A系列的 Window UI API 的文本，比如 `ModifyMenuA`，`MessageBoxA`，`SetWindowText`等等函数
+# 一般来说，如果要翻译游戏窗口的UI文本，使用`Resource Hacker`足够解决
+# 但是有时候会出现游戏运行期添加 UI 条目之类的情况，比如 `AppendMenuA`，此时可以开启该 feature 进行 HOOK
+# 具体步骤是首先添加`bind_user_interface_patcher,extract_text,bind_lifecycle_guard`，此时DLL会HOOK并提取所有的文本
+# 并输出到 `raw.json`中，翻译过后，将原文和译文放在 `assets/raw_text` 和 `assets/translated_text`
+# 然后只需要添加`bind_user_interface_patcher`再次编译一次，就可以将raw.json出现的原文全部替换为译文了
+# 有些游戏可能会出现闪退的情况，尝试在 `hook_lists.json` 的 `disable` 项添加 `PropertySheetA`
 bind_user_interface_patcher = ["enable_text_patch"]
 # 绑定 overlay egui I/O 处理器
 # 目前无法正确处理 OverlayWndProc 重入产生的消息，因为 RefCell 的限制
@@ -237,3 +244,4 @@ cast_possible_wrap = "allow"
 cast_precision_loss = "allow"
 used_underscore_binding = "allow"
 too_many_lines = "allow"
+needless_return = "allow"

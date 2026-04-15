@@ -302,7 +302,6 @@ impl GetTextMetrics for TextMappingSlot {
 }
 
 /// 如果开启了自定义字体，则自动select该字体然后调用闭包，否则直接调用闭包
-#[allow(clippy::needless_return)]
 fn with_font<F, R>(_hdc: HDC, f: F) -> R
 where
     F: FnOnce() -> R,
@@ -318,14 +317,12 @@ where
 
 /// 根据字符数计算传入ANSI字符串的字节长度
 fn get_byte_len(_ptr: *const u8, chars: usize) -> usize {
-    #[cfg(not(feature = "assume_text_out_arg_c_is_byte_len"))]
-    {
-        use crate::{code_cvt::byte_len, constant::ANSI_CODE_PAGE};
-        byte_len(_ptr, chars, ANSI_CODE_PAGE as u16)
-    }
-
-    #[cfg(feature = "assume_text_out_arg_c_is_byte_len")]
-    {
-        chars
-    }
+    cfg_if!(
+        if #[cfg(feature = "assume_text_out_arg_c_is_byte_len")] {
+            return chars;
+        } else {
+            use crate::{code_cvt::byte_len, constant::ANSI_CODE_PAGE};
+            return byte_len(_ptr, chars, ANSI_CODE_PAGE as u16);
+        }
+    );
 }
