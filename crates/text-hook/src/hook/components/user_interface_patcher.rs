@@ -1,5 +1,4 @@
 use cfg_if::cfg_if;
-
 use windows_sys::{
     Win32::{
         Foundation::{HWND, LPARAM, LRESULT, WPARAM},
@@ -318,8 +317,9 @@ impl PropertySheet for UserInterfacePatcherSlot {
 
             #[cfg(not(feature = "extract_text"))]
             if let Some(trans) = _opt_trans {
-                use crate::utils::mem::aligned_buf::AlignedBuffer;
                 use windows_sys::Win32::UI::Controls::PROPSHEETHEADERA_V2;
+
+                use crate::utils::mem::aligned_buf::AlignedBuffer;
 
                 let dw_size = header.dwSize as usize;
                 let mut new_buf = match AlignedBuffer::new_aligned_for::<usize>(dw_size) {

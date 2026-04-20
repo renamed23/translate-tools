@@ -71,28 +71,30 @@ pub fn setup_ui_style(egui_ctx: &egui::Context) {
     visuals.code_bg_color = egui::Color32::from_rgba_unmultiplied(14, 18, 28, 245);
 
     visuals.selection.bg_fill = accent_soft;
-    visuals.selection.stroke = egui::Stroke::new(1.0, accent);
+    visuals.selection.stroke = egui::Stroke::new(1.0_f32, accent);
 
     visuals.widgets.noninteractive.bg_fill =
         egui::Color32::from_rgba_unmultiplied(255, 255, 255, 10);
     visuals.widgets.noninteractive.bg_stroke = egui::Stroke::new(
-        1.0,
+        1.0_f32,
         egui::Color32::from_rgba_unmultiplied(255, 255, 255, 24),
     );
 
     visuals.widgets.inactive.bg_fill = egui::Color32::from_rgba_unmultiplied(92, 193, 255, 28);
-    visuals.widgets.inactive.bg_stroke =
-        egui::Stroke::new(1.0, egui::Color32::from_rgba_unmultiplied(92, 193, 255, 70));
+    visuals.widgets.inactive.bg_stroke = egui::Stroke::new(
+        1.0_f32,
+        egui::Color32::from_rgba_unmultiplied(92, 193, 255, 70),
+    );
 
     visuals.widgets.hovered.bg_fill = egui::Color32::from_rgba_unmultiplied(92, 193, 255, 54);
-    visuals.widgets.hovered.bg_stroke = egui::Stroke::new(1.0, accent);
+    visuals.widgets.hovered.bg_stroke = egui::Stroke::new(1.0_f32, accent);
 
     visuals.widgets.active.bg_fill = egui::Color32::from_rgba_unmultiplied(92, 193, 255, 82);
-    visuals.widgets.active.bg_stroke = egui::Stroke::new(1.0, accent);
+    visuals.widgets.active.bg_stroke = egui::Stroke::new(1.0_f32, accent);
 
     visuals.widgets.open.bg_fill = egui::Color32::from_rgba_unmultiplied(92, 193, 255, 40);
     visuals.widgets.open.bg_stroke = egui::Stroke::new(
-        1.0,
+        1.0_f32,
         egui::Color32::from_rgba_unmultiplied(92, 193, 255, 120),
     );
 

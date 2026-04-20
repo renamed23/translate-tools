@@ -1,8 +1,9 @@
 #[cfg(feature = "enable_gl_painter")]
 pub(crate) mod painter;
 
-use glow::HasContext;
 use std::sync::Arc;
+
+use glow::HasContext;
 use windows_sys::{
     Win32::{
         Foundation::HWND,

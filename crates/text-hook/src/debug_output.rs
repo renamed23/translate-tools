@@ -1,6 +1,7 @@
 #[cfg(feature = "enable_debug_output")]
 pub(crate) mod debug_impl {
     use std::sync::Once;
+
     use windows_sys::Win32::{
         Foundation::{GetLastError, NTSTATUS, RtlNtStatusToDosError},
         Globalization::CP_UTF8,

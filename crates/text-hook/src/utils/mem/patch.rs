@@ -205,7 +205,6 @@ pub unsafe fn write_call_instruction(
 
 #[cfg(target_pointer_width = "32")]
 use windows_sys::Win32::System::Diagnostics::Debug::IMAGE_NT_HEADERS32 as IMAGE_NT_HEADERS;
-
 #[cfg(target_pointer_width = "64")]
 use windows_sys::Win32::System::Diagnostics::Debug::IMAGE_NT_HEADERS64 as IMAGE_NT_HEADERS;
 

@@ -1,5 +1,6 @@
-use crate::utils::sha256_of_bytes;
 use cfg_if::cfg_if;
+
+use crate::utils::sha256_of_bytes;
 
 mod patch_data {
     translate_macros::generate_patch_data!("assets/raw_patch" => "assets/translated_patch");

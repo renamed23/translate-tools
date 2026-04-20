@@ -1,5 +1,10 @@
 use std::{sync::Arc, time::Instant};
 
+use egui::{
+    ClippedPrimitive, Context as EguiContext, Event as EguiEvent, FullOutput, Key, Modifiers,
+    PointerButton, Pos2, RawInput, Rect as EguiRect, Vec2,
+};
+use egui_glow::Painter as EguiGlowPainter;
 use windows_sys::Win32::{
     Foundation::{HWND, LPARAM, LRESULT, POINT, RECT, WPARAM},
     Graphics::Gdi::ScreenToClient,
@@ -20,12 +25,6 @@ use windows_sys::Win32::{
         },
     },
 };
-
-use egui::{
-    ClippedPrimitive, Context as EguiContext, Event as EguiEvent, FullOutput, Key, Modifiers,
-    PointerButton, Pos2, RawInput, Rect as EguiRect, Vec2,
-};
-use egui_glow::Painter as EguiGlowPainter;
 
 use crate::overlay::{OverlayContext, window::set_overlay_click_through};
 

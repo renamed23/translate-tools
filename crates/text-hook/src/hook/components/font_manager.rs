@@ -5,15 +5,14 @@ use std::{
 };
 
 use cfg_if::cfg_if;
-use windows_sys::{
-    Win32::Graphics::Gdi::{HFONT, LF_FACESIZE, LOGFONTA, LOGFONTW},
-    core::{PCSTR, PCWSTR},
-};
-
 #[cfg(feature = "disable_forced_font")]
 use windows_sys::Win32::{
     Foundation::LPARAM,
     Graphics::Gdi::{FONTENUMPROCA, FONTENUMPROCW, HDC, TEXTMETRICA, TEXTMETRICW},
+};
+use windows_sys::{
+    Win32::Graphics::Gdi::{HFONT, LF_FACESIZE, LOGFONTA, LOGFONTW},
+    core::{PCSTR, PCWSTR},
 };
 
 use crate::{
@@ -34,7 +33,6 @@ use crate::{
         slice_ext::{ByteSliceExt, WideSliceExt},
     },
 };
-
 #[cfg(feature = "disable_forced_font")]
 use crate::{
     constant::{ENUM_FONT_PROC_CHAR_SET, ENUM_FONT_PROC_OUT_PRECISION, ENUM_FONT_PROC_PITCH},

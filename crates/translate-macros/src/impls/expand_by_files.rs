@@ -1,7 +1,8 @@
+use std::{collections::HashSet, fs};
+
 use convert_case::{Case, Casing};
 use proc_macro2::{Delimiter, Group, Ident, Literal, Span, TokenStream, TokenTree};
 use quote::{ToTokens, TokenStreamExt};
-use std::{collections::HashSet, fs};
 use syn::{
     Block, Expr, Lit, LitStr, Token,
     parse::{Parse, ParseStream},

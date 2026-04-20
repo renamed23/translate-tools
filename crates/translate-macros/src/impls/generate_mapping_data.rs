@@ -1,7 +1,8 @@
+use std::collections::HashMap;
+
 use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use serde::Deserialize;
-use std::collections::HashMap;
 use syn::LitInt;
 
 use crate::utils::{input::SinglePath, read_optional_json_file, resolve_manifest_path};

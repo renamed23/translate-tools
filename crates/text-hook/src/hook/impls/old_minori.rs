@@ -43,7 +43,7 @@ unsafe extern "system" fn trampoline() {
     core::arch::naked_asm!(
         "
         call dword ptr [edx + 0x14];
-        
+
         pushad;
         pushfd;
         mov eax, dword ptr [esp + 0xC];

@@ -7,6 +7,10 @@ use windows_sys::{
     core::{BOOL, PCSTR, PCWSTR},
 };
 
+#[cfg(feature = "enable_custom_font")]
+use crate::hook::api_hooks::gdi_text::{
+    GetTextMetrics, HOOK_GET_TEXT_METRICS_A, HOOK_GET_TEXT_METRICS_W,
+};
 use crate::{
     hook::api_hooks::gdi_text::{
         ExtTextOut, GetGlyphOutline, GetTextExtentPoint32, HOOK_EXT_TEXT_OUT_W,
@@ -16,11 +20,6 @@ use crate::{
         ptr_ext::PtrExt,
         slice_ext::{ByteSliceExt, WideSliceExt},
     },
-};
-
-#[cfg(feature = "enable_custom_font")]
-use crate::hook::api_hooks::gdi_text::{
-    GetTextMetrics, HOOK_GET_TEXT_METRICS_A, HOOK_GET_TEXT_METRICS_W,
 };
 
 #[allow(dead_code)]

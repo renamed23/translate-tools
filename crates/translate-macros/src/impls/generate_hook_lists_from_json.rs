@@ -1,7 +1,8 @@
+use std::collections::HashSet;
+
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 use serde::Deserialize;
-use std::collections::HashSet;
 
 use crate::{
     impls::detour::generate_detour_ident,

@@ -1,5 +1,6 @@
-use serde::{Deserialize, Serialize};
 use std::hash::Hash;
+
+use serde::{Deserialize, Serialize};
 use windows_sys::Win32::Graphics::Gdi::LOGFONTW;
 
 use crate::{

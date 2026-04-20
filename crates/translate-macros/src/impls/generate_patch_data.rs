@@ -1,10 +1,12 @@
-use crate::utils::{
-    collect_files_in_dir, input::ArrowSeparatedPaths, read_file_bytes, resolve_manifest_path,
-};
+use std::{collections::HashSet, path::PathBuf};
+
 use proc_macro2::{Ident, Literal, Span, TokenStream};
 use quote::quote;
 use sha2::{Digest, Sha256};
-use std::{collections::HashSet, path::PathBuf};
+
+use crate::utils::{
+    collect_files_in_dir, input::ArrowSeparatedPaths, read_file_bytes, resolve_manifest_path,
+};
 
 pub fn generate_patch_data(input: TokenStream) -> syn::Result<TokenStream> {
     let parsed = syn::parse2::<ArrowSeparatedPaths>(input)?;

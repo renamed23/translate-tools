@@ -1,5 +1,4 @@
 use cfg_if::cfg_if;
-
 use windows_sys::{
     Win32::{Foundation::HANDLE, Security::SECURITY_ATTRIBUTES},
     core::{PCSTR, PCWSTR},

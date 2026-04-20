@@ -9,11 +9,12 @@ pub(crate) mod panic;
 pub(crate) mod raii_wrapper;
 pub(crate) mod win32;
 
-use sha2::{Digest, Sha256};
 use std::{
     path::{Path, PathBuf},
     sync::LazyLock,
 };
+
+use sha2::{Digest, Sha256};
 
 use crate::utils::exts::slice_ext::WideSliceExt;
 

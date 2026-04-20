@@ -1,6 +1,7 @@
+use std::sync::Arc;
+
 use bytemuck::{Pod, Zeroable};
 use glow::HasContext;
-use std::sync::Arc;
 
 use crate::{
     gl::{compile_shader, create_buffer, create_program, create_texture, create_vertex_array},

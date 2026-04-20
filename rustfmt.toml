@@ -3,3 +3,4 @@ imports_granularity = "Crate"
 format_strings = true
 unstable_features = true
 format_macro_matchers = true
+group_imports = "StdExternalCrate"

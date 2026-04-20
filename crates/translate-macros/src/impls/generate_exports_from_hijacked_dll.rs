@@ -1,8 +1,9 @@
+use std::path::PathBuf;
+
 use anyhow::Context;
 use goblin::Object;
 use proc_macro2::{Literal, TokenStream};
 use quote::{format_ident, quote};
-use std::path::PathBuf;
 use syn::{
     LitStr, Token,
     parse::{Parse, ParseStream},

@@ -1,4 +1,5 @@
 use std::sync::{LazyLock, RwLock};
+
 use windows_sys::Win32::Graphics::Gdi::{DeleteObject, HDC, HFONT, SelectObject};
 
 use crate::{

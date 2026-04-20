@@ -1,6 +1,7 @@
+use std::path::PathBuf;
+
 use proc_macro2::{Span, TokenStream};
 use quote::quote;
-use std::path::PathBuf;
 use syn::{
     Ident, LitByteStr, LitStr, Token, Visibility,
     parse::{Parse, ParseStream},

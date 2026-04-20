@@ -1,8 +1,9 @@
+use std::collections::HashMap;
+
 use proc_macro2::{Literal, TokenStream};
 use quote::{format_ident, quote};
 use serde::Deserialize;
 use serde_json::Value as JsonValue;
-use std::collections::HashMap;
 
 use crate::utils::{input::CommaSeparatedPaths, read_json_file, resolve_manifest_path};
 

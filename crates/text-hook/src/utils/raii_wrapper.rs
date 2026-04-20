@@ -1,6 +1,7 @@
 use core::ops::Deref;
-use glow::HasContext;
 use std::sync::Arc;
+
+use glow::HasContext;
 use windows_sys::Win32::{
     Foundation::{FreeLibrary, HMODULE, HWND},
     Graphics::{

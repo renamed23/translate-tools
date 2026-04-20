@@ -1,7 +1,8 @@
+use std::collections::HashSet;
+
 use proc_macro2::{Literal, TokenStream};
 use quote::quote;
 use serde::Deserialize;
-use std::collections::HashSet;
 
 use crate::utils::{
     get_full_path_by_manifest, input::SinglePath, read_file_bytes, read_json_file,
