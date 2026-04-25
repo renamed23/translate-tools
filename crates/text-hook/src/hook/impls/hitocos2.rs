@@ -47,19 +47,33 @@ impl ProcessAttach for Hitocos2Hook {
         let module = handle.cast::<u8>();
 
         unsafe {
-            TEXT_RETURN_ADDR = module.add(0xE495) as usize;
-            SUB_402B70 = module.add(0x2B70) as usize;
-        };
-
-        unsafe {
             match ARG_GAME_TYPE {
                 "hitocos2" => {
+                    TEXT_RETURN_ADDR = module.add(0xE495) as usize;
+                    SUB_402B70 = module.add(0x2B70) as usize;
+
                     module
                         .add(0xF686)
                         .write_jmp_instruction(name_trampoline as _)?;
 
                     module
                         .add(0xE490)
+                        .write_jmp_instruction(text_trampoline as _)?;
+                }
+
+                "female_teacher" => {
+                    fix_game_ini()?;
+
+                    TEXT_RETURN_ADDR = module.add(0x25945) as usize;
+                    // 就是 std::string::assign
+                    SUB_402B70 = module.add(0x1CF0) as usize;
+
+                    module
+                        .add(0x26EB6)
+                        .write_jmp_instruction(name_trampoline as _)?;
+
+                    module
+                        .add(0x25940)
                         .write_jmp_instruction(text_trampoline as _)?;
                 }
 
@@ -120,8 +134,7 @@ fn invert(bytes: &[u8]) -> Vec<u8> {
     bytes.iter().map(|&b| !b).collect()
 }
 
-static NAME_CACHE: LazyLock<Interner> = LazyLock::new(Interner::new);
-static TEXT_CACHE: LazyLock<Interner> = LazyLock::new(Interner::new);
+static INTERNER: LazyLock<Interner> = LazyLock::new(Interner::new);
 
 #[translate_macros::ffi_guard(on_err_or_panic = ())]
 unsafe extern "system" fn hook_name(string_ptr: *mut MsvcString) -> crate::Result<()> {
@@ -147,7 +160,7 @@ unsafe extern "system" fn hook_name(string_ptr: *mut MsvcString) -> crate::Resul
         crate::debug!("Get raw slice {}", wide_name.to_string_lossy());
         if let Some(name) = wide_name.lookup_or_store()? {
             crate::debug!("Get translated slice {}", name.to_string_lossy());
-            let name_b = NAME_CACHE.intern(name.to_ansi_null());
+            let name_b = INTERNER.intern(name.to_ansi_null());
             sub_402b70(string_ptr, 0, name_b.as_ptr().cast(), name_b.len() as _);
         }
 
@@ -163,9 +176,34 @@ unsafe extern "system" fn hook_text(ptr: *const u8) -> crate::Result<*const u8> 
         crate::debug!("Get raw slice {}", wide_text.to_string_lossy());
         if let Some(text) = wide_text.lookup_or_store()? {
             crate::debug!("Get translated slice {}", text.to_string_lossy());
-            let text_b = TEXT_CACHE.intern(invert(&text.to_ansi()).with_null());
+            let text_b = INTERNER.intern(invert(&text.to_ansi()).with_null());
             return Ok(text_b.as_ptr());
         }
         Ok(ptr)
     }
+}
+
+fn fix_game_ini() -> crate::Result<()> {
+    let current_dir = crate::utils::win32::get_module_file_name(core::ptr::null_mut(), false)?
+        .to_path_buf()
+        .parent()
+        .map(|dir| {
+            let mut dir = dir.to_string_lossy().into_owned();
+            if !dir.ends_with('\\') {
+                dir.push('\\');
+            }
+            dir
+        })
+        .ok_or_else(|| crate::anyhow!("Failed to get executable_dir"))?;
+
+    let buf = format!(
+        "[PATH]\r\nSetupType=\"1\"\r\nCurrent=\"{current_dir}\"\r\nCDDrive=\".\\\"\r\n\r\n"
+    );
+
+    std::fs::write(
+        "女教師DVDエディション.ini",
+        buf.as_bytes().to_wide_utf8().to_ansi(),
+    )?;
+
+    Ok(())
 }
