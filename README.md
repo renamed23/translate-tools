@@ -253,3 +253,130 @@ $env:RUSTFLAGS = "-C panic=immediate-abort -Z unstable-options"
 cargo build-text-hook -Z build-std --fetures default_impl,enable_debug_output
 ```
 
+# 写自己的HOOK实现
+
+text-hook可以轻松针对不同的游戏写不同的HOOK实现（并且是0成本抽象，没有动态分发，全部都是编译期已知的函数），你只需要在`crates/text-hook/src/hook/impls`添加一个rs文件，假设有一个游戏叫做`crazy game`，那么我们添加一个`crazy_game.rs`
+
+该文件必须包含`CrazyGameHook`（文件名改为大驼峰+Hook）结构体
+
+```rust
+use translate_macros::DefaultHook;
+
+#[derive(DefaultHook)]
+pub struct CrazyGameHook;
+```
+
+然后我们需要在[crates/text-hook/Cargo.toml](crates/text-hook/Cargo.toml)中添加一个名为`crazy_game`（与文件名同名）的`feature`。
+
+```toml
+[features]
+crazy_game = ["export_default_dll_main"]
+```
+
+然后我们就可以用自己的实现来编译text-hook
+
+```powershell
+cargo build-text-hook --features crazy_game
+```
+
+当然也可以和其他`feature`一起使用，就像`default_impl`一样
+
+
+## 添加自定义行为
+
+下面的代码展示了如何在Process Attach的时候，如何修改exe的代码，
+
+```rust
+use translate_macros::{DefaultHook, byte_slice};
+use crate::utils::win32::HMODULE;
+use crate::utils::exts::ptr_ext::PtrWriteExt,
+use crate::hook::internal_hooks::ProcessAttach;
+
+/// 定义 CrazyGameHook 结构体
+/// 使用 DefaultHook 宏自动实现基础 Hook 逻辑
+/// exclude(ProcessAttach) 表示我们要手动接管进程附加时的行为，不使用默认实现
+#[derive(DefaultHook)]
+#[exclude(ProcessAttach)]
+pub struct CrazyGameHook;
+
+impl ProcessAttach for CrazyGameHook {
+    /// 当 DLL 被附加到进程（Process Attach）时触发的回调函数
+    /// 
+    /// 此函数的主要作用是：
+    /// 1. 获取当前主程序的模块句柄。
+    /// 2. 在特定的内存偏移处（0x2A78C）写入硬编码的汇编指令。
+    fn on_process_attach(_hinst_dll: HMODULE) -> crate::Result<()> {
+        // 获取当前进程主模块（.exe）的基地址
+        // core::ptr::null() 表示获取当前可执行文件的句柄
+        let handle = crate::utils::win32::get_module_handle(core::ptr::null())?;
+        // 将句柄转换为字节指针，方便后续进行内存偏移计算
+        let module = handle.cast::<u8>();
+
+        unsafe {
+            // 计算目标补丁地址：基地址 + 偏移量 0x2A78C
+            // patch_asm 是一个自定义扩展方法，用于修改该地址的内存数据
+            // 写入的字节码 "EB 14 90" 对应的汇编指令通常是：
+            // EB 14 -> JMP SHORT +0x14 (短跳转，跳过随后的 20 字节代码)
+            // 90    -> NOP (空指令，通常用于填充对齐)
+            module.add(0x2A78C).patch_asm(&byte_slice!("EB 14 90"))?;
+        }
+        Ok(())
+    }
+}
+```
+
+这样，使用该impl编译的text-hook，会在附加到游戏进程的时候，自动修改exe的代码，就像x64dbg那样。
+
+## 其他的实用例子
+
+`crates/text-hook/src/hook/impls`有不少可供参考的例子
+- 自定义HOOK函数: [complets.rs](crates/text-hook/src/hook/impls/complets.rs)
+- HOOK游戏文本: [hitocos.rs](crates/text-hook/src/hook/impls/hitocos.rs)
+- HOOK游戏内存: [old_minori.rs](crates/text-hook/src/hook/impls/old_minori.rs)
+- 大规模修改exe代码以及内嵌文件: [natsu_natsu.rs](crates/text-hook/src/hook/impls/natsu_natsu.rs)
+
+## 提示
+
+如果你使用的是vscode，那么在`.vscode/settings.json`中的`rust-analyzer.cargo.features`添加feature才能让`rust-analyzer`正确工作。
+
+```json
+{
+    "rust-analyzer.cargo.features": [
+        // HOOK实现，只能选一个
+        // "c4",
+        // "complets",
+        // "default_impl",
+        // "g0win",
+        // "hitocos",
+        "hitocos2",
+
+        "enable_resource_pack",
+        "enable_dll_hijacking",
+        "enable_embedded_font",
+        "enable_collect_host_font_config",
+        "bind_asset_virtualizer",
+        // "bind_path_redirector",
+        "bind_font_manager",
+        "bind_lifecycle_guard",
+        "bind_text_mapping",
+        "bind_user_interface_patcher",
+        "bind_window_title_overrider",
+        "disable_forced_font",
+        "assume_text_out_arg_c_is_byte_len",
+        "enable_window_title_override",
+        "enable_debug_output",
+        "enable_text_mapping_debug",
+        "auto_apply_1337_patch_on_hwbp_hit",
+        "enable_overlay",
+        "enable_iat_hook",
+        "enable_custom_font",
+        "enable_locale_emulator",
+        "enable_patch",
+        "enable_overlay_egui",
+        "enable_egui_logger",
+        "enable_egui_demo",
+        "enable_egui_font_property_editor",
+        "enable_storage"
+    ],
+}
+```

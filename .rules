@@ -66,6 +66,7 @@ src/
 - 编译期代码生成（translate-macros）
 - 模块化特性系统
 - 多种钩子方式（IAT/Inline）
+- `constants::*`的变量通过`generate_constants_from_json`生成，该过程宏读取json并生成常量。
 
 
 # AI 行为准则 (Rules for AI)
