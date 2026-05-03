@@ -257,7 +257,7 @@ cargo build-text-hook -Z build-std --fetures default_impl,enable_debug_output
 
 text-hook可以轻松针对不同的游戏写不同的HOOK实现（并且是0成本抽象，没有动态分发，全部都是编译期已知的函数），你只需要在`crates/text-hook/src/hook/impls`添加一个rs文件，假设有一个游戏叫做`crazy game`，那么我们添加一个`crazy_game.rs`
 
-该文件必须包含`CrazyGameHook`（文件名改为大驼峰+Hook）结构体
+该文件必须包含`CrazyGameHook`（名称为文件名转 PascalCase 并加上 Hook 后缀）结构体
 
 ```rust
 use translate_macros::DefaultHook;
@@ -289,7 +289,7 @@ cargo build-text-hook --features crazy_game
 ```rust
 use translate_macros::{DefaultHook, byte_slice};
 use crate::utils::win32::HMODULE;
-use crate::utils::exts::ptr_ext::PtrWriteExt,
+use crate::utils::exts::ptr_ext::PtrWriteExt;
 use crate::hook::internal_hooks::ProcessAttach;
 
 /// 定义 CrazyGameHook 结构体
@@ -380,3 +380,11 @@ impl ProcessAttach for CrazyGameHook {
     ],
 }
 ```
+
+一些过程宏需要资产文件才能正确生成代码，为了抑制错误，我们可以先使用`cargo xtask use-test-assets`来抑制错误。
+
+```powershell
+cargo xtask use-test-assets
+```
+
+然后重启一下`rust-analyzer`或者`rust-analyzer: Reload workspace`就好了。
