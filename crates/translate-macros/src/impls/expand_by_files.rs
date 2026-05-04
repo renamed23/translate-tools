@@ -24,7 +24,7 @@ struct Args {
     path: LitStr,
     template: Block,
     json_path: Option<LitStr>,
-    exclude: Vec<Ident>,
+    exclude: Vec<LitStr>,
     mode: FileMode,
 }
 
@@ -35,7 +35,7 @@ impl Parse for Args {
         let template: Block = input.parse()?;
 
         let mut json_path = None;
-        let mut exclude: Vec<Ident> = Vec::new();
+        let mut exclude: Vec<LitStr> = Vec::new();
         let mut mode = None;
 
         while input.peek(Token![,]) {
@@ -57,7 +57,7 @@ impl Parse for Args {
                     let content;
                     syn::bracketed!(content in input);
                     let punctuated: Punctuated<_, _> =
-                        content.parse_terminated(Ident::parse, Token![,])?;
+                        content.parse_terminated(<LitStr as syn::parse::Parse>::parse, Token![,])?;
                     exclude = punctuated.into_iter().collect();
                 }
                 "mode" => {
@@ -99,11 +99,11 @@ pub fn expand_by_files(input: TokenStream) -> syn::Result<TokenStream> {
     let args = syn::parse2::<Args>(input)?;
     let full_path = get_full_path_by_manifest(args.path.value())?;
 
-    // 构建排除集合
+    // 构建排除集合 (文件名，含拓展名)
     let exclude: HashSet<String> = args
         .exclude
         .iter()
-        .map(|ident| ident.to_string().to_case(Case::Snake))
+        .map(|s| s.value())
         .collect();
 
     // 加载 JSON 配置
@@ -182,32 +182,36 @@ pub fn expand_by_files(input: TokenStream) -> syn::Result<TokenStream> {
             continue;
         }
 
-        // 检查是否在排除列表中
-        if exclude.contains(&file_stem) {
-            continue;
-        }
-
-        // 查找 JSON 配置
         let file_name = match path.file_name().and_then(|s| s.to_str()) {
             Some(s) => s.to_string(),
             None => continue,
         };
+
+        // 检查是否在排除列表中 (按文件名比较，含拓展名)
+        if exclude.contains(&file_name) {
+            continue;
+        }
+
+        // 查找 JSON 配置
         let json_value = json_map
             .as_ref()
             .and_then(|map| map.get(&file_name).cloned());
 
-        let file_snake = file_stem.clone();
-        let file_ident = Ident::new(&file_snake, Span::call_site());
-        let file_lit = Literal::string(&file_snake);
+        let file_stem_str_val = file_stem.clone();
+        let file_stem_ident = Ident::new(&file_stem_str_val, Span::call_site());
+        let file_stem_lit = Literal::string(&file_stem_str_val);
 
-        let pascal = file_snake.to_case(Case::Pascal);
-        let pascal_ident = Ident::new(&pascal, Span::call_site());
+        let pascal = file_stem_str_val.to_case(Case::Pascal);
+        let file_stem_pascal_ident = Ident::new(&pascal, Span::call_site());
+
+        let file_str_lit = Literal::string(&file_name);
 
         file_replacements.push((
             Replacement {
-                file_ident,
-                file_lit,
-                pascal_ident,
+                file_stem_ident,
+                file_stem_lit,
+                file_stem_pascal_ident,
+                file_str_lit,
                 json_value,
             },
             file_stem,
@@ -296,9 +300,10 @@ fn process_template_with_repeat(
 
 #[derive(Clone)]
 struct Replacement {
-    file_ident: Ident,
-    file_lit: Literal,
-    pascal_ident: Ident,
+    file_stem_ident: Ident,
+    file_stem_lit: Literal,
+    file_stem_pascal_ident: Ident,
+    file_str_lit: Literal,
     json_value: Option<TokenStream>,
 }
 
@@ -321,7 +326,7 @@ fn replace_tokens(ts: TokenStream, r: Replacement) -> syn::Result<TokenStream> {
                             return Err(syn_err!(
                                 id,
                                 "`__concat__` 后必须紧跟括号参数，如 `__concat__(\"a\", \
-                                 __file_str__)`",
+                                 __file_stem_str__)`",
                             ));
                         }
                         let next = tokens[i].clone();
@@ -348,14 +353,17 @@ fn replace_tokens(ts: TokenStream, r: Replacement) -> syn::Result<TokenStream> {
                             i += 1;
                         }
                     }
-                    "__file__" => {
-                        out.append(TokenTree::Ident(r.file_ident.clone()));
+                    "__file_stem_ident__" => {
+                        out.append(TokenTree::Ident(r.file_stem_ident.clone()));
+                    }
+                    "__file_stem_str__" => {
+                        out.append(TokenTree::Literal(r.file_stem_lit.clone()));
+                    }
+                    "__file_stem_pascal_ident__" => {
+                        out.append(TokenTree::Ident(r.file_stem_pascal_ident.clone()));
                     }
                     "__file_str__" => {
-                        out.append(TokenTree::Literal(r.file_lit.clone()));
-                    }
-                    "__file_pascal__" => {
-                        out.append(TokenTree::Ident(r.pascal_ident.clone()));
+                        out.append(TokenTree::Literal(r.file_str_lit.clone()));
                     }
                     "__file_json_value__" => match &r.json_value {
                         Some(ts) => out.extend(ts.clone()),
@@ -393,7 +401,7 @@ fn parse_concat_group(group: &Group, r: &Replacement) -> syn::Result<Literal> {
     if args.len() < 2 {
         syn_bail!(
             group,
-            "`__concat__` 至少需要两个参数，例如 `__concat__(\"enable_egui\", __file_str__)`",
+            "`__concat__` 至少需要两个参数，例如 `__concat__(\"enable_egui\", __file_stem_str__)`",
         );
     }
 
@@ -446,7 +454,7 @@ fn split_concat_args(ts: TokenStream) -> syn::Result<Vec<TokenStream>> {
 ///
 /// 支持：
 /// - 字符串字面量（如：`"enable_egui"`）
-/// - 单个标识符（如：`__file__` 展开后的 `logger`）
+/// - 单个标识符（如：`__file_stem_ident__` 展开后的 `logger`）
 fn concat_arg_to_string(ts: TokenStream) -> syn::Result<String> {
     let expr: Expr = syn::parse2(ts.clone())
         .map_err(|_| syn_err!(ts, "`__concat__` 参数必须是字符串字面量或单个标识符"))?;

@@ -1,7 +1,7 @@
 // 声明所有的Hook实现的模块文件
 translate_macros::expand_by_files!("src/hook/impls" => {
-    #[cfg(feature = __file_str__)]
-    pub mod __file__;
+    #[cfg(feature = __file_stem_str__)]
+    pub mod __file_stem_ident__;
 });
 
 // 在`src/hook_impl`搜索可用的Hook实现类型

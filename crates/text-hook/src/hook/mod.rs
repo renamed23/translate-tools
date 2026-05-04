@@ -7,7 +7,7 @@ pub(crate) mod impls;
 
 mod hook_lists {
     translate_macros::expand_by_files!("src/hook/api_hooks" => {
-        use super::api_hooks::__file__::*;
+        use super::api_hooks::__file_stem_ident__::*;
     });
 
     translate_macros::generate_hook_lists_from_json!(

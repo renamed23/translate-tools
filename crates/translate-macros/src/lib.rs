@@ -588,14 +588,15 @@ pub fn generate_patch_data(input: TokenStream) -> TokenStream {
 /// expand_by_files!("relative/path/to/directory" => {
 ///     // 模板代码
 ///     // 可以使用以下占位符：
-///     // - __file__: 文件名的标识符 (如: my_module)
-///     // - __file_str__: 文件名字符串字面量 (如: "my_module")
-///     // - __file_pascal__: 文件名的大驼峰标识符 (如: MyModule)
+///     // - __file_stem_ident__: 文件名标识符 (不含拓展名, 如: my_module)
+///     // - __file_stem_str__: 文件名字符串字面量 (不含拓展名, 如: "my_module")
+///     // - __file_stem_pascal_ident__: 文件名的大驼峰标识符 (不含拓展名, 如: MyModule)
+///     // - __file_str__: 完整文件名字符串字面量 (含拓展名, 如: "my_module.rs")
 ///     // - __concat__(a, b, ...): 将参数展开成字符串片段后，拼接成字符串字面量
 ///     // - __file_json_value__: 展开为 json 参数中对应文件的 Rust 表达式
 ///     // - __repeat__(...):  指定仅该部分按文件重复展开，外部内容只输出一次
 /// },
-///     exclude = [Ident1, Ident2],  // 可选的排除列表
+///     exclude = ["file1.rs", "file2.txt"],  // 可选的排除列表
 ///     json = "path/to/config.json", // 可选的 JSON 配置文件
 ///     mode = "rust",                // 可选的模式: "rust" (默认) 或 "plain"
 /// );
@@ -604,7 +605,7 @@ pub fn generate_patch_data(input: TokenStream) -> TokenStream {
 /// # 文件过滤
 /// - `mode = "rust"` (默认): 只处理 `.rs` 扩展名的文件，自动跳过 `mod.rs` 和 `lib.rs`，忽略子目录
 /// - `mode = "plain"`: 处理目录下所有普通文件，不做扩展名和文件名过滤
-/// - 可选的排除列表 `exclude = [Ident1, Ident2]`: 支持snake_case或PascalCase命名
+/// - 可选的排除列表 `exclude = ["file1.rs", ...]`: 按文件名(含拓展名)精确匹配
 ///
 /// # JSON 配置 (json 参数)
 /// - JSON 文件格式: `{ "文件名": "Rust表达式" }`
@@ -616,37 +617,37 @@ pub fn generate_patch_data(input: TokenStream) -> TokenStream {
 /// - 如果模板中不包含 `__repeat__`，则整个模板会被隐式包裹在 `__repeat__(...)` 中（即每个文件生成一份完整模板），保持向后兼容
 /// - 如果模板中包含 `__repeat__(...)`，则只有 `__repeat__` 内部的内容按文件重复展开，外部内容只输出一次
 /// - `__repeat__` 可以出现多次，也可以嵌套在任意深度的 group（如 `{}`、`()`）中
-/// - `__file__`、`__file_str__`、`__file_pascal__`、`__file_json_value__` 等文件级占位符仅在 `__repeat__` 内部有效
+/// - `__file_stem_ident__`、`__file_stem_str__`、`__file_stem_pascal_ident__`、`__file_str__`、`__file_json_value__` 等文件级占位符仅在 `__repeat__` 内部有效
 ///
 /// # 示例
 /// ```ignore
 /// // 基础用法 (Rust 模式)
 /// expand_by_files!("src/models" => {
-///     pub mod __file__;
-///     pub use __file__::__file_pascal__;
+///     pub mod __file_stem_ident__;
+///     pub use __file_stem_ident__::__file_stem_pascal_ident__;
 /// });
 ///
 /// // 带排除列表
 /// expand_by_files!("src/hook/api_hooks" => {
-///     #[cfg(feature = __concat__("enable_egui_", __file_str__))]
-///     impl crate::hook::api_hooks::__file_pascal__ for #name {}
-/// }, exclude = [CodeCvtHook, FileHook]);
+///     #[cfg(feature = __concat__("enable_egui_", __file_stem_str__))]
+///     impl crate::hook::api_hooks::__file_stem_pascal_ident__ for #name {}
+/// }, exclude = ["code_cvt_hook.rs", "file_hook.rs"]);
 ///
 /// // 带 JSON 配置
 /// expand_by_files!("src/hook/impls" => {
-///     pub use __file__::__file_pascal__;
+///     pub use __file_stem_ident__::__file_stem_pascal_ident__;
 ///     pub const IS_ENABLED: bool = __file_json_value__;
 /// }, json = "assets/impl_config.json");
 ///
 /// // 普通文件模式
 /// expand_by_files!("assets/templates" => {
-///     include_str!(concat!("assets/templates/", __file_str__, ".txt"));
+///     include_str!(concat!("assets/templates/", __file_stem_str__, ".txt"));
 /// }, mode = "plain");
 ///
 /// // 局部展开 (__repeat__): 仅 phf_map 内部按文件展开
 /// expand_by_files!("assets/translated_patch" => {
 ///     static PHF_MAP: ::phf::Map<usize, &'static [u8]> = phf::phf_map! {
-///         __repeat__(__file__ => __file_json_value__,)
+///         __repeat__(__file_stem_ident__ => __file_json_value__,)
 ///     };
 /// }, mode = "plain", json = "assets/misc/nocturne.json");
 /// ```

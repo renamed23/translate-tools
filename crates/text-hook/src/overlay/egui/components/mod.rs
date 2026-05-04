@@ -3,8 +3,8 @@ use std::sync::{Arc, Once};
 use translate_macros::expand_by_files;
 
 expand_by_files!("src/overlay/egui/components" => {
-    #[cfg(feature = __concat__("enable_egui_", __file_str__))]
-    pub(crate) mod __file__;
+    #[cfg(feature = __concat__("enable_egui_", __file_stem_str__))]
+    pub(crate) mod __file_stem_ident__;
 });
 
 static INIT_ONCE: Once = Once::new();
@@ -14,16 +14,16 @@ pub fn render_all(egui_ctx: &egui::Context) {
     INIT_ONCE.call_once(|| {
         setup_ui_style(egui_ctx);
         expand_by_files!("src/overlay/egui/components" => {
-            #[cfg(feature = __concat__("enable_egui_", __file_str__))]
-            if let Err(e) =  __file__::init() {
-                crate::debug!("Component '{}' init failed {e:?}", __file_str__);
+            #[cfg(feature = __concat__("enable_egui_", __file_stem_str__))]
+            if let Err(e) =  __file_stem_ident__::init() {
+                crate::debug!("Component '{}' init failed {e:?}", __file_stem_str__);
             }
         });
     });
 
     expand_by_files!("src/overlay/egui/components" => {
-        #[cfg(feature = __concat__("enable_egui_", __file_str__))]
-        __file__::render(egui_ctx);
+        #[cfg(feature = __concat__("enable_egui_", __file_stem_str__))]
+        __file_stem_ident__::render(egui_ctx);
     });
 }
 
@@ -144,11 +144,11 @@ pub fn render_visibility_panel(egui_ctx: &egui::Context) {
             ui.separator();
 
             expand_by_files!("src/overlay/egui/components" => {
-                #[cfg(feature = __concat__("enable_egui_", __file_str__))]
+                #[cfg(feature = __concat__("enable_egui_", __file_stem_str__))]
                 {
-                    let mut visible = __file__::is_visible();
-                    if ui.checkbox(&mut visible, __file_str__).changed() {
-                        __file__::set_visible(visible);
+                    let mut visible = __file_stem_ident__::is_visible();
+                    if ui.checkbox(&mut visible, __file_stem_str__).changed() {
+                        __file_stem_ident__::set_visible(visible);
                     };
                 }
             });
@@ -169,9 +169,9 @@ pub fn render_visibility_panel(egui_ctx: &egui::Context) {
 /// 在 attach cleanup 阶段通知所有已启用的 egui 组件执行清理。
 pub fn attach_cleanup_all() {
     expand_by_files!("src/overlay/egui/components" => {
-        #[cfg(feature = __concat__("enable_egui_", __file_str__))]
-        if let Err(e) =  __file__::attach_cleanup() {
-            crate::debug!("Component '{}' attach cleanup failed {e:?}", __file_str__);
+        #[cfg(feature = __concat__("enable_egui_", __file_stem_str__))]
+        if let Err(e) =  __file_stem_ident__::attach_cleanup() {
+            crate::debug!("Component '{}' attach cleanup failed {e:?}", __file_stem_str__);
         }
     });
 }
@@ -179,15 +179,15 @@ pub fn attach_cleanup_all() {
 /// 请求隐藏所有已启用的 egui 组件 UI。
 pub fn request_hide_all() {
     expand_by_files!("src/overlay/egui/components" => {
-        #[cfg(feature = __concat__("enable_egui_", __file_str__))]
-        __file__::set_visible(false);
+        #[cfg(feature = __concat__("enable_egui_", __file_stem_str__))]
+        __file_stem_ident__::set_visible(false);
     });
 }
 
 /// 请求显示所有已启用的 egui 组件 UI。
 pub fn request_show_all() {
     expand_by_files!("src/overlay/egui/components" => {
-        #[cfg(feature = __concat__("enable_egui_", __file_str__))]
-        __file__::set_visible(true);
+        #[cfg(feature = __concat__("enable_egui_", __file_stem_str__))]
+        __file_stem_ident__::set_visible(true);
     });
 }
