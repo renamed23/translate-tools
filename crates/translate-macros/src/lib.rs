@@ -381,46 +381,119 @@ pub fn search_hook_impls(input: TokenStream) -> TokenStream {
     }
 }
 
-/// 从 JSON 配置文件生成 Rust 常量的过程宏
+/// 从 JSON 配置文件生成 Rust 常量。
 ///
-/// # 功能描述
-/// 这个宏从两个 JSON 配置文件中读取配置项并生成对应的 Rust 常量：
-/// - 默认配置文件：包含所有配置项的默认值和类型定义
-/// - 用户配置文件：可以覆盖默认配置中的值
+/// 该宏读取默认配置文件作为锚点（定义所有合法 key 的类型及默认值），再用用户配置文件
+/// 覆盖或追加值，最终为每个 key 生成一个 `pub const`。
 ///
 /// # 输入参数
-/// 接受两个字符串字面量参数，用逗号分隔：
-/// - `default_path`: 默认配置文件的相对路径（相对于 `CARGO_MANIFEST_DIR`）
-/// - `user_path`: 用户配置文件的相对路径（相对于 `CARGO_MANIFEST_DIR`）
 ///
-/// 支持的字段：
-/// - `type`: Rust 类型标识符（如 `"&str"`, `"u32"`, `"bool"`, `"&[u16]"` 等）
-/// - `value`: 常量的值，可以是字符串、数字、布尔值或数组
-/// - `encode_to_u16`（可选）: 仅对字符串有效，为 `true` 时将字符串编码为 UTF-16 字节数组
+/// 两个路径参数，用逗号分隔，均为相对于 `CARGO_MANIFEST_DIR`：
 ///
-/// # 生成规则
-/// - 常量名：将配置键名中的非字母数字字符替换为下划线
-/// - 类型：直接使用配置中的类型字符串
-/// - 值：优先使用用户配置，不存在时使用默认配置
-/// - 字符串处理：当 `encode_to_u16` 为 `true` 时，字符串会被转换为 `&[u16]` 数组
+/// - `default_path`：默认配置（必需）
+/// - `user_path`：用户配置（必需；若文件不存在则仅使用默认配置）
+///
+/// # 配置文件格式
+///
+/// 两个 JSON 文件都是 `{ "<key>": <entry>, ... }` 的对象。默认配置中每个 entry 必须为
+/// ** Complex 格式 **；用户配置中**仅新增 key** 也必须为 Complex 格式，而已存在 key
+/// 可直接用 Simple 值覆盖。
+///
+/// ## Complex entry（默认配置与用户新增 key）
+///
+/// ```json
+/// "key": {
+///     "type": "&str",           // 必需，Rust 类型表达式
+///     "value": "hello",         // 可选，默认值（字符串/数字/布尔/数组/null）
+///     "encode_to_u16": false,   // 可选，仅对字符串有效，将字符串编码为 &[u16]
+///     "optional": false,        // 可选，为 true 时类型包装为 Option<T>，null 生成 None
+///     "expr": false             // 可选，为 true 时将 value 字符串解析为 Rust 表达式
+/// }
+/// ```
+///
+/// ## Simple entry（仅限用户配置中覆盖已有 key）
+///
+/// ```json
+/// "existing_key": "new_value"
+/// ```
+///
+/// 直接用 JSON 基本值覆盖，无需重复 type 等元信息。
+///
+/// # 字段说明
+///
+/// - `type`：**必需**（Complex），任意合法 Rust 类型表达式，如 `"&str"`、`"u32"`。
+/// - `value`：可选。若未提供或为 `null`：
+///   - `optional = true` → 生成 `None`；
+///   - `optional = false` → 该条目被静默跳过，不生成常量。
+/// - `encode_to_u16`：`true` 时，字符串值被编码为 `&[u16]`（UTF-16 数组），类型必须匹配。
+/// - `optional`：`true` 时，类型自动包裹为 `Option<T>`，`null` 生成 `None`。
+/// - `expr`：`true` 时，`value` 字段的字符串不会按字面量处理，而是解析为 Rust 表达式
+///   （如 `"std::env::consts::OS"`）。注意此时 `encode_to_u16` 无效。
+///
+/// # 合并规则
+///
+/// 1. 默认配置中的所有 key 必须为 Complex 格式。
+/// 2. 用户配置中：
+///    - 与默认 key 同名：可用 Simple 值直接覆盖，不可用 Complex 格式覆盖；
+///    - 新增 key：必须为 Complex 格式，自带完整的 type 定义。
+/// 3. 用户配置文件不存在时不报错，等价于仅使用默认配置。
 ///
 /// # 示例
+///
+/// 默认配置 `config/default.json`：
+///
+/// ```json
+/// {
+///     "app_name": {
+///         "type": "&str",
+///         "value": "MyApp"
+///     },
+///     "max_retry": {
+///         "type": "u32",
+///         "value": 3
+///     },
+///     "debug_log": {
+///         "type": "bool",
+///         "value": false,
+///         "optional": true
+///     }
+/// }
 /// ```
+///
+/// 用户配置 `config/user.json`：
+///
+/// ```json
+/// {
+///     "app_name": "MyRenamedApp",
+///     "debug_log": null,
+///     "build_time": {
+///         "type": "&str",
+///         "value": "unknown"
+///     }
+/// }
+/// ```
+///
+/// 调用：
+///
+/// ```ignore
 /// generate_constants_from_json!("config/default.json", "config/user.json");
 /// ```
 ///
-/// # 错误处理
-/// - 文件读取失败：编译时错误
-/// - JSON 解析失败：编译时错误
-/// - 缺少必需字段（type/value）：编译时错误
-/// - 类型解析失败：编译时错误
+/// 展开等价于：
+///
+/// ```ignore
+/// pub const app_name: &str = "MyRenamedApp";
+/// pub const max_retry: u32 = 3;
+/// pub const debug_log: Option<bool> = None;
+/// pub const build_time: &str = "unknown";
+/// ```
 ///
 /// # 注意事项
-/// - 配置文件路径相对于 `CARGO_MANIFEST_DIR`（项目根目录）
-/// - 用户配置文件中不存在的配置项将使用默认值
-/// - 用户配置文件中多余的配置项会被忽略
-/// - 生成的常量都是 `pub const`
-/// - 数组类型会生成为切片引用 `&[...]`
+///
+/// - 所有生成的常量都是 `pub const`。
+/// - 数组值会生成 `&[...]` 切片引用。
+/// - 用户配置不能使用 Complex 格式覆盖默认已有的 key——若需改类型，请直接修改默认配置。
+/// - `optional = false` 且 value 缺失/null 的条目会被静默跳过，不报错也不生成常量。
 #[proc_macro]
 pub fn generate_constants_from_json(input: TokenStream) -> TokenStream {
     match impls::generate_constants_from_json::generate_constants_from_json(input.into()) {
@@ -533,7 +606,6 @@ pub fn generate_mapping_data(input: TokenStream) -> TokenStream {
 ///
 /// # 验证规则
 /// - 原始文件和翻译文件必须存在且可读
-/// - 原始文件和翻译文件的字节长度必须完全一致
 /// - 原始文件的 SHA256 哈希值必须唯一（避免重复文件）
 /// - 翻译文件目录中必须存在与原始文件同名的文件
 ///
