@@ -381,25 +381,27 @@ pub fn search_hook_impls(input: TokenStream) -> TokenStream {
     }
 }
 
-/// 从 JSON 配置文件生成 Rust 常量。
+/// 从多个 JSON 配置文件生成 Rust 常量。
 ///
-/// 该宏读取默认配置文件作为锚点（定义所有合法 key 的类型及默认值），再用用户配置文件
-/// 覆盖或追加值，最终为每个 key 生成一个 `pub const`。
+/// 该宏读取第一个 JSON 作为基底，后续 JSON 按序合并，最终为每个 key 生成一个 `pub const`。
 ///
 /// # 输入参数
 ///
-/// 两个路径参数，用逗号分隔，均为相对于 `CARGO_MANIFEST_DIR`：
+/// 1..N 个路径参数，逗号分隔，均相对于 `CARGO_MANIFEST_DIR`：
 ///
-/// - `default_path`：默认配置（必需）
-/// - `user_path`：用户配置（必需；若文件不存在则仅使用默认配置）
+/// - 第一个路径：基底配置（其他 JSON 必须以它为基础合并）
+/// - 后续路径：覆盖配置（按序应用，可省略）
 ///
 /// # 配置文件格式
 ///
-/// 两个 JSON 文件都是 `{ "<key>": <entry>, ... }` 的对象。默认配置中每个 entry 必须为
-/// ** Complex 格式 **；用户配置中**仅新增 key** 也必须为 Complex 格式，而已存在 key
-/// 可直接用 Simple 值覆盖。
+/// 所有 JSON 文件都是 `{ "<key>": <entry>, ... }` 的对象。每个 entry 可以是
+/// ** Complex 格式 **或** Simple 格式 **，但有如下约束：
 ///
-/// ## Complex entry（默认配置与用户新增 key）
+/// - 同一字段在所有 JSON 中**只能有一个 Complex** 定义。
+/// - 可以有多个 Simple（按序覆盖值，最后出现的值胜出）。
+/// - 合并完成后每个字段必须是 Complex。
+///
+/// ## Complex entry
 ///
 /// ```json
 /// "key": {
@@ -411,13 +413,13 @@ pub fn search_hook_impls(input: TokenStream) -> TokenStream {
 /// }
 /// ```
 ///
-/// ## Simple entry（仅限用户配置中覆盖已有 key）
+/// ## Simple entry
 ///
 /// ```json
-/// "existing_key": "new_value"
+/// "any_key": "value"
 /// ```
 ///
-/// 直接用 JSON 基本值覆盖，无需重复 type 等元信息。
+/// 直接用 JSON 基本值参与合并，最终值由最后出现的 Simple（或 Complex 自身的值）决定。
 ///
 /// # 字段说明
 ///
@@ -432,15 +434,17 @@ pub fn search_hook_impls(input: TokenStream) -> TokenStream {
 ///
 /// # 合并规则
 ///
-/// 1. 默认配置中的所有 key 必须为 Complex 格式。
-/// 2. 用户配置中：
-///    - 与默认 key 同名：可用 Simple 值直接覆盖，不可用 Complex 格式覆盖；
-///    - 新增 key：必须为 Complex 格式，自带完整的 type 定义。
-/// 3. 用户配置文件不存在时不报错，等价于仅使用默认配置。
+/// 按 JSON 路径顺序依次处理，同一字段按以下规则合并：
+///
+/// 1. 同一字段在所有 JSON 中**只能有一个 Complex** 定义（出现第二个即报错）。
+/// 2. 允许多个 Simple，按序覆盖值——**最后出现的值胜出**。
+/// 3. Complex 提供元数据（type、optional 等），Simple 仅提供值。
+/// 4. Simple 可出现在 Complex 之前或之后：若 Simple 先到，Complex 后到且无值则吸收 Simple 的值。
+/// 5. 合并完成后所有字段必须是 Complex，否则报错。
 ///
 /// # 示例
 ///
-/// 默认配置 `config/default.json`：
+/// 基底 `config/base.json`：
 ///
 /// ```json
 /// {
@@ -460,12 +464,19 @@ pub fn search_hook_impls(input: TokenStream) -> TokenStream {
 /// }
 /// ```
 ///
-/// 用户配置 `config/user.json`：
+/// 覆盖层1 `config/override.json`（Simple 在后，覆盖值）：
 ///
 /// ```json
 /// {
-///     "app_name": "MyRenamedApp",
-///     "debug_log": null,
+///     "app_name": "OverrideApp",
+///     "debug_log": null
+/// }
+/// ```
+///
+/// 覆盖层2 `config/final.json`（Complex 在后，提供新键的元数据）：
+///
+/// ```json
+/// {
 ///     "build_time": {
 ///         "type": "&str",
 ///         "value": "unknown"
@@ -476,13 +487,17 @@ pub fn search_hook_impls(input: TokenStream) -> TokenStream {
 /// 调用：
 ///
 /// ```ignore
-/// generate_constants_from_json!("config/default.json", "config/user.json");
+/// generate_constants_from_json!(
+///     "config/base.json",
+///     "config/override.json",
+///     "config/final.json"
+/// );
 /// ```
 ///
 /// 展开等价于：
 ///
 /// ```ignore
-/// pub const app_name: &str = "MyRenamedApp";
+/// pub const app_name: &str = "OverrideApp";
 /// pub const max_retry: u32 = 3;
 /// pub const debug_log: Option<bool> = None;
 /// pub const build_time: &str = "unknown";
@@ -492,7 +507,7 @@ pub fn search_hook_impls(input: TokenStream) -> TokenStream {
 ///
 /// - 所有生成的常量都是 `pub const`。
 /// - 数组值会生成 `&[...]` 切片引用。
-/// - 用户配置不能使用 Complex 格式覆盖默认已有的 key——若需改类型，请直接修改默认配置。
+/// - 同一字段出现第二个 Complex 属编译错误，若需改类型请修改包含 Complex 定义的 JSON。
 /// - `optional = false` 且 value 缺失/null 的条目会被静默跳过，不报错也不生成常量。
 #[proc_macro]
 pub fn generate_constants_from_json(input: TokenStream) -> TokenStream {

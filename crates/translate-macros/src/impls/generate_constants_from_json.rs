@@ -5,7 +5,7 @@ use quote::{format_ident, quote};
 use serde::Deserialize;
 use serde_json::Value as JsonValue;
 
-use crate::utils::{input::CommaSeparatedPaths, read_json_file, resolve_manifest_path};
+use crate::utils::{input::MultiPaths, read_json_file, resolve_manifest_path};
 
 #[derive(Deserialize)]
 #[serde(untagged)]
@@ -29,44 +29,71 @@ pub enum ConfigEntry {
 pub struct ConstantConfig(pub HashMap<String, ConfigEntry>);
 
 pub fn generate_constants_from_json(input: TokenStream) -> syn::Result<TokenStream> {
-    let parsed = syn::parse2::<CommaSeparatedPaths>(input)?;
+    let parsed = syn::parse2::<MultiPaths>(input)?;
 
-    // 读取 default 配置作为锚点
-    let default_path = resolve_manifest_path(&parsed.left)?;
-    let default_cfg: ConstantConfig = read_json_file(&default_path)?;
+    let mut merged: HashMap<String, ConfigEntry> = HashMap::new();
 
-    let mut merged = default_cfg.0;
+    for path in &parsed.paths {
+        let abs_path = resolve_manifest_path(path)?;
+        let cfg: ConstantConfig = read_json_file(&abs_path)?;
 
-    // 读取 user 配置
-    let user_path = resolve_manifest_path(&parsed.right)?;
-    if user_path.is_file() {
-        let user_cfg: ConstantConfig = read_json_file(&user_path)?;
+        for (k, v) in cfg.0 {
+            let old_entry = merged.remove(&k);
 
-        for (k, v) in user_cfg.0 {
-            match merged.get_mut(&k) {
-                // 1. Default 和 User 共有的 Entry，优先使用 User 配置提供的值
-                Some(ConfigEntry::Complex { value, .. }) => {
-                    *value = match v {
-                        ConfigEntry::Simple(sv) => Some(sv),
-                        ConfigEntry::Complex { .. } => syn_bail2!(
-                            "User 配置不可以使用 Complex 类型覆盖默认配置已有的 Entry \
-                             '{k}'，请使用 Simple 覆盖"
-                        ),
-                    };
+            let new_entry = match (old_entry, v) {
+                // 1. 两个都是 Complex -> 报错
+                (Some(ConfigEntry::Complex { .. }), ConfigEntry::Complex { .. }) => {
+                    syn_bail2!("字段 '{k}' 只能有一个 Complex 定义");
                 }
-                // 2. Default 的 Entry 必须为 Complex
-                Some(ConfigEntry::Simple(_)) => {
-                    syn_bail2!("默认配置 '{}' 必须为 Complex 类型，发现 Simple", k);
-                }
-                // 3. User 新增的 Entry，必须是 Complex
-                None => {
-                    if let ConfigEntry::Complex { .. } = v {
-                        merged.insert(k, v);
-                    } else {
-                        syn_bail2!("User 新增键 '{}' 必须为 Complex 类型", k);
-                    }
-                }
-            }
+
+                // 2. 旧的是 Simple，新的是 Complex -> 合并值
+                (
+                    Some(ConfigEntry::Simple(sv)),
+                    ConfigEntry::Complex {
+                        ty,
+                        value,
+                        encode_to_u16,
+                        optional,
+                        expr,
+                    },
+                ) => ConfigEntry::Complex {
+                    ty,
+                    value: value.or(Some(sv)),
+                    encode_to_u16,
+                    optional,
+                    expr,
+                },
+
+                // 3. 旧的是 Complex，新的是 Simple -> 更新 Complex 的值
+                (
+                    Some(ConfigEntry::Complex {
+                        ty,
+                        value: _,
+                        encode_to_u16,
+                        optional,
+                        expr,
+                    }),
+                    ConfigEntry::Simple(sv),
+                ) => ConfigEntry::Complex {
+                    ty,
+                    value: Some(sv),
+                    encode_to_u16,
+                    optional,
+                    expr,
+                },
+
+                // 4. 旧的是 Simple，新的也是 Simple -> 覆盖
+                // 5. 之前没有 -> 直接插入新的
+                (_, new) => new,
+            };
+
+            merged.insert(k, new_entry);
+        }
+    }
+
+    for (k, v) in &merged {
+        if let ConfigEntry::Simple(_) = v {
+            syn_bail2!("字段 '{k}' 合并后必须为 Complex 类型，但未找到 Complex 定义");
         }
     }
 
