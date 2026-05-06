@@ -53,8 +53,11 @@ pub(crate) mod veh;
 #[cfg(feature = "enable_overlay")]
 pub(crate) mod overlay;
 
-#[cfg(feature = "enable_worker_thread")]
-pub(crate) mod worker_thread;
+#[cfg(feature = "enable_thread_manager")]
+pub(crate) mod thread_manager;
+
+#[cfg(feature = "enable_ui_thread")]
+pub(crate) mod ui_thread;
 
 #[allow(dead_code)]
 pub(crate) mod constant {

@@ -61,9 +61,9 @@ pub fn default_dll_main(
                 crate::debug!("Extract resource pack failed with {e:?}");
             }
 
-            #[cfg(feature = "enable_worker_thread")]
-            if let Err(e) = unsafe { crate::worker_thread::start() } {
-                crate::debug!("Start worker thread failed with {e:?}");
+            #[cfg(feature = "enable_thread_manager")]
+            if let Err(e) = unsafe { crate::thread_manager::start() } {
+                crate::debug!("Start thread manager failed with {e:?}");
             }
 
             #[cfg(feature = "auto_apply_1337_patch_on_attach")]
@@ -126,9 +126,9 @@ pub fn attach_cleanup() {
         crate::debug!("Clean up resource pack failed with {e:?}");
     }
 
-    #[cfg(feature = "enable_worker_thread")]
-    if let Err(e) = unsafe { crate::worker_thread::stop() } {
-        crate::debug!("Stop worker thread failed with {e:?}");
+    #[cfg(feature = "enable_thread_manager")]
+    if let Err(e) = unsafe { crate::thread_manager::stop() } {
+        crate::debug!("Stop thread manager failed with {e:?}");
     }
 
     #[cfg(feature = "enable_dll_hijacking")]

@@ -88,13 +88,15 @@ enable_overlay_gl_painter = ["enable_overlay_gl", "enable_gl_painter"]
 # 启用独立透明覆盖层，使用 OpenGL 绘制
 enable_overlay_gl = ["enable_overlay"]
 # 启用独立透明覆盖层（同进程）
-enable_overlay = ["enable_win_event_hook", "enable_worker_thread"]
+enable_overlay = ["enable_win_event_hook"]
 # 启用轻量的 OpenGL 绘制器
 enable_gl_painter = []
 # 窗口事件钩子(windows的SetWinEventHook的钩子机制)
-enable_win_event_hook = ["enable_worker_thread"]
-# 在DLL attach的时候创建一个工作线程
-enable_worker_thread = []
+enable_win_event_hook = ["enable_ui_thread"]
+# 在DLL attach的时候创建一个工作线程（消息循环、Overlay渲染等）
+enable_ui_thread = ["enable_thread_manager"]
+# 线程管理器，负责协调所有工作线程的启停
+enable_thread_manager = []
 # 延迟加载，使用硬件断点中断目标位置(通过constants生成)
 enable_hwbp_from_constants = ["enable_veh", "enable_delayed_attach"]
 # 启用 veh 处理程序，可用于捕获硬件断点

@@ -602,7 +602,8 @@ fn all_functional_impl_base() -> &'static [&'static str] {
         // 功能类 feature
         "enable_text_mapping_debug",
         "enable_debug_output",
-        "enable_worker_thread",
+        "enable_thread_manager",
+        "enable_ui_thread",
         "enable_veh",
         "enable_resource_pack",
         "enable_x64dbg_1337_patch",
