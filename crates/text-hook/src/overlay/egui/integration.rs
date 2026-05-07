@@ -124,8 +124,9 @@ impl EguiOverlayState {
         self.frame_data.clipped_primitives = clipped_primitives;
         self.frame_data.full_output = Some(full_output);
 
-        let wants_input = self.context.wants_pointer_input() || self.context.wants_keyboard_input();
-        let pointer_over_area = self.context.is_pointer_over_area();
+        let wants_input =
+            self.context.egui_wants_pointer_input() || self.context.egui_wants_keyboard_input();
+        let pointer_over_area = self.context.is_pointer_over_egui();
         let click_through = !(wants_input || pointer_over_area);
 
         if click_through != self.click_through {
@@ -353,6 +354,7 @@ pub fn handle_egui_wnd_proc(
             let delta = wheel_delta_from_wparam(w_param) as f32 / 120.0;
             egui.push_event(EguiEvent::MouseWheel {
                 unit: egui::MouseWheelUnit::Line,
+                phase: egui::TouchPhase::Move,
                 delta: Vec2::new(0.0, delta),
                 modifiers: egui.modifiers,
             });
@@ -367,6 +369,7 @@ pub fn handle_egui_wnd_proc(
             let delta = wheel_delta_from_wparam(w_param) as f32 / 120.0;
             egui.push_event(EguiEvent::MouseWheel {
                 unit: egui::MouseWheelUnit::Line,
+                phase: egui::TouchPhase::Move,
                 delta: Vec2::new(delta, 0.0),
                 modifiers: egui.modifiers,
             });

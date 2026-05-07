@@ -67,7 +67,7 @@ pub fn render(egui_ctx: &egui::Context) {
                         i.pointer.latest_pos(),
                         i.pointer.hover_pos(),
                         i.pointer.any_down(),
-                        i.raw_scroll_delta,
+                        i.smooth_scroll_delta,
                         i.modifiers,
                         i.focused,
                         i.time,
