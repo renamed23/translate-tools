@@ -46,41 +46,35 @@ impl Parse for Args {
             match key.to_string().as_str() {
                 "json" => {
                     if json_path.is_some() {
-                        syn_bail!(key, "duplicate `json` parameter");
+                        syn_bail!(key, "重复的 `json` 参数");
                     }
                     json_path = Some(input.parse::<LitStr>()?);
                 }
                 "exclude" => {
                     if !exclude.is_empty() {
-                        syn_bail!(key, "duplicate `exclude` parameter",);
+                        syn_bail!(key, "重复的 `exclude` 参数",);
                     }
                     let content;
                     syn::bracketed!(content in input);
-                    let punctuated: Punctuated<_, _> =
-                        content.parse_terminated(<LitStr as syn::parse::Parse>::parse, Token![,])?;
+                    let punctuated: Punctuated<_, _> = content
+                        .parse_terminated(<LitStr as syn::parse::Parse>::parse, Token![,])?;
                     exclude = punctuated.into_iter().collect();
                 }
                 "mode" => {
                     if mode.is_some() {
-                        syn_bail!(key, "duplicate `mode` parameter");
+                        syn_bail!(key, "重复的 `mode` 参数");
                     }
                     let mode_str: LitStr = input.parse()?;
                     mode = Some(match mode_str.value().as_str() {
                         "rust" => FileMode::Rust,
                         "plain" => FileMode::Plain,
                         other => {
-                            syn_bail!(
-                                &mode_str,
-                                "invalid mode `{other}`, expected `rust` or `plain`",
-                            );
+                            syn_bail!(&mode_str, "非法模式 `{other}`, 预期 `rust` 或 `plain`",);
                         }
                     });
                 }
                 other => {
-                    syn_bail!(
-                        key,
-                        "unknown parameter `{other}`, expected `json`, `exclude`, or `mode`",
-                    );
+                    syn_bail!(key, "未知参数 `{other}`, 预期 `json`, `exclude`, 或 `mode`",);
                 }
             }
         }
@@ -100,11 +94,7 @@ pub fn expand_by_files(input: TokenStream) -> syn::Result<TokenStream> {
     let full_path = get_full_path_by_manifest(args.path.value())?;
 
     // 构建排除集合 (文件名，含拓展名)
-    let exclude: HashSet<String> = args
-        .exclude
-        .iter()
-        .map(|s| s.value())
-        .collect();
+    let exclude: HashSet<String> = args.exclude.iter().map(|s| s.value()).collect();
 
     // 加载 JSON 配置
     let json_map: Option<HashMap<String, TokenStream>> =

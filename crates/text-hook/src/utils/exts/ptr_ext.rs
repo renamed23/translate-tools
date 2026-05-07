@@ -263,6 +263,27 @@ pub trait PtrWriteExt {
         Self: Sized;
 }
 
+pub trait PtrReadExt {
+    /// 从当前指针地址读取字节到缓冲区
+    fn read_bytes(self, buffer: &mut [u8]) -> crate::Result<Self>
+    where
+        Self: Sized;
+}
+
+impl PtrReadExt for *const u8 {
+    fn read_bytes(self, buffer: &mut [u8]) -> crate::Result<Self> {
+        crate::utils::mem::patch::read_bytes(self, buffer)?;
+        Ok(self)
+    }
+}
+
+impl PtrReadExt for *mut u8 {
+    fn read_bytes(self, buffer: &mut [u8]) -> crate::Result<Self> {
+        crate::utils::mem::patch::read_bytes(self, buffer)?;
+        Ok(self)
+    }
+}
+
 impl PtrWriteExt for *mut u8 {
     fn patch_asm(self, data: &[u8]) -> crate::Result<Self> {
         crate::utils::mem::patch::write_asm(self, data)?;

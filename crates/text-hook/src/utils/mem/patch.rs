@@ -8,6 +8,24 @@ use windows_sys::Win32::System::{
 
 use crate::utils::{exts::ptr_ext::PtrWriteExt, mem::protect_guard::ProtectGuard};
 
+/// 从指定地址读取字节到缓冲区
+///
+/// # Safety
+/// - `address` 必须指向至少 `buffer.len()` 字节的可读内存
+pub fn read_bytes(address: *const u8, buffer: &mut [u8]) -> crate::Result<()> {
+    if address.is_null() {
+        crate::bail!("address is null");
+    }
+    if buffer.is_empty() {
+        return Ok(());
+    }
+    unsafe {
+        crate::utils::mem::quick_memory_check(address, buffer.len())?;
+        core::ptr::copy_nonoverlapping(address, buffer.as_mut_ptr(), buffer.len());
+    }
+    Ok(())
+}
+
 /// 刷新指令缓存（在修改代码段字节后必须调用）
 pub fn flush_icache(addr: *const u8, size: usize) {
     unsafe {

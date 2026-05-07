@@ -60,6 +60,34 @@ pub fn ensure_dir(path: &Path, origin: &LitStr) -> syn::Result<()> {
     Ok(())
 }
 
+/// 在目录中查找唯一匹配指定拓展名的文件，找不到或找到多个时报错。
+pub fn find_single_file_in_dir(dir: &Path, ext: &str, span: &LitStr) -> syn::Result<PathBuf> {
+    let mut found = None;
+    for entry in fs::read_dir(dir).map_err(|e| syn_err!(span, "无法读取目录: {e}"))? {
+        let e = entry.map_err(|e| syn_err!(span, "读取目录项失败: {e}"))?;
+        if !e
+            .file_type()
+            .map_err(|e| syn_err!(span, "获取文件类型失败: {e}"))?
+            .is_file()
+        {
+            continue;
+        }
+        let path = e.path();
+        let matches = path
+            .extension()
+            .and_then(|s| s.to_str())
+            .map(|e| e.eq_ignore_ascii_case(ext))
+            .unwrap_or(false);
+        if matches {
+            if found.is_some() {
+                syn_bail!(span, "目录存在多个 .{ext} 文件");
+            }
+            found = Some(path);
+        }
+    }
+    found.ok_or_else(|| syn_err!(span, "目录中未找到 .{ext} 文件"))
+}
+
 /// 收集目录下的所有直接子文件，并按文件名排序后返回。
 ///
 /// 该函数只会收集当前目录层级中的普通文件，不会递归进入子目录。

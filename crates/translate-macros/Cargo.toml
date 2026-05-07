@@ -20,6 +20,7 @@ syn = { version = "2", features = ["full"] }
 zstd = "0.13"
 sha2 = "0.10"
 goblin = "0.10"
+iced-x86 = "1.21"
 convert_case = "0.8"
 walkdir = "2"
 fontdue = "0.9"

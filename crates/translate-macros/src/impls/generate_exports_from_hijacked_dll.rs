@@ -9,7 +9,7 @@ use syn::{
     parse::{Parse, ParseStream},
 };
 
-use crate::utils::get_full_path_by_manifest;
+use crate::utils::{find_single_file_in_dir, get_full_path_by_manifest};
 
 struct PathsInput {
     hijacked_dll_dir: LitStr,
@@ -33,7 +33,9 @@ pub fn generated_exports_from_hijacked_dll(input: TokenStream) -> syn::Result<To
     let hijacked_dll_dir = get_full_path_by_manifest(parsed.hijacked_dll_dir.value())?;
     let def_output_path = get_full_path_by_manifest(parsed.def_output_path.value())?;
 
-    let generated = match try_generate(&hijacked_dll_dir, &def_output_path) {
+    let dll_path = find_single_file_in_dir(&hijacked_dll_dir, "dll", &parsed.hijacked_dll_dir)?;
+
+    let generated = match try_generate(&dll_path, &def_output_path) {
         Ok(tokens) => tokens,
         Err(e) => {
             syn_bail!(parsed.hijacked_dll_dir, "{e}");
@@ -43,38 +45,7 @@ pub fn generated_exports_from_hijacked_dll(input: TokenStream) -> syn::Result<To
     Ok(generated)
 }
 
-fn try_generate(dll_dir: &PathBuf, def_output_path: &PathBuf) -> anyhow::Result<TokenStream> {
-    // 检查目录存在
-    let metadata =
-        std::fs::metadata(dll_dir).with_context(|| format!("路径不存在：{}", dll_dir.display()))?;
-    if !metadata.is_dir() {
-        anyhow::bail!(
-            "{} 不是目录，请传入包含 DLL 的目录路径（相对于 CARGO_MANIFEST_DIR）",
-            dll_dir.display()
-        );
-    }
-
-    // 列出目录（只取文件）
-    let mut dlls = Vec::new();
-    for entry in
-        std::fs::read_dir(dll_dir).with_context(|| format!("无法读取目录 {}", dll_dir.display()))?
-    {
-        let e = entry?;
-        let ft = e.file_type()?;
-        if ft.is_file() {
-            dlls.push(e.path());
-        }
-    }
-
-    if dlls.len() != 1 {
-        anyhow::bail!(
-            "目录 {} 应该只包含一个 DLL 文件，实际找到 {} 个",
-            dll_dir.display(),
-            dlls.len()
-        );
-    }
-
-    let dll_path = &dlls[0];
+fn try_generate(dll_path: &PathBuf, def_output_path: &PathBuf) -> anyhow::Result<TokenStream> {
     let dll_basename = dll_path
         .file_name()
         .and_then(|s| s.to_str())

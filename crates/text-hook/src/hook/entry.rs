@@ -75,7 +75,9 @@ pub fn default_dll_main(
             crate::hook::enable_hooks_from_lists();
 
             #[cfg(feature = "enable_delayed_attach")]
-            crate::delayed_attach::enable_entry_point_hook();
+            if let Err(e) = crate::delayed_attach::enable_entry_point_hook() {
+                crate::debug!("enable_entry_point_hook failed with {e:?}");
+            }
 
             if let Err(e) = <HookImplType as ProcessAttach>::on_process_attach(hinst_dll) {
                 crate::debug!("on_process_attach failed with {e:?}");
@@ -153,7 +155,9 @@ pub fn attach_cleanup() {
     }
 
     #[cfg(feature = "enable_delayed_attach")]
-    crate::delayed_attach::disable_entry_point_hook();
+    if let Err(e) = crate::delayed_attach::disable_entry_point_hook() {
+        crate::debug!("disable_entry_point_hook failed with {e:?}");
+    }
 
     #[cfg(feature = "enable_custom_font")]
     if let Err(e) = crate::custom_font::save_and_cleanup() {

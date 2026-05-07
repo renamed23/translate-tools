@@ -451,6 +451,20 @@ fn build_scenarios() -> Vec<Scenario> {
             run_x64: true,
         },
         Scenario {
+            name: "default_impl/enable_delayed_attach_static/on".to_string(),
+            features: feature_set(
+                all_functional_impl_base(),
+                &[
+                    "default_impl",
+                    "enable_delayed_attach_static",
+                    "enable_dll_hijacking",
+                    "enable_hwbp_from_constants",
+                ],
+                &[],
+            ),
+            run_x64: true,
+        },
+        Scenario {
             name: "default_impl/win_event_hook/off".to_string(),
             features: feature_set(
                 all_functional_impl_base(),

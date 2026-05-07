@@ -164,5 +164,9 @@
   "STORAGE_PATH": {
     "type": "&str",
     "value": "storage.ron"
+  },
+  "ENTRY_POINT_RVA": {
+    "type": "usize",
+    "optional": true
   }
 }

@@ -131,6 +131,12 @@ enable_embedded_font = []
 export_default_dll_main = []
 # 模拟日语环境，基于locale_emulator
 enable_locale_emulator = []
+# 在编译期静态分析游戏EXE文件的入口点，然后自动生成占位 trampoline
+# 需要将游戏的EXE放入`assets/exe`目录中，并确保有且只有一个EXE。
+# 仅支持32位，不支持64位，并且入口点不能有需要重排的指令，
+# 否则尝试手动指定 `ENTRY_POINT_RVA` 到一个无需重排指令的位置
+# 或者取消该feature，使用默认的运行时inline hook
+enable_delayed_attach_static = ["enable_delayed_attach"]
 # 启用延迟加载，对于某些特性是必要的
 enable_delayed_attach = []
 # 根据`assets/hijacked`中的PE文件(仅限一个)生成对应的导出函数，

@@ -819,6 +819,7 @@ dependencies = [
  "convert_case",
  "fontdue",
  "goblin",
+ "iced-x86",
  "proc-macro2",
  "quote",
  "serde",

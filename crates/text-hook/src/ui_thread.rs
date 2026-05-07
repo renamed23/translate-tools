@@ -24,16 +24,16 @@ pub fn run() {
         crate::debug!("Install WinEvent hook failed with {e:?}");
     }
 
-    #[cfg(feature = "enable_overlay")]
-    scopeguard::defer!(
-        crate::overlay::cleanup();
-    );
-
     #[cfg(feature = "enable_win_event_hook")]
     scopeguard::defer!(
         if let Err(e) = unsafe { crate::win_event_hook::uninstall_win_event_hook() } {
             crate::debug!("Uninstall WinEvent hook failed with {e:?}");
         }
+    );
+
+    #[cfg(feature = "enable_overlay")]
+    scopeguard::defer!(
+        crate::overlay::cleanup();
     );
 
     let mut msg = MSG::default();

@@ -1222,3 +1222,90 @@ pub fn generate_bitmap_font(input: TokenStream) -> TokenStream {
         Err(err) => err.into_compile_error().into(),
     }
 }
+
+/// 编译期分析游戏 EXE 入口点，生成静态占位 trampoline 与初始化函数。
+///
+/// 该宏在编译时读取指定目录中的唯一一个游戏 EXE 文件，解析其 PE 结构和入口点指令，
+/// 验证指令是否可直接搬迁（无控制流跳转、无 IP 相对寻址），然后生成一个裸函数 trampoline
+/// 以及对应的 `init` 函数。运行时调用 `init` 即可将入口点替换为对 handler 的调用，
+/// 无需运行时指令重排。
+///
+/// # 语法
+///
+/// ```ignore
+/// generate_entry_point_hook!(
+///     exe_dir = "path/to/exe_dir",
+///     config_path = "path/to/config.json",
+///     handler_fn = entry_point
+/// );
+/// ```
+///
+/// # 参数
+///
+/// - `exe_dir`：包含游戏 EXE 的目录路径（相对于 `CARGO_MANIFEST_DIR`）。
+///   目录中必须恰好有一个 `.exe` 文件。
+/// - `config_path`：JSON 配置文件路径（相对于 `CARGO_MANIFEST_DIR`），
+///   可选字段 `ENTRY_POINT_RVA`（`usize`）用于手动指定钩子位置的 RVA。
+///   未提供时默认使用 PE 头中的入口点 RVA。
+/// - `handler_fn`：入口点触发时调用的 Rust 函数标识符。
+///
+/// # 生成内容
+///
+/// 宏展开后会生成以下两项（名称基于 `handler_fn` 推导）：
+///
+/// - `<handler_fn>_trampoline`：裸函数（`#[unsafe(naked)]`），位于 `.text` 段。
+///   其汇编逻辑为 `pushad; pushfd; call handler; popfd; popad; <重定位字节>; jmp [return_addr]`。
+/// - `<handler_fn>_init() -> crate::Result<()>`：运行时调用此函数以安装钩子。
+///   它会读取入口点的原始指令字节，写入 trampoline，然后以 `jmp` 指令替换入口点。
+///
+/// # 限制
+///
+/// - 仅支持 **32 位 x86** PE 文件，64 位或非 x86 架构会编译报错。
+/// - 入口点附近（前 5+ 字节）的指令必须满足 `is_safe_to_rebase`：
+///   - 无控制流转移（`jmp`、`call`、`ret` 等）
+///   - 无 IP 相对内存操作数（如 `lea eax, [eip+...]`）
+/// - 入口点若为短跳转（`jmp short`, `0xEB`），宏会自动跟随跳转链（最多 8 层），
+///   以找到实际的目标地址作为钩子位置。
+///
+/// # 适用场景
+///
+/// 配合 `enable_delayed_attach_static` 特性使用，可在编译期完全确定入口点钩子布局，
+/// 从而在运行时无需依赖 `retour` 或内联钩子引擎。适合配合 IAT Hook 使用，
+/// 彻底移除对 inline hook 的运行时依赖。
+///
+/// # 示例
+///
+/// 在 `delayed_attach.rs` 中：
+///
+/// ```ignore
+/// cfg_if! {
+///     if #[cfg(feature = "enable_delayed_attach_static")] {
+///         translate_macros::generate_entry_point_hook!(
+///             exe_dir = "assets/exe",
+///             config_path = "assets/config.json",
+///             handler_fn = entry_point
+///         );
+///     }
+/// }
+///
+/// pub fn enable_entry_point_hook() -> crate::Result<()> {
+///     // generate_entry_point_hook 生成了 entry_point_init 函数
+///     entry_point_init()?;
+///     Ok(())
+/// }
+/// ```
+///
+/// config.json 中可选的覆盖（不指定则使用 PE 入口点 RVA）：
+///
+/// ```json
+/// {
+///     "ENTRY_POINT_RVA": 4000000
+/// }
+/// ```
+#[proc_macro]
+pub fn generate_entry_point_hook(input: TokenStream) -> TokenStream {
+    match impls::generate_entry_point_hook::generate_entry_point_hook(input.into()) {
+        Ok(ts) => ts.into(),
+        Err(err) => err.into_compile_error().into(),
+    }
+}

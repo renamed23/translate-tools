@@ -47,7 +47,8 @@
   "EMULATE_LOCALE_TIMEZONE": "Tokyo Standard Time",
   "EMULATE_LOCALE_WAIT_FOR_EXIT": false,
   "OVERLAY_TARGET_WINDOW_TEXT": "some_window_text",
-  "OVERLAY_TARGET_WINDOW_CLASS_NAME": "some_window_class_name"
+  "OVERLAY_TARGET_WINDOW_CLASS_NAME": "some_window_class_name",
+  "ENTRY_POINT_RVA": 4000000
 }
 ```
 
@@ -87,6 +88,8 @@
 - `OVERLAY_TARGET_WINDOW_TEXT`：目标窗口（需要overlay的窗口）标题
 - `OVERLAY_TARGET_WINDOW_CLASS_NAME`：目标窗口（需要overlay的窗口）窗口类名
 
+开启`enable_delayed_attach`时，使用如下值
+- `ENTRY_POINT_RVA`：入口点的相对虚拟地址（相对于模块），如果不指定，则使用PE的入口点RVA
 
 
 ## hook_lists.json
@@ -173,6 +176,10 @@ DLL会`inline hook`入口点，然后加载被劫持的DLL，并获取导出函�
 > 补充，也不支持有无名导出符号的DLL（即纯序号导出）
 
 > 推荐使用修改导入表的方式注入DLL（比如使用`CFF Explorer`），因为可以精准影响到你想要影响的EXE，比如`chs`版本
+
+## exe
+
+该目录应该仅有一个文件，并且是游戏的exe，目前主要用于过程宏 `generate_entry_point_hook`，该过程宏会分析PE结构，并确保入口点指令不需要重排，然后在编译期生成占位 trampoline，因此不再需要在运行时解析重排指令。一般来说配合IAT HOOK使用，这样可以完全剔除inline hook的依赖。
 
 
 ## x64dbg_1337_patch
