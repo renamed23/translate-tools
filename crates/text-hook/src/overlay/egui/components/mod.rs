@@ -100,7 +100,7 @@ pub fn setup_ui_style(egui_ctx: &egui::Context) {
 
     egui_ctx.set_visuals(visuals);
 
-    egui_ctx.style_mut(|style| {
+    egui_ctx.global_style_mut(|style| {
         style.text_styles = [
             (
                 egui::TextStyle::Heading,
