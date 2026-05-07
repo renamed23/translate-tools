@@ -3,6 +3,7 @@ pub mod input;
 pub mod return_kind;
 
 use std::{
+    collections::HashMap,
     fs,
     path::{Path, PathBuf},
 };
@@ -86,6 +87,55 @@ pub fn find_single_file_in_dir(dir: &Path, ext: &str, span: &LitStr) -> syn::Res
         }
     }
     found.ok_or_else(|| syn_err!(span, "目录中未找到 .{ext} 文件"))
+}
+
+/// 扫描 `api_hooks` 目录下的所有 `.rs` 文件，提取 `#[detour]` 属性中的
+/// `dll` 信息，构建 **Rust 函数名 → DLL 名** 的映射表。
+///
+/// 函数名使用 trait 方法标识符（snake_case），而非 `symbol` 字段值，
+/// 避免不同 trait 中的同名 symbol 导致冲突。
+pub fn build_dll_map_from_api_hooks(api_hooks_dir: &Path) -> syn::Result<HashMap<String, String>> {
+    use crate::impls::detour::parse_detour_attr;
+
+    let mut dll_map = HashMap::new();
+    let rs_files = collect_files_in_dir(api_hooks_dir)?;
+
+    for file_path in rs_files {
+        if file_path.extension().and_then(|s| s.to_str()) != Some("rs") {
+            continue;
+        }
+
+        let content = std::fs::read_to_string(&file_path)
+            .map_err(|e| syn_err2!("无法读取 {}: {}", file_path.display(), e))?;
+
+        let file: syn::File = syn::parse_str(&content)
+            .map_err(|e| syn_err2!("解析 {} 失败: {}", file_path.display(), e))?;
+
+        for item in file.items {
+            let item_trait = match item {
+                syn::Item::Trait(t) => t,
+                _ => continue,
+            };
+
+            for trait_item in item_trait.items {
+                let fn_item = match trait_item {
+                    syn::TraitItem::Fn(f) => f,
+                    _ => continue,
+                };
+
+                let fn_name = fn_item.sig.ident.to_string();
+
+                for attr in &fn_item.attrs {
+                    if let Some(detour) = parse_detour_attr(attr)? {
+                        dll_map.insert(fn_name, detour.dll);
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(dll_map)
 }
 
 /// 收集目录下的所有直接子文件，并按文件名排序后返回。

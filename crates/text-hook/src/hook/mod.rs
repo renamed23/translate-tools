@@ -10,10 +10,20 @@ mod hook_lists {
         use super::api_hooks::__file_stem_ident__::*;
     });
 
-    translate_macros::generate_hook_lists_from_json!(
-        "constant_assets/featured_hook_lists.json",
-        "assets/hook_lists.json"
-    );
+    cfg_if::cfg_if! {
+        if #[cfg(feature = "enable_iat_hook_with_strip")] {
+            translate_macros::generate_hook_lists!(
+                "constant_assets/featured_hook_lists.json",
+                "assets/hook_lists.json",
+                exe_dir = "assets/exe"
+            );
+        } else {
+            translate_macros::generate_hook_lists!(
+                "constant_assets/featured_hook_lists.json",
+                "assets/hook_lists.json",
+            );
+        }
+    }
 }
 
 /// 从钩子列表中开启所有的钩子

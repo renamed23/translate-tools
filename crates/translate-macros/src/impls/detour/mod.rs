@@ -5,15 +5,15 @@ use convert_case::{Case, Casing};
 use quote::format_ident;
 use syn::{Attribute, Expr, Ident, LitStr};
 
-struct DetourAttr {
-    dll: String,
-    symbol: String,
-    export: Option<String>,
-    fallback: Option<Expr>,
-    calling_convention: Option<String>,
+pub struct DetourAttr {
+    pub dll: String,
+    pub symbol: String,
+    pub export: Option<String>,
+    pub fallback: Option<Expr>,
+    pub calling_convention: Option<String>,
 }
 
-fn parse_detour_attr(attr: &Attribute) -> syn::Result<Option<DetourAttr>> {
+pub fn parse_detour_attr(attr: &Attribute) -> syn::Result<Option<DetourAttr>> {
     if !attr.path().is_ident("detour") {
         return Ok(None);
     }

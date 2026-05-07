@@ -1028,20 +1028,32 @@ pub fn derive_default_hook(input: TokenStream) -> TokenStream {
     }
 }
 
-/// 从 JSON 配置文件生成钩子的启用/禁用函数
+/// 从 JSON 配置文件生成钩子的启用/禁用函数。
 ///
-/// 这个宏会在编译时读取两个 JSON 配置文件，根据条件配置和用户设置，
-/// 自动生成运行时启用和禁用钩子的函数。支持条件编译和用户覆盖配置。
+/// 这个宏在编译时读取 JSON 配置文件，根据条件配置和用户设置，自动生成运行时启用和禁用钩子的函数。
+/// 支持条件编译、用户覆盖配置，以及基于目标 EXE 导入表的 IAT/Inline 自动分流。
+///
+/// # 语法
+///
+/// ```ignore
+/// // 基础形式
+/// generate_hook_lists!("hooks/featured.json", "hooks/user.json");
+///
+/// // 带 exe_dir 的形式（启用 IAT/Inline 自动分流）
+/// generate_hook_lists!("hooks/featured.json", "hooks/user.json", exe_dir = "assets/exe");
+/// ```
 ///
 /// # 参数
-/// - `featured_path`: 特性化钩子列表的 JSON 文件路径（相对于 `CARGO_MANIFEST_DIR`）
-/// - `user_path`: 用户钩子列表的 JSON 文件路径（相对于 `CARGO_MANIFEST_DIR`）
 ///
-/// 参数格式：`"featured.json", "user.json"`
+/// - `featured_path`：**必需**。特性化钩子列表的 JSON 文件路径（相对于 `CARGO_MANIFEST_DIR`）。
+/// - `user_path`：**必需**。用户钩子列表的 JSON 文件路径（相对于 `CARGO_MANIFEST_DIR`）。
+/// - `exe_dir`：**可选**。包含目标游戏 EXE 的目录路径（相对于 `CARGO_MANIFEST_DIR`）。
+///   提供后，宏会解析该 EXE 的导入表，将钩子分为 IAT 与 Inline 两类并生成不同的条件编译分支。
 ///
 /// # JSON 文件格式
 ///
-/// ## 特性化钩子列表格式
+/// ## 特性化钩子列表格式（featured）
+///
 /// ```json
 /// {
 ///   "cfg_condition_1": {
@@ -1053,69 +1065,64 @@ pub fn derive_default_hook(input: TokenStream) -> TokenStream {
 ///   }
 /// }
 /// ```
-/// 键为 Rust 的 `#[cfg(...)]` 条件，值为对象：
-/// - `trait`：可选，声明在该条件下被视为“特化实现已接管”的 Hook trait 名列表
-/// - `fn`：可选，声明在该条件下需要自动启用/禁用的 detour 函数名列表
 ///
-/// 其中 `generate_hook_lists_from_json` 只使用 `fn` 字段；`trait` 字段则供
-/// `#[derive(DefaultHook)]` 用于抑制默认 impl 生成。
+/// 键为 Rust 的 `#[cfg(...)]` 条件内部表达式（不含外层 `#[cfg()]` 包装），值为对象：
+/// - `trait`：可选，声明在该条件下被视为"特化实现已接管"的 Hook trait 名列表。
+///   本宏不使用此字段；它仅供 `#[derive(DefaultHook)]` 抑制默认 impl 生成。
+/// - `fn`：可选，声明在该条件下需要自动启用/禁用的 detour 函数名列表。
 ///
-/// ## 用户钩子列表格式
+/// ## 用户钩子列表格式（user）
+///
 /// ```json
 /// {
 ///   "enable": ["hook_name_a", "hook_name_b"],
 ///   "disable": ["hook_name_c"]
 /// }
 /// ```
-/// - `enable`: 额外加入自动启用/自动禁用流程的钩子列表（覆盖特性化配置）
-/// - `disable`: 从特性化自动列表中移除的钩子列表
+/// - `enable`：额外加入自动启用/自动禁用流程的钩子列表。
+/// - `disable`：从特性化自动列表中移除的钩子列表。
 ///
 /// # 生成代码
-/// 宏展开后会生成以下两个函数：
-/// - `enable_hooks_from_lists()` - 根据配置启用所有符合条件的钩子
-/// - `disable_hooks_from_lists()` - 根据配置禁用所有已启用的钩子
 ///
-/// 每个钩子通过 `generate_detour_ident` 生成对应的标识符，并调用其
-/// `enable()` 或 `disable()` 方法。
+/// 宏展开后在调用方模块生成两个 `pub(super)` 函数：
+/// - `unsafe fn enable_hooks_from_lists()` — 按条件启用所有匹配的钩子
+/// - `unsafe fn disable_hooks_from_lists()` — 禁用所有已启用的钩子
+///
+/// # IAT/Inline 自动分流 (exe_dir)
+///
+/// 当提供 `exe_dir` 参数时，宏会在编译期执行以下额外步骤：
+///
+/// 1. 解析目标 EXE 的 PE 导入表，获取所有已导入的函数名和 DLL 名（大小写不敏感）。
+/// 2. 扫描 `src/hook/api_hooks` 目录，建立"Hook 函数名 → 所属 DLL"的反向映射。
+/// 3. 对 featured 列表中的每个钩子函数：
+///    - **函数名在 EXE 导入表中** → 该钩子可走 IAT 路径，仅按原始 `cfg` 条件启用。
+///    - **函数名不在 EXE 导入表中** → 该钩子必须走 Inline 路径，附加 `not(feature = "enable_iat_hook")` 条件。
+///
+/// 举例：假设 `featured.json` 中声明了 `{ "target_os = \"windows\"": { "fn": ["CreateFile", "DeleteFile"] } }`，
+/// EXE 导入了 `kernel32.dll` 的 `CreateFile` 但未导入 `DeleteFile`，则生成的代码大致等价于：
+///
+/// ```ignore
+/// #[cfg(target_os = "windows")]
+/// {
+///     if CREATE_FILE_HOOK.enable().is_err() { ... }  // IAT 路径
+/// }
+/// #[cfg(all(target_os = "windows", not(feature = "enable_iat_hook")))]
+/// {
+///     if DELETE_FILE_HOOK.enable().is_err() { ... }  // Inline 路径
+/// }
+/// ```
+///
+/// 若未提供 `exe_dir`，则所有钩子统一按原始 `cfg` 条件启用，不做分流。
 ///
 /// # 配置解析规则
-/// 1. 优先处理用户配置：`disable` 列表中的钩子会从任何条件中移除
-/// 2. `enable` 列表中的钩子会额外加入自动启用/自动禁用流程
-/// 3. `disable` 列表中的钩子只会从特性化自动列表里移除；它表示“不要由本宏自动启用”，并不意味着此处会主动调用对应 hook 的 `disable()`
-/// 4. 用户配置中同一个钩子不能同时出现在 `enable` 和 `disable` 中
-/// 5. 特性化配置中每个条件会生成对应的 `#[cfg(...)]` 代码块
-/// 6. 空的条件配置（所有钩子都被用户配置覆盖）不会生成代码
 ///
-/// # 示例
-/// ```
-/// generate_hook_lists_from_json!("hooks/featured.json", "hooks/user.json");
-/// ```
-///
-/// 假设 `featured.json` 内容：
-/// ```json
-/// {
-///   "target_os = \"windows\"": {
-///     "fn": ["CreateWindowEx", "MessageBoxW"]
-///   },
-///   "all(feature = \"directx\", target_os = \"windows\")": {
-///     "fn": ["Direct3DCreate9"]
-///   }
-/// }
-/// ```
-///
-/// `user.json` 内容：
-/// ```json
-/// {
-///   "enable": ["ExtraHook"],
-///   "disable": ["MessageBoxW"]
-/// }
-/// ```
-///
-/// 生成的代码将根据编译条件启用相应的钩子，同时额外把 `ExtraHook`
-/// 纳入自动启用/自动禁用流程，而 `MessageBoxW` 会从特性化自动启用列表中被排除。
+/// 1. 用户 `disable` 列表中的钩子会从 featured 结果中完全移除，不会出现在任何条件分支中。
+/// 2. 用户 `enable` 列表中的钩子不受 `cfg` 条件限制，始终生成在启用/禁用列表中。
+/// 3. 同一个钩子不能同时出现在 `enable` 和 `disable` 中。
+/// 4. 若 featured 下某个 `cfg` 条件的所有钩子都被用户配置覆盖（移除完毕），该条件块不会生成任何代码。
 #[proc_macro]
-pub fn generate_hook_lists_from_json(input: TokenStream) -> TokenStream {
-    match impls::generate_hook_lists_from_json::generate_hook_lists_from_json(input.into()) {
+pub fn generate_hook_lists(input: TokenStream) -> TokenStream {
+    match impls::generate_hook_lists::generate_hook_lists(input.into()) {
         Ok(ts) => ts.into(),
         Err(err) => err.into_compile_error().into(),
     }

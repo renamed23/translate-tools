@@ -109,6 +109,10 @@ enable_veh = []
 enable_resource_pack = ["dep:path-clean"]
 # 内嵌资源包而不是外置
 embed_resource_pack = ["enable_resource_pack"]
+# 使用IAT HOOK，并且会根据 `assets/exe` 的PE文件导入表
+# 剔除未使用的 Featured API HOOK
+# 注意，无法处理序号导出（一般来说很少见）
+enable_iat_hook_with_strip = ["enable_iat_hook"]
 # 使用IAT HOOK，而不是Inline Hook
 # IAT HOOK 比 Inline Hook更轻量，但是后者更全面
 enable_iat_hook = []

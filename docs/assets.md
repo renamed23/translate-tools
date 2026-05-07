@@ -179,7 +179,9 @@ DLL会`inline hook`入口点，然后加载被劫持的DLL，并获取导出函�
 
 ## exe
 
-该目录应该仅有一个文件，并且是游戏的exe，目前主要用于过程宏 `generate_entry_point_hook`，该过程宏会分析PE结构，并确保入口点指令不需要重排，然后在编译期生成占位 trampoline，因此不再需要在运行时解析重排指令。一般来说配合IAT HOOK使用，这样可以完全剔除inline hook的依赖。
+该目录应该仅有一个文件，并且是游戏的exe，目前主要用于
+- 开启 `enable_delayed_attach_static` 的过程宏 `generate_entry_point_hook`，该过程宏会分析PE结构，并确保入口点指令不需要重排，然后在编译期生成占位 trampoline，因此不再需要在运行时解析重排指令。一般来说配合IAT HOOK使用，这样可以完全剔除inline hook的依赖。
+- 开启 `enable_iat_hook_with_strip` 的过程宏 `generate_hook_lists`，该过程宏会分析PE结构导入表，剔除未使用的 Featured API HOOK（但是如果 `hook_lists.json` 指定了依然会开启），注意，无法处理序号导出（一般来说很少见）
 
 
 ## x64dbg_1337_patch

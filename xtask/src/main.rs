@@ -316,6 +316,15 @@ fn build_scenarios() -> Vec<Scenario> {
             run_x64: true,
         },
         Scenario {
+            name: "default_impl/hook_backend/iat_with_strip".to_string(),
+            features: feature_set(
+                all_functional_impl_base(),
+                &["default_impl", "enable_iat_hook_with_strip"],
+                &[],
+            ),
+            run_x64: true,
+        },
+        Scenario {
             name: "default_impl/extract_text/off".to_string(),
             features: feature_set(
                 all_functional_impl_base(),

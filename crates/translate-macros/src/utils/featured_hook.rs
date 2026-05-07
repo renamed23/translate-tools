@@ -13,7 +13,7 @@ use serde::Deserialize;
 ///
 /// 之所以把 trait 与函数分开，是因为两者服务的宏展开场景不同：
 /// - `derive_default_hook` 只关心 trait 维度，用它决定哪些默认 impl 需要跳过；
-/// - `generate_hook_lists_from_json` 只关心 detour 函数维度，用它生成 enable/disable 逻辑。
+/// - `generate_hook_lists` 只关心 detour 函数维度，用它生成 enable/disable 逻辑。
 #[derive(Default, Deserialize)]
 pub struct FeaturedHookEntry {
     /// 在当前 `cfg` 条件下被视为“已有特化实现”的 Hook trait 名称列表。
