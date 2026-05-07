@@ -59,5 +59,6 @@
   "EMULATE_LOCALE_TIMEZONE": "Tokyo Standard Time",
   "EMULATE_LOCALE_WAIT_FOR_EXIT": false,
   "OVERLAY_TARGET_WINDOW_TEXT": "some_window_text",
-  "OVERLAY_TARGET_WINDOW_CLASS_NAME": "some_window_class_name"
+  "OVERLAY_TARGET_WINDOW_CLASS_NAME": "some_window_class_name",
+  "ENTRY_POINT_RVA": 248512
 }
