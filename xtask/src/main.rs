@@ -573,6 +573,7 @@ fn build_scenarios() -> Vec<Scenario> {
         "hitocos2",
         "hitocos",
         "old_minori",
+        "nocturne",
     ];
 
     for imp in game_impls {
