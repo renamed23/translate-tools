@@ -197,7 +197,7 @@ pub fn generate_entry_point_hook(input: TokenStream) -> syn::Result<TokenStream>
                 }
 
                 let mut relocated = [0u8; #total_len_lit];
-                hook_addr.read_bytes(&mut relocated)?;
+                hook_addr.copy_bytes(&mut relocated)?;
 
                 let trampoline_ptr = #trampoline_ident as *mut u8;
                 trampoline_ptr.add(#trampoline_offset_lit).patch_asm(&relocated)?;

@@ -289,9 +289,9 @@ where
         match f(ptr, cap) {
             FetchResult::Success(len) => {
                 let mut result = if cap <= STACK_CAP {
-                    let mut v = Vec::with_capacity(len);
+                    let mut v = Vec::<T>::with_capacity(len);
                     unsafe {
-                        core::ptr::copy_nonoverlapping(ptr, v.as_mut_ptr(), len);
+                        v.as_mut_ptr().copy_from_nonoverlapping(ptr, len);
                         v.set_len(len);
                     }
                     v

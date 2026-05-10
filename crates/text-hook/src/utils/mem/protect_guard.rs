@@ -1,5 +1,3 @@
-use core::mem;
-
 use windows_sys::Win32::System::{
     Memory::VirtualProtect,
     SystemInformation::{GetSystemInfo, SYSTEM_INFO},
@@ -43,7 +41,7 @@ impl ProtectGuard {
 
         // 获取系统 page size
         unsafe {
-            let mut sys: SYSTEM_INFO = mem::zeroed();
+            let mut sys = SYSTEM_INFO::default();
             GetSystemInfo(&raw mut sys);
             let page_size = sys.dwPageSize as usize;
             if page_size == 0 {
@@ -106,168 +104,6 @@ impl ProtectGuard {
         self.size
     }
 
-    /// 安全地写入值到受保护的内存
-    ///
-    /// # Safety
-    /// 调用者必须确保写入的值类型正确且对齐
-    pub unsafe fn write<U: Copy>(&self, value: U) {
-        unsafe { self.write_offset(0, value) };
-    }
-
-    /// 在指定偏移量处写入值
-    ///
-    /// # 参数
-    /// - `offset`: 字节偏移量
-    /// - `value`: 要写入的值
-    ///
-    /// # Safety
-    /// 调用者必须确保偏移量在保护范围内，且类型正确对齐
-    pub unsafe fn write_offset<U: Copy>(&self, offset: usize, value: U) {
-        unsafe {
-            let elem = mem::size_of::<U>();
-            assert!(elem > 0, "ZST not supported");
-            self.assert_in_bound(offset, elem);
-
-            let target_addr = self.address.add(offset).cast::<U>();
-            assert!(
-                (target_addr as usize).is_multiple_of(mem::align_of::<U>()),
-                "write: target not aligned for type"
-            );
-            target_addr.write_volatile(value);
-        }
-    }
-
-    /// 从受保护的内存读取值
-    ///
-    /// # Safety
-    /// 调用者必须确保读取的类型正确且对齐
-    pub unsafe fn read<U: Copy>(&self) -> U {
-        unsafe { self.read_offset(0) }
-    }
-
-    /// 从指定偏移量处读取值
-    ///
-    /// # 参数
-    /// - `offset`: 字节偏移量
-    ///
-    /// # Safety
-    /// 调用者必须确保偏移量在保护范围内，且类型正确对齐
-    pub unsafe fn read_offset<U: Copy>(&self, offset: usize) -> U {
-        unsafe {
-            let elem = mem::size_of::<U>();
-            assert!(elem > 0, "ZST not supported");
-            self.assert_in_bound(offset, elem);
-
-            let source_addr = self.address.add(offset).cast::<U>();
-            assert!(
-                (source_addr as usize).is_multiple_of(mem::align_of::<U>()),
-                "read: target not aligned for type"
-            );
-            source_addr.read_volatile()
-        }
-    }
-
-    /// 不对齐地写入值到受保护的内存
-    ///
-    /// # Safety
-    /// 调用者必须确保写入的值类型正确，且偏移量在保护范围内
-    pub unsafe fn write_unaligned<U: Copy>(&self, value: U) {
-        unsafe { self.write_offset_unaligned(0, value) };
-    }
-
-    /// 在指定偏移量处不对齐地写入值
-    ///
-    /// # 参数
-    /// - `offset`: 字节偏移量
-    /// - `value`: 要写入的值
-    ///
-    /// # Safety
-    /// 调用者必须确保偏移量在保护范围内
-    pub unsafe fn write_offset_unaligned<U: Copy>(&self, offset: usize, value: U) {
-        unsafe {
-            let elem = mem::size_of::<U>();
-            assert!(elem > 0, "ZST not supported");
-            self.assert_in_bound(offset, elem);
-
-            let target_addr = self.address.add(offset).cast::<U>();
-            target_addr.write_unaligned(value);
-        }
-    }
-
-    /// 从受保护的内存不对齐地读取值
-    ///
-    /// # Safety
-    /// 调用者必须确保读取的类型正确，且偏移量在保护范围内
-    pub unsafe fn read_unaligned<U: Copy>(&self) -> U {
-        unsafe { self.read_offset_unaligned(0) }
-    }
-
-    /// 从指定偏移量处不对齐地读取值
-    ///
-    /// # 参数
-    /// - `offset`: 字节偏移量
-    ///
-    /// # Safety
-    /// 调用者必须确保偏移量在保护范围内
-    pub unsafe fn read_offset_unaligned<U: Copy>(&self, offset: usize) -> U {
-        unsafe {
-            let elem = mem::size_of::<U>();
-            assert!(elem > 0, "ZST not supported");
-            self.assert_in_bound(offset, elem);
-
-            let source_addr = self.address.add(offset).cast::<U>();
-            source_addr.read_unaligned()
-        }
-    }
-
-    /// 将受保护的内存区域转换为指定类型的切片引用
-    ///
-    /// # Safety
-    /// 调用者必须确保类型正确且对齐，且不会超出保护范围
-    pub unsafe fn as_slice<U>(&self) -> &[U] {
-        let elem = mem::size_of::<U>();
-        assert!(elem > 0, "ZST not supported");
-        assert!(
-            self.size.is_multiple_of(elem),
-            "guard size ({}) is not multiple of element size ({})",
-            self.size,
-            elem
-        );
-        assert!(
-            (self.address as usize).is_multiple_of(mem::align_of::<U>()),
-            "address {:p} is not aligned for element (align={})",
-            self.address,
-            mem::align_of::<U>()
-        );
-
-        let count = self.size / elem;
-        unsafe { core::slice::from_raw_parts(self.address as *const U, count) }
-    }
-
-    /// 将受保护的内存区域转换为指定类型的可变切片引用
-    ///
-    /// # Safety
-    /// 调用者必须确保类型正确且对齐，且不会超出保护范围
-    pub unsafe fn as_mut_slice<U>(&mut self) -> &mut [U] {
-        let elem = mem::size_of::<U>();
-        assert!(elem > 0, "ZST not supported");
-        assert!(
-            self.size.is_multiple_of(elem),
-            "guard size ({}) is not multiple of element size ({})",
-            self.size,
-            elem
-        );
-        assert!(
-            (self.address as usize).is_multiple_of(mem::align_of::<U>()),
-            "address {:p} is not aligned for element (align={})",
-            self.address,
-            mem::align_of::<U>()
-        );
-
-        let count = self.size / elem;
-        unsafe { core::slice::from_raw_parts_mut(self.address.cast::<U>(), count) }
-    }
-
     /// 写入字节切片到受保护的内存
     ///
     /// # 参数
@@ -275,8 +111,8 @@ impl ProtectGuard {
     ///
     /// # Safety
     /// 调用者必须确保切片长度不超过保护范围
-    pub unsafe fn write_bytes(&self, data: &[u8]) {
-        unsafe { self.write_bytes_ex(0, data, false) }
+    pub unsafe fn patch_bytes(&mut self, data: &[u8]) {
+        unsafe { self.patch_bytes_ex(0, data, false) }
     }
 
     /// 在指定偏移量处写入字节切片
@@ -287,8 +123,8 @@ impl ProtectGuard {
     ///
     /// # Safety
     /// 调用者必须确保切片长度不超过保护范围
-    pub unsafe fn write_bytes_offset(&self, offset: usize, data: &[u8]) {
-        unsafe { self.write_bytes_ex(offset, data, false) }
+    pub unsafe fn patch_bytes_offset(&mut self, offset: usize, data: &[u8]) {
+        unsafe { self.patch_bytes_ex(offset, data, false) }
     }
 
     /// 写入字节切片到受保护的内存，然后刷新指令缓存
@@ -298,8 +134,8 @@ impl ProtectGuard {
     ///
     /// # Safety
     /// 调用者必须确保切片长度不超过保护范围
-    pub unsafe fn write_asm_bytes(&self, data: &[u8]) {
-        unsafe { self.write_bytes_ex(0, data, true) }
+    pub unsafe fn patch_asm_bytes(&mut self, data: &[u8]) {
+        unsafe { self.patch_bytes_ex(0, data, true) }
     }
 
     /// 在指定偏移量处写入字节切片，然后刷新指令缓存
@@ -310,8 +146,8 @@ impl ProtectGuard {
     ///
     /// # Safety
     /// 调用者必须确保切片长度不超过保护范围
-    pub unsafe fn write_asm_bytes_offset(&self, offset: usize, data: &[u8]) {
-        unsafe { self.write_bytes_ex(offset, data, true) }
+    pub unsafe fn patch_asm_bytes_offset(&mut self, offset: usize, data: &[u8]) {
+        unsafe { self.patch_bytes_ex(offset, data, true) }
     }
 
     /// 在指定偏移量处写入字节切片
@@ -324,7 +160,7 @@ impl ProtectGuard {
     /// # Safety
     /// - 调用者必须确保 `offset + data.len()` 不超过保护范围。
     /// - 当 `asm` 为 `true` 时，调用者需保证写入目标为可执行代码并允许刷新指令缓存。
-    pub unsafe fn write_bytes_ex(&self, offset: usize, data: &[u8], asm: bool) {
+    pub unsafe fn patch_bytes_ex(&mut self, offset: usize, data: &[u8], asm: bool) {
         if data.is_empty() {
             return;
         }
@@ -334,7 +170,7 @@ impl ProtectGuard {
 
         unsafe {
             let target_addr = self.address.add(offset);
-            core::ptr::copy_nonoverlapping(data.as_ptr(), target_addr, len);
+            target_addr.copy_from(data.as_ptr(), len);
 
             if asm {
                 flush_icache(target_addr, len);
@@ -342,34 +178,106 @@ impl ProtectGuard {
         }
     }
 
-    /// 从受保护的内存读取字节到缓冲区
+    /// 使用特定字节填充受保护的内存
+    ///
+    /// # 参数
+    /// - `value`: 要填充的字节值
+    /// - `count`: 填充长度（字节）
+    ///
+    /// # Safety
+    /// 调用者必须确保填充范围在保护范围内
+    pub unsafe fn fill_bytes(&mut self, value: u8, count: usize) {
+        unsafe { self.fill_bytes_ex(0, value, count, false) }
+    }
+
+    /// 在指定偏移量处使用特定字节填充内存
+    ///
+    /// # 参数
+    /// - `offset`: 字节偏移量
+    /// - `value`: 要填充的字节值
+    /// - `count`: 填充长度（字节）
+    ///
+    /// # Safety
+    /// 调用者必须确保填充范围在保护范围内
+    pub unsafe fn fill_bytes_offset(&mut self, offset: usize, value: u8, count: usize) {
+        unsafe { self.fill_bytes_ex(offset, value, count, false) }
+    }
+
+    /// 使用特定字节填充受保护的内存，然后刷新指令缓存
+    ///
+    /// # 参数
+    /// - `value`: 要填充的字节值
+    /// - `count`: 填充长度（字节）
+    ///
+    /// # Safety
+    /// 调用者必须确保填充范围在保护范围内
+    pub unsafe fn fill_asm_bytes(&mut self, value: u8, count: usize) {
+        unsafe { self.fill_bytes_ex(0, value, count, true) }
+    }
+
+    /// 在指定偏移量处使用特定字节填充内存，然后刷新指令缓存
+    ///
+    /// # 参数
+    /// - `offset`: 字节偏移量
+    /// - `value`: 要填充的字节值
+    /// - `count`: 填充长度（字节）
+    ///
+    /// # Safety
+    /// 调用者必须确保填充范围在保护范围内
+    pub unsafe fn fill_asm_bytes_offset(&mut self, offset: usize, value: u8, count: usize) {
+        unsafe { self.fill_bytes_ex(offset, value, count, true) }
+    }
+
+    /// 在指定偏移量处使用特定字节填充内存
+    ///
+    /// # 参数
+    /// - `offset`: 字节偏移量
+    /// - `value`: 要填充的字节值
+    /// - `count`: 填充长度（字节）
+    /// - `asm`: 若为true，则在填充后会刷新指令缓存
+    ///
+    /// # Safety
+    /// - 调用者必须确保 `offset + count` 不超过保护范围。
+    /// - 当 `asm` 为 `true` 时，调用者需保证写入目标为可执行代码并允许刷新指令缓存。
+    pub unsafe fn fill_bytes_ex(&mut self, offset: usize, value: u8, count: usize, asm: bool) {
+        if count == 0 {
+            return;
+        }
+
+        self.assert_in_bound(offset, count);
+
+        unsafe {
+            let target_addr = self.address.add(offset);
+            target_addr.write_bytes(value, count);
+
+            if asm {
+                flush_icache(target_addr, count);
+            }
+        }
+    }
+
+    /// 从受保护的内存复制字节到缓冲区
     ///
     /// # 参数
     /// - `buffer`: 用于存储读取数据的缓冲区
     ///
-    /// # 返回值
-    /// 实际读取的字节数
-    ///
     /// # Safety
     /// 调用者必须确保缓冲区有效
-    pub unsafe fn read_bytes(&self, buffer: &mut [u8]) -> usize {
-        unsafe { self.read_bytes_offset(0, buffer) }
+    pub unsafe fn copy_bytes(&self, buffer: &mut [u8]) {
+        unsafe { self.copy_bytes_offset(0, buffer) }
     }
 
-    /// 从指定偏移量处读取字节到缓冲区
+    /// 从指定偏移量处复制字节到缓冲区
     ///
     /// # 参数
     /// - `offset`: 字节偏移量
     /// - `buffer`: 用于存储读取数据的缓冲区
     ///
-    /// # 返回值
-    /// 实际读取的字节数
-    ///
     /// # Safety
     /// 调用者必须确保偏移量和缓冲区有效
-    pub unsafe fn read_bytes_offset(&self, offset: usize, buffer: &mut [u8]) -> usize {
+    pub unsafe fn copy_bytes_offset(&self, offset: usize, buffer: &mut [u8]) {
         if buffer.is_empty() {
-            return 0;
+            return;
         }
 
         let len = buffer.len();
@@ -377,9 +285,8 @@ impl ProtectGuard {
 
         unsafe {
             let source_addr = self.address.add(offset);
-            core::ptr::copy_nonoverlapping(source_addr, buffer.as_mut_ptr(), len);
+            buffer.as_mut_ptr().copy_from(source_addr, len);
         }
-        len
     }
 
     /// 检查指定偏移量和长度是否超出保护范围
@@ -407,6 +314,7 @@ impl Drop for ProtectGuard {
 
                 #[cfg(feature = "enable_debug_output")]
                 if _ok == 0 {
+                    crate::print_last_error_message!();
                     crate::debug!("VirtualProtect restore failed for {:p}", p.base);
                 }
             }

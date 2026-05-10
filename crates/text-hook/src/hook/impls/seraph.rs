@@ -1,4 +1,5 @@
 use std::{borrow::Cow, path::Path};
+
 use translate_macros::{DefaultHook, detour_fn};
 use windows_sys::{
     Win32::Foundation::HMODULE,
@@ -98,7 +99,7 @@ pub unsafe extern "system" fn get_private_profile_string_a(
                 let copy_len = val.len().min(n_size as usize);
 
                 // 复制到输出缓冲区
-                core::ptr::copy_nonoverlapping(val.as_ptr(), lp_returned_string, copy_len);
+                lp_returned_string.copy_from_nonoverlapping(val.as_ptr(), copy_len);
 
                 // 确保在缓冲区不足时正确终止字符串
                 if copy_len < n_size as usize {

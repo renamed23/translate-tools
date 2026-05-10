@@ -199,7 +199,7 @@ pub fn generate_patch_fn_from_1337(input: TokenStream) -> syn::Result<TokenStrea
                 quote! {
                     let target_addr = module_base.wrapping_add(#addr as usize);
                     let data: &[u8] = &[#(#bytes),*];
-                    crate::utils::mem::patch::write_asm(target_addr as *mut u8, data)?;
+                    crate::utils::mem::patch::patch_asm(target_addr as *mut u8, data)?;
                 }
             })
             .collect();

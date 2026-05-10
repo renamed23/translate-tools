@@ -1,6 +1,6 @@
 use std::cell::Cell;
 
-use translate_macros::{DefaultHook, byte_slice, ffi_guard};
+use translate_macros::{DefaultHook, ffi_guard};
 use windows_sys::Win32::Foundation::HMODULE;
 
 use crate::{
@@ -53,16 +53,13 @@ impl ProcessAttach for NocturneHook {
                 .write_jmp_instruction(trampoline_set_current_surface as _)?;
             SET_CURRENT_SURFACE_RETURN_ADDR = module.add(0x2906) as usize;
 
-            let nop_bytes = byte_slice!(
-                "90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90"
-            );
             module
                 .add(0x2B2C)
-                .patch_asm(&nop_bytes)?
+                .fill_asm(0x90, 26)?
                 .write_call_instruction(trampoline_fix_buffer_write as _)?;
             module
                 .add(0x2BA1)
-                .patch_asm(&nop_bytes)?
+                .fill_asm(0x90, 26)?
                 .write_call_instruction(trampoline_fix_buffer_write as _)?;
 
             module

@@ -8,11 +8,11 @@ use windows_sys::Win32::System::{
 
 use crate::utils::{exts::ptr_ext::PtrWriteExt, mem::protect_guard::ProtectGuard};
 
-/// 从指定地址读取字节到缓冲区
+/// 从指定地址复制字节到缓冲区
 ///
 /// # Safety
 /// - `address` 必须指向至少 `buffer.len()` 字节的可读内存
-pub fn read_bytes(address: *const u8, buffer: &mut [u8]) -> crate::Result<()> {
+pub fn copy_bytes(address: *const u8, buffer: &mut [u8]) -> crate::Result<()> {
     if address.is_null() {
         crate::bail!("address is null");
     }
@@ -21,9 +21,32 @@ pub fn read_bytes(address: *const u8, buffer: &mut [u8]) -> crate::Result<()> {
     }
     unsafe {
         crate::utils::mem::quick_memory_check(address, buffer.len())?;
-        core::ptr::copy_nonoverlapping(address, buffer.as_mut_ptr(), buffer.len());
+        buffer.as_mut_ptr().copy_from(address, buffer.len());
     }
     Ok(())
+}
+
+/// 从指定地址读取字节
+///
+/// # Safety
+/// - `address` 必须指向至少 `size` 字节的可读内存
+pub fn read_bytes(address: *const u8, size: usize) -> crate::Result<Vec<u8>> {
+    if address.is_null() {
+        crate::bail!("address is null");
+    }
+
+    if size == 0 {
+        return Ok(Vec::new());
+    }
+
+    unsafe {
+        crate::utils::mem::quick_memory_check(address, size)?;
+        let mut buffer = Vec::<u8>::with_capacity(size);
+        buffer.as_mut_ptr().copy_from_nonoverlapping(address, size);
+        buffer.set_len(size);
+
+        Ok(buffer)
+    }
 }
 
 /// 刷新指令缓存（在修改代码段字节后必须调用）
@@ -37,8 +60,43 @@ pub fn flush_icache(addr: *const u8, size: usize) {
     }
 }
 
+/// 使用特定字节填充指定地址的内存，自动处理内存保护
+pub fn fill_bytes(address: *mut u8, value: u8, count: usize) -> crate::Result<()> {
+    if address.is_null() {
+        crate::bail!("address is null");
+    }
+    if count == 0 {
+        return Ok(());
+    }
+
+    unsafe {
+        // 使用 PAGE_READWRITE 保护进行普通数据填充
+        ProtectGuard::new(address, count, PAGE_READWRITE)?.fill_bytes(value, count);
+    }
+
+    Ok(())
+}
+
+/// 使用特定字节填充指定地址的内存，自动处理内存保护并刷新指令缓存
+///
+/// 常用于批量填充 NOP (0x90) 以抹除原本的机器码
+pub fn fill_asm(address: *mut u8, value: u8, count: usize) -> crate::Result<()> {
+    if address.is_null() {
+        crate::bail!("address is null");
+    }
+    if count == 0 {
+        return Ok(());
+    }
+
+    unsafe {
+        ProtectGuard::new(address, count, PAGE_EXECUTE_READWRITE)?.fill_asm_bytes(value, count);
+    }
+
+    Ok(())
+}
+
 /// 写入汇编字节到指定地址，自动处理内存保护和指令缓存刷新
-pub fn write_asm(address: *mut u8, data: &[u8]) -> crate::Result<()> {
+pub fn patch_asm(address: *mut u8, data: &[u8]) -> crate::Result<()> {
     if address.is_null() {
         crate::bail!("address is null");
     }
@@ -47,14 +105,14 @@ pub fn write_asm(address: *mut u8, data: &[u8]) -> crate::Result<()> {
     }
 
     unsafe {
-        ProtectGuard::new(address, data.len(), PAGE_EXECUTE_READWRITE)?.write_asm_bytes(data);
+        ProtectGuard::new(address, data.len(), PAGE_EXECUTE_READWRITE)?.patch_asm_bytes(data);
     }
 
     Ok(())
 }
 
 /// 写入字节到指定地址，自动处理内存保护
-pub fn write_bytes(address: *mut u8, data: &[u8]) -> crate::Result<()> {
+pub fn patch_bytes(address: *mut u8, data: &[u8]) -> crate::Result<()> {
     if address.is_null() {
         crate::bail!("address is null");
     }
@@ -63,7 +121,7 @@ pub fn write_bytes(address: *mut u8, data: &[u8]) -> crate::Result<()> {
     }
 
     unsafe {
-        ProtectGuard::new(address, data.len(), PAGE_READWRITE)?.write_bytes(data);
+        ProtectGuard::new(address, data.len(), PAGE_READWRITE)?.patch_bytes(data);
     }
 
     Ok(())

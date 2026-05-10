@@ -44,9 +44,8 @@ impl DefWindowProc for WindowTitleOverriderSlot {
                     core::mem::size_of::<CREATESTRUCTW>()
                 );
 
-                core::ptr::copy_nonoverlapping(
+                (&raw mut params_w).cast::<u8>().copy_from_nonoverlapping(
                     params_a.cast::<u8>(),
-                    (&raw mut params_w).cast::<u8>(),
                     core::mem::size_of::<CREATESTRUCTW>(),
                 );
 

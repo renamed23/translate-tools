@@ -79,10 +79,8 @@ pub fn multi_byte_to_wide_char_impl(
             crate::bail!("MultiByteToWideChar Failed");
         }
 
-        let mut buf = Vec::with_capacity(required as usize + usize::from(add_null));
-
-        let spare = buf.spare_capacity_mut();
-        let ptr = spare.as_mut_ptr().cast::<u16>();
+        let mut buf = Vec::<u16>::with_capacity(required as usize + usize::from(add_null));
+        let ptr = buf.as_mut_ptr();
 
         let written = MultiByteToWideChar(code_page, 0, bytes.as_ptr(), input_len, ptr, required);
         if written <= 0 {
@@ -138,9 +136,7 @@ pub fn wide_char_to_multi_byte_impl(
         }
 
         let mut buf = Vec::<u8>::with_capacity(required as usize + usize::from(add_null));
-
-        let spare = buf.spare_capacity_mut();
-        let ptr = spare.as_mut_ptr().cast::<u8>();
+        let ptr = buf.as_mut_ptr();
 
         let written = WideCharToMultiByte(
             code_page,

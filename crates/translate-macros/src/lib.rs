@@ -935,7 +935,7 @@ pub fn generated_text_patch_data(input: TokenStream) -> TokenStream {
 /// - 补丁必须位于模块声明之后，否则编译失败
 /// - 自动按地址排序并合并连续的内存补丁
 /// - 使用 `crate::utils::win32::get_module_handle` 获取模块句柄
-/// - 使用 `crate::utils::mem::patch::write_asm` 写入补丁数据
+/// - 使用 `crate::utils::mem::patch::patch_asm` 写入补丁数据
 ///
 /// # 示例
 /// ## 1337文件内容 (`patches/game.1337`)
@@ -966,7 +966,7 @@ pub fn generated_text_patch_data(input: TokenStream) -> TokenStream {
 ///     let module_base = crate::utils::win32::get_module_handle(core::ptr::null())? as usize;
 ///     let target_addr = module_base.wrapping_add(0x140001000 as usize);
 ///     let data: &[u8] = &[0xEB, 0x90, 0x90];
-///     crate::utils::mem::patch::write_asm(target_addr as *mut u8, data)?;
+///     crate::utils::mem::patch::patch_asm(target_addr as *mut u8, data)?;
 ///     Ok(())
 /// }
 /// ```
