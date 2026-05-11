@@ -4,7 +4,10 @@ use translate_macros::ffi_guard;
 
 use crate::{
     debug,
-    utils::exts::{ptr_ext::PtrExt, slice_ext::ByteSliceExt},
+    utils::exts::{
+        ptr_ext::{PtrExt, PtrWriteExt},
+        slice_ext::ByteSliceExt,
+    },
 };
 
 thread_local! {
@@ -32,7 +35,7 @@ pub unsafe extern "system" fn replace_script(ptr: *mut u8, len: usize) {
 
         unsafe {
             if let Ok(Some(patch)) = ptr.to_slice_mut(len).get_patch_or_extract() {
-                ptr.to_slice_mut(len).copy_from_slice(patch);
+                ptr.copy_bytes_from(patch);
             }
         }
     }

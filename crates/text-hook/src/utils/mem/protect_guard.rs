@@ -186,8 +186,8 @@ impl ProtectGuard {
     ///
     /// # Safety
     /// 调用者必须确保填充范围在保护范围内
-    pub unsafe fn fill_bytes(&mut self, value: u8, count: usize) {
-        unsafe { self.fill_bytes_ex(0, value, count, false) }
+    pub unsafe fn patch_repeated_bytes(&mut self, value: u8, count: usize) {
+        unsafe { self.patch_repeated_bytes_ex(0, value, count, false) }
     }
 
     /// 在指定偏移量处使用特定字节填充内存
@@ -199,8 +199,8 @@ impl ProtectGuard {
     ///
     /// # Safety
     /// 调用者必须确保填充范围在保护范围内
-    pub unsafe fn fill_bytes_offset(&mut self, offset: usize, value: u8, count: usize) {
-        unsafe { self.fill_bytes_ex(offset, value, count, false) }
+    pub unsafe fn patch_repeated_bytes_offset(&mut self, offset: usize, value: u8, count: usize) {
+        unsafe { self.patch_repeated_bytes_ex(offset, value, count, false) }
     }
 
     /// 使用特定字节填充受保护的内存，然后刷新指令缓存
@@ -211,8 +211,8 @@ impl ProtectGuard {
     ///
     /// # Safety
     /// 调用者必须确保填充范围在保护范围内
-    pub unsafe fn fill_asm_bytes(&mut self, value: u8, count: usize) {
-        unsafe { self.fill_bytes_ex(0, value, count, true) }
+    pub unsafe fn patch_repeated_asm_bytes(&mut self, value: u8, count: usize) {
+        unsafe { self.patch_repeated_bytes_ex(0, value, count, true) }
     }
 
     /// 在指定偏移量处使用特定字节填充内存，然后刷新指令缓存
@@ -224,8 +224,13 @@ impl ProtectGuard {
     ///
     /// # Safety
     /// 调用者必须确保填充范围在保护范围内
-    pub unsafe fn fill_asm_bytes_offset(&mut self, offset: usize, value: u8, count: usize) {
-        unsafe { self.fill_bytes_ex(offset, value, count, true) }
+    pub unsafe fn patch_repeated_asm_bytes_offset(
+        &mut self,
+        offset: usize,
+        value: u8,
+        count: usize,
+    ) {
+        unsafe { self.patch_repeated_bytes_ex(offset, value, count, true) }
     }
 
     /// 在指定偏移量处使用特定字节填充内存
@@ -239,7 +244,13 @@ impl ProtectGuard {
     /// # Safety
     /// - 调用者必须确保 `offset + count` 不超过保护范围。
     /// - 当 `asm` 为 `true` 时，调用者需保证写入目标为可执行代码并允许刷新指令缓存。
-    pub unsafe fn fill_bytes_ex(&mut self, offset: usize, value: u8, count: usize, asm: bool) {
+    pub unsafe fn patch_repeated_bytes_ex(
+        &mut self,
+        offset: usize,
+        value: u8,
+        count: usize,
+        asm: bool,
+    ) {
         if count == 0 {
             return;
         }
@@ -263,8 +274,8 @@ impl ProtectGuard {
     ///
     /// # Safety
     /// 调用者必须确保缓冲区有效
-    pub unsafe fn copy_bytes(&self, buffer: &mut [u8]) {
-        unsafe { self.copy_bytes_offset(0, buffer) }
+    pub unsafe fn copy_bytes_to(&self, buffer: &mut [u8]) {
+        unsafe { self.copy_bytes_offset_to(0, buffer) }
     }
 
     /// 从指定偏移量处复制字节到缓冲区
@@ -275,7 +286,7 @@ impl ProtectGuard {
     ///
     /// # Safety
     /// 调用者必须确保偏移量和缓冲区有效
-    pub unsafe fn copy_bytes_offset(&self, offset: usize, buffer: &mut [u8]) {
+    pub unsafe fn copy_bytes_offset_to(&self, offset: usize, buffer: &mut [u8]) {
         if buffer.is_empty() {
             return;
         }

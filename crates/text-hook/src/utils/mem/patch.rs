@@ -12,7 +12,7 @@ use crate::utils::{exts::ptr_ext::PtrWriteExt, mem::protect_guard::ProtectGuard}
 ///
 /// # Safety
 /// - `address` 必须指向至少 `buffer.len()` 字节的可读内存
-pub fn copy_bytes(address: *const u8, buffer: &mut [u8]) -> crate::Result<()> {
+pub unsafe fn copy_bytes_to(address: *const u8, buffer: &mut [u8]) -> crate::Result<()> {
     if address.is_null() {
         crate::bail!("address is null");
     }
@@ -30,7 +30,7 @@ pub fn copy_bytes(address: *const u8, buffer: &mut [u8]) -> crate::Result<()> {
 ///
 /// # Safety
 /// - `address` 必须指向至少 `size` 字节的可读内存
-pub fn read_bytes(address: *const u8, size: usize) -> crate::Result<Vec<u8>> {
+pub unsafe fn read_bytes(address: *const u8, size: usize) -> crate::Result<Vec<u8>> {
     if address.is_null() {
         crate::bail!("address is null");
     }
@@ -60,8 +60,34 @@ pub fn flush_icache(addr: *const u8, size: usize) {
     }
 }
 
+/// 写入字节到指定地址，不处理内存保护（原始操作）
+///
+/// # Safety
+/// - 调用者必须确保 `address` 指向的内存是可写的。
+pub unsafe fn copy_bytes_from(address: *mut u8, data: &[u8]) {
+    if address.is_null() || data.is_empty() {
+        return;
+    }
+    unsafe {
+        address.copy_from(data.as_ptr(), data.len());
+    };
+}
+
+/// 使用特定字节填充指定地址的内存，不处理内存保护（原始操作）
+///
+/// # Safety
+/// - 调用者必须确保 `address` 指向的内存是可写的。
+pub unsafe fn copy_repeated_bytes_from(address: *mut u8, value: u8, count: usize) {
+    if address.is_null() || count == 0 {
+        return;
+    }
+    unsafe {
+        address.write_bytes(value, count);
+    };
+}
+
 /// 使用特定字节填充指定地址的内存，自动处理内存保护
-pub fn fill_bytes(address: *mut u8, value: u8, count: usize) -> crate::Result<()> {
+pub fn patch_repeated_bytes(address: *mut u8, value: u8, count: usize) -> crate::Result<()> {
     if address.is_null() {
         crate::bail!("address is null");
     }
@@ -71,7 +97,7 @@ pub fn fill_bytes(address: *mut u8, value: u8, count: usize) -> crate::Result<()
 
     unsafe {
         // 使用 PAGE_READWRITE 保护进行普通数据填充
-        ProtectGuard::new(address, count, PAGE_READWRITE)?.fill_bytes(value, count);
+        ProtectGuard::new(address, count, PAGE_READWRITE)?.patch_repeated_bytes(value, count);
     }
 
     Ok(())
@@ -80,7 +106,7 @@ pub fn fill_bytes(address: *mut u8, value: u8, count: usize) -> crate::Result<()
 /// 使用特定字节填充指定地址的内存，自动处理内存保护并刷新指令缓存
 ///
 /// 常用于批量填充 NOP (0x90) 以抹除原本的机器码
-pub fn fill_asm(address: *mut u8, value: u8, count: usize) -> crate::Result<()> {
+pub fn patch_repeated_asm(address: *mut u8, value: u8, count: usize) -> crate::Result<()> {
     if address.is_null() {
         crate::bail!("address is null");
     }
@@ -89,7 +115,8 @@ pub fn fill_asm(address: *mut u8, value: u8, count: usize) -> crate::Result<()> 
     }
 
     unsafe {
-        ProtectGuard::new(address, count, PAGE_EXECUTE_READWRITE)?.fill_asm_bytes(value, count);
+        ProtectGuard::new(address, count, PAGE_EXECUTE_READWRITE)?
+            .patch_repeated_asm_bytes(value, count);
     }
 
     Ok(())

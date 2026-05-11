@@ -3,10 +3,7 @@ use std::cell::Cell;
 use translate_macros::{DefaultHook, ffi_guard};
 use windows_sys::Win32::Foundation::HMODULE;
 
-use crate::{
-    hook::internal_hooks::ProcessAttach,
-    utils::exts::ptr_ext::{PtrExt, PtrWriteExt},
-};
+use crate::{hook::internal_hooks::ProcessAttach, utils::exts::ptr_ext::PtrWriteExt};
 
 translate_macros::expand_by_files!("assets/translated_patch" => {
         __repeat__(
@@ -55,11 +52,11 @@ impl ProcessAttach for NocturneHook {
 
             module
                 .add(0x2B2C)
-                .fill_asm(0x90, 26)?
+                .patch_repeated_asm(0x90, 26)?
                 .write_call_instruction(trampoline_fix_buffer_write as _)?;
             module
                 .add(0x2BA1)
-                .fill_asm(0x90, 26)?
+                .patch_repeated_asm(0x90, 26)?
                 .write_call_instruction(trampoline_fix_buffer_write as _)?;
 
             module
@@ -118,10 +115,7 @@ unsafe extern "system" fn hook_script(offset: usize) {
             crate::debug!("Patch found");
             let g_buffer = &mut *G_BUFFER;
             g_buffer.len = patch.len() as u32;
-            g_buffer
-                .buf
-                .to_slice_mut(patch.len())
-                .copy_from_slice(patch);
+            g_buffer.buf.copy_bytes_from(patch);
         }
     }
 }
@@ -132,7 +126,7 @@ struct SurfaceBuffer {
     width: u32,
     height: u32,
     gap_0c: [u8; 28],
-    pixel_data: [u8; 1],
+    pixel_data: [u8; 0],
 }
 
 #[unsafe(naked)]
