@@ -1,3 +1,5 @@
+use core::sync::atomic::{AtomicPtr, Ordering};
+
 use translate_macros::{DefaultHook, ffi_guard};
 use windows_sys::Win32::Foundation::HMODULE;
 
@@ -14,7 +16,7 @@ use crate::{
 #[exclude(ProcessAttach)]
 pub struct OldMinoriHook;
 
-static mut HOOK_RETURN_ADDR: usize = 0;
+static HOOK_RETURN_ADDR: AtomicPtr<u8> = AtomicPtr::new(core::ptr::null_mut());
 
 impl ProcessAttach for OldMinoriHook {
     fn on_process_attach(_hinst_dll: HMODULE) -> crate::Result<()> {
@@ -25,7 +27,7 @@ impl ProcessAttach for OldMinoriHook {
             match ARG_GAME_TYPE {
                 "haruotoFD" => {
                     module.add(0x785B2).write_jmp_instruction(trampoline as _)?;
-                    HOOK_RETURN_ADDR = module.add(0x785B7) as usize;
+                    HOOK_RETURN_ADDR.store(module.add(0x785B7), Ordering::Release);
                 }
 
                 _ => {

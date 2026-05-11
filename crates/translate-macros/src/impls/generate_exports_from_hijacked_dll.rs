@@ -96,7 +96,7 @@ fn try_generate(dll_path: &PathBuf, def_output_path: &PathBuf) -> anyhow::Result
 
         // 3. 生成静态变量：用于存放函数地址
         statics.push(quote! {
-            static mut #static_ident: usize = 0;
+            static #static_ident: ::core::sync::atomic::AtomicUsize = ::core::sync::atomic::AtomicUsize::new(0);
         });
 
         // 4. 生成 naked 跳转函数
@@ -128,7 +128,7 @@ fn try_generate(dll_path: &PathBuf, def_output_path: &PathBuf) -> anyhow::Result
     // HMOD static
     let hmod_static = quote! {
         // 保存我们加载（劫持）的模块句柄
-        static mut HMOD: usize = 0;
+        static HMOD: ::core::sync::atomic::AtomicPtr<::core::ffi::c_void> = ::core::sync::atomic::AtomicPtr::new(::core::ptr::null_mut());
     };
 
     // 生成 load_library 函数
@@ -147,14 +147,13 @@ fn try_generate(dll_path: &PathBuf, def_output_path: &PathBuf) -> anyhow::Result
         .map(|(i, ident)| {
             let idx = Literal::usize_unsuffixed(i);
             quote! {
-                #ident = addrs[#idx] as usize;
+                #ident.store(addrs[#idx], ::core::sync::atomic::Ordering::Release);
             }
         })
         .collect();
 
     // 构造 load_library 函数体
     let load_fn = quote! {
-        #[allow(static_mut_refs)]
         pub(super) unsafe extern "system" fn load_library() {
             // 在运行时从 crate::utils::win32 加载被劫持的真实 DLL 并解析符号地址
             // 1) 使用 crate::utils::win32::load_hijacked_library 以确保加载目标真实模块（例如 version.dll）
@@ -174,7 +173,7 @@ fn try_generate(dll_path: &PathBuf, def_output_path: &PathBuf) -> anyhow::Result
                 ).expect("Could not get symbol addrs for target DLL");
 
                 // 保存模块句柄
-                HMOD = *hmod as usize;
+                HMOD.store(*hmod, ::core::sync::atomic::Ordering::Release);
                 ::core::mem::forget(hmod);
 
                 // 将返回的地址写入每个静态变量
@@ -187,17 +186,16 @@ fn try_generate(dll_path: &PathBuf, def_output_path: &PathBuf) -> anyhow::Result
     let reset_addr_statements: Vec<TokenStream> = addr_idents
         .iter()
         .map(|ident| {
-            quote! { #ident = 0; }
+            quote! { #ident.store(0, ::core::sync::atomic::Ordering::Release); }
         })
         .collect();
 
     let unload_fn = quote! {
-        #[allow(static_mut_refs)]
         pub(super) unsafe extern "system" fn unload_library() {
             unsafe {
-                ::windows_sys::Win32::Foundation::FreeLibrary(HMOD as _);
+                let hmod = HMOD.swap(::core::ptr::null_mut(), ::core::sync::atomic::Ordering::AcqRel);
+                ::windows_sys::Win32::Foundation::FreeLibrary(hmod);
 
-                HMOD = 0;
                 #(#reset_addr_statements)*
             };
         }

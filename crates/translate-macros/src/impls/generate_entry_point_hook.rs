@@ -171,7 +171,7 @@ pub fn generate_entry_point_hook(input: TokenStream) -> syn::Result<TokenStream>
     let trampoline_offset_lit = syn::LitInt::new("9", Span::call_site());
 
     Ok(quote! {
-        static mut #return_static_ident: usize = 0;
+        static #return_static_ident: ::core::sync::atomic::AtomicPtr<u8> = ::core::sync::atomic::AtomicPtr::new(::core::ptr::null_mut());
 
         #[unsafe(naked)]
         #[unsafe(link_section = ".text")]
@@ -202,7 +202,7 @@ pub fn generate_entry_point_hook(input: TokenStream) -> syn::Result<TokenStream>
                 let trampoline_ptr = #trampoline_ident as *mut u8;
                 trampoline_ptr.add(#trampoline_offset_lit).patch_asm(&relocated)?;
 
-                #return_static_ident = hook_addr.add(#total_len_lit) as usize;
+                #return_static_ident.store(hook_addr.add(#total_len_lit), ::core::sync::atomic::Ordering::Release);
                 hook_addr.write_jmp_instruction(#trampoline_ident as _)?;
             }
             Ok(())

@@ -1,4 +1,6 @@
+use core::sync::atomic::{AtomicPtr, Ordering};
 use std::sync::LazyLock;
+
 use translate_macros::DefaultHook;
 use windows_sys::Win32::Foundation::HMODULE;
 
@@ -18,8 +20,8 @@ use crate::{
 #[exclude(ProcessAttach)]
 pub struct HitocosHook;
 
-static mut TEXT_RETURN_ADDR: usize = 0;
-static mut NAME_RETURN_ADDR: usize = 0;
+static TEXT_RETURN_ADDR: AtomicPtr<u8> = AtomicPtr::new(core::ptr::null_mut());
+static NAME_RETURN_ADDR: AtomicPtr<u8> = AtomicPtr::new(core::ptr::null_mut());
 
 impl ProcessAttach for HitocosHook {
     fn on_process_attach(_hinst_dll: HMODULE) -> crate::Result<()> {
@@ -29,8 +31,8 @@ impl ProcessAttach for HitocosHook {
         let module = handle.cast::<u8>();
 
         unsafe {
-            TEXT_RETURN_ADDR = module.add(0x189B5) as usize;
-            NAME_RETURN_ADDR = module.add(0x48555) as usize;
+            TEXT_RETURN_ADDR.store(module.add(0x189B5), Ordering::Release);
+            NAME_RETURN_ADDR.store(module.add(0x48555), Ordering::Release);
         };
 
         unsafe {

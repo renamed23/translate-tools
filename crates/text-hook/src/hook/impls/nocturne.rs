@@ -1,3 +1,4 @@
+use core::sync::atomic::{AtomicPtr, Ordering};
 use std::cell::Cell;
 
 use translate_macros::{DefaultHook, ffi_guard};
@@ -28,9 +29,10 @@ struct GlobalBuffer {
     len: u32,
 }
 
-static mut HOOK_RETURN_ADDR: usize = 0;
-static mut SET_CURRENT_SURFACE_RETURN_ADDR: usize = 0;
-static mut G_BUFFER: *mut GlobalBuffer = core::ptr::null_mut();
+static HOOK_RETURN_ADDR: AtomicPtr<u8> = AtomicPtr::new(core::ptr::null_mut());
+static SET_CURRENT_SURFACE_RETURN_ADDR: AtomicPtr<u8> = AtomicPtr::new(core::ptr::null_mut());
+static FIX_WRONG_V12_RETURN_ADDR: AtomicPtr<u8> = AtomicPtr::new(core::ptr::null_mut());
+static G_BUFFER: AtomicPtr<GlobalBuffer> = AtomicPtr::new(core::ptr::null_mut());
 
 impl ProcessAttach for NocturneHook {
     fn on_process_attach(_hinst_dll: HMODULE) -> crate::Result<()> {
@@ -38,17 +40,17 @@ impl ProcessAttach for NocturneHook {
         let module = handle.cast::<u8>();
 
         unsafe {
-            G_BUFFER = module.add(0xA13DC).cast();
+            G_BUFFER.store(module.add(0xA13DC).cast(), Ordering::Release);
 
             module
                 .add(0x6C30)
                 .write_jmp_instruction(trampoline_hook as _)?;
-            HOOK_RETURN_ADDR = module.add(0x6C37) as usize;
+            HOOK_RETURN_ADDR.store(module.add(0x6C37), Ordering::Release);
 
             module
                 .add(0x2900)
                 .write_jmp_instruction(trampoline_set_current_surface as _)?;
-            SET_CURRENT_SURFACE_RETURN_ADDR = module.add(0x2906) as usize;
+            SET_CURRENT_SURFACE_RETURN_ADDR.store(module.add(0x2906), Ordering::Release);
 
             module
                 .add(0x2B2C)
@@ -62,13 +64,11 @@ impl ProcessAttach for NocturneHook {
             module
                 .add(0x22D82)
                 .write_jmp_instruction(fix_wrong_v12 as _)?;
-            FIX_WRONG_V12_RETURN_ADDR = module.add(0x22D88) as usize;
+            FIX_WRONG_V12_RETURN_ADDR.store(module.add(0x22D88), Ordering::Release);
         }
         Ok(())
     }
 }
-
-static mut FIX_WRONG_V12_RETURN_ADDR: usize = 0;
 
 #[unsafe(naked)]
 #[unsafe(link_section = ".text")]
@@ -113,7 +113,7 @@ unsafe extern "system" fn hook_script(offset: usize) {
     unsafe {
         if let Some(patch) = PHF_MAP.get(&offset) {
             crate::debug!("Patch found");
-            let g_buffer = &mut *G_BUFFER;
+            let g_buffer = &mut *G_BUFFER.load(Ordering::Acquire);
             g_buffer.len = patch.len() as u32;
             g_buffer.buf.copy_bytes_from(patch);
         }

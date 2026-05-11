@@ -1,7 +1,6 @@
-use windows_sys::Win32::{
-    Foundation::HANDLE,
-    Graphics::Gdi::{AddFontMemResourceEx, RemoveFontMemResourceEx},
-};
+use core::sync::atomic::{AtomicPtr, Ordering};
+
+use windows_sys::Win32::Graphics::Gdi::{AddFontMemResourceEx, RemoveFontMemResourceEx};
 
 use crate::print_last_error_message;
 
@@ -14,7 +13,7 @@ pub fn get_font_data() -> &'static [u8] {
     EMBEDDED_FONT.as_slice()
 }
 
-static mut FONT_HANDLE: Option<HANDLE> = None;
+static FONT_HANDLE: AtomicPtr<core::ffi::c_void> = AtomicPtr::new(core::ptr::null_mut());
 
 /// 将内嵌字体添加到系统中
 ///
@@ -23,8 +22,7 @@ static mut FONT_HANDLE: Option<HANDLE> = None;
 /// - 调用者需保证本函数与 `remove_font` 的调用时序正确（先 add 后 remove）。
 pub unsafe fn add_font() -> crate::Result<()> {
     unsafe {
-        #[allow(static_mut_refs)]
-        if FONT_HANDLE.is_some() {
+        if !FONT_HANDLE.load(Ordering::Acquire).is_null() {
             return Ok(());
         }
 
@@ -43,7 +41,7 @@ pub unsafe fn add_font() -> crate::Result<()> {
             print_last_error_message!();
             crate::bail!("AddFontMemResourceEx failed");
         }
-        FONT_HANDLE = Some(handle);
+        FONT_HANDLE.store(handle.cast(), Ordering::Release);
         Ok(())
     }
 }
@@ -56,16 +54,15 @@ pub unsafe fn add_font() -> crate::Result<()> {
 /// - 仅应在清理阶段调用，且由调用者保证不会并发调用。
 /// - 调用前必须保证字体已通过 `add_font` 成功添加。
 pub unsafe fn remove_font() -> crate::Result<()> {
-    unsafe {
-        #[allow(static_mut_refs)]
-        if let Some(handle) = FONT_HANDLE.take() {
-            if RemoveFontMemResourceEx(handle) != 0 {
-                Ok(())
-            } else {
-                crate::bail!("RemoveFontMemResourceEx failed");
-            }
-        } else {
-            crate::bail!("remove_font called but font is not added");
-        }
+    let handle = FONT_HANDLE.swap(core::ptr::null_mut(), Ordering::AcqRel);
+
+    if handle.is_null() {
+        crate::bail!("remove_font called but font is not added");
+    }
+
+    if unsafe { RemoveFontMemResourceEx(handle) } != 0 {
+        Ok(())
+    } else {
+        crate::bail!("RemoveFontMemResourceEx failed");
     }
 }

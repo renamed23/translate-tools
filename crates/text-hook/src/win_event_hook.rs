@@ -1,3 +1,5 @@
+use core::sync::atomic::{AtomicPtr, Ordering};
+
 use windows_sys::Win32::{
     Foundation::HWND,
     System::Threading::GetCurrentProcessId,
@@ -9,7 +11,7 @@ use windows_sys::Win32::{
 
 use crate::hook::{impls::HookImplType, internal_hooks::WinEventTriggered};
 
-static mut WIN_EVENT_HOOK: Option<HWINEVENTHOOK> = None;
+static WIN_EVENT_HOOK: AtomicPtr<core::ffi::c_void> = AtomicPtr::new(core::ptr::null_mut());
 
 /// 安装 `WinEvent` Hook 处理程序
 ///
@@ -19,8 +21,7 @@ static mut WIN_EVENT_HOOK: Option<HWINEVENTHOOK> = None;
 pub unsafe fn install_win_event_hook() -> crate::Result<()> {
     crate::debug!("Installing WinEvent hook");
 
-    #[allow(static_mut_refs)]
-    if unsafe { WIN_EVENT_HOOK.is_some() } {
+    if !WIN_EVENT_HOOK.load(Ordering::Acquire).is_null() {
         return Ok(());
     }
 
@@ -40,7 +41,7 @@ pub unsafe fn install_win_event_hook() -> crate::Result<()> {
         crate::bail!("SetWinEventHook failed");
     }
 
-    unsafe { WIN_EVENT_HOOK = Some(handle) };
+    WIN_EVENT_HOOK.store(handle.cast(), Ordering::Release);
 
     Ok(())
 }
@@ -52,17 +53,16 @@ pub unsafe fn install_win_event_hook() -> crate::Result<()> {
 pub unsafe fn uninstall_win_event_hook() -> crate::Result<()> {
     crate::debug!("Uninstalling WinEvent hook");
 
-    unsafe {
-        if let Some(handle) = WIN_EVENT_HOOK {
-            WIN_EVENT_HOOK = None;
-            if UnhookWinEvent(handle) != 0 {
-                Ok(())
-            } else {
-                crate::bail!("UnhookWinEvent failed");
-            }
-        } else {
-            crate::bail!("WinEvent hook is not installed");
-        }
+    let handle = WIN_EVENT_HOOK.swap(core::ptr::null_mut(), Ordering::AcqRel);
+
+    if handle.is_null() {
+        crate::bail!("WinEvent hook is not installed");
+    }
+
+    if unsafe { UnhookWinEvent(handle) } != 0 {
+        Ok(())
+    } else {
+        crate::bail!("UnhookWinEvent failed");
     }
 }
 

@@ -1,3 +1,4 @@
+use core::sync::atomic::{AtomicPtr, Ordering};
 use std::{
     ffi::{c_char, c_int, c_uint},
     sync::LazyLock,
@@ -38,8 +39,8 @@ type Sub402B70 = extern "fastcall" fn(
     len: c_uint,        // 字符串长度
 ) -> *mut MsvcString;
 
-static mut TEXT_RETURN_ADDR: usize = 0;
-static mut SUB_402B70: usize = 0;
+static TEXT_RETURN_ADDR: AtomicPtr<u8> = AtomicPtr::new(core::ptr::null_mut());
+static SUB_402B70: AtomicPtr<u8> = AtomicPtr::new(core::ptr::null_mut());
 
 impl ProcessAttach for Hitocos2Hook {
     fn on_process_attach(_hinst_dll: HMODULE) -> crate::Result<()> {
@@ -49,8 +50,8 @@ impl ProcessAttach for Hitocos2Hook {
         unsafe {
             match ARG_GAME_TYPE {
                 "hitocos2" => {
-                    TEXT_RETURN_ADDR = module.add(0xE495) as usize;
-                    SUB_402B70 = module.add(0x2B70) as usize;
+                    TEXT_RETURN_ADDR.store(module.add(0xE495), Ordering::Release);
+                    SUB_402B70.store(module.add(0x2B70), Ordering::Release);
 
                     module
                         .add(0xF686)
@@ -64,9 +65,9 @@ impl ProcessAttach for Hitocos2Hook {
                 "female_teacher" => {
                     fix_game_ini()?;
 
-                    TEXT_RETURN_ADDR = module.add(0x25945) as usize;
+                    TEXT_RETURN_ADDR.store(module.add(0x25945), Ordering::Release);
                     // 就是 std::string::assign
-                    SUB_402B70 = module.add(0x1CF0) as usize;
+                    SUB_402B70.store(module.add(0x1CF0), Ordering::Release);
 
                     module
                         .add(0x26EB6)
@@ -154,7 +155,7 @@ unsafe extern "system" fn hook_name(string_ptr: *mut MsvcString) -> crate::Resul
         };
 
         let slice = name_ptr.to_slice_until_null_scan();
-        let sub_402b70: Sub402B70 = core::mem::transmute(SUB_402B70);
+        let sub_402b70: Sub402B70 = core::mem::transmute(SUB_402B70.load(Ordering::Acquire));
 
         let wide_name = slice.to_wide_ansi();
         crate::debug!("Get raw slice {}", wide_name.to_string_lossy());

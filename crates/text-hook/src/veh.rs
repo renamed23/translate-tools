@@ -1,5 +1,7 @@
+use core::sync::atomic::{AtomicPtr, Ordering};
+
 use windows_sys::Win32::{
-    Foundation::{EXCEPTION_SINGLE_STEP, HANDLE, NTSTATUS},
+    Foundation::{EXCEPTION_SINGLE_STEP, NTSTATUS},
     System::Diagnostics::Debug::{
         AddVectoredExceptionHandler, EXCEPTION_CONTINUE_EXECUTION, EXCEPTION_CONTINUE_SEARCH,
         EXCEPTION_POINTERS, RaiseException, RemoveVectoredExceptionHandler,
@@ -11,7 +13,7 @@ use crate::{
     utils::hwbp::{HwBreakpointLen, HwBreakpointType, HwReg},
 };
 
-static mut VEH_HANDLE: Option<HANDLE> = None;
+static VEH_HANDLE: AtomicPtr<core::ffi::c_void> = AtomicPtr::new(core::ptr::null_mut());
 
 /// 安装 VEH 处理程序
 ///
@@ -21,8 +23,7 @@ static mut VEH_HANDLE: Option<HANDLE> = None;
 pub unsafe fn install_veh_handler(first: bool) -> crate::Result<()> {
     crate::debug!("Installing VEH handler (first={first})");
 
-    #[allow(static_mut_refs)]
-    if unsafe { VEH_HANDLE.is_some() } {
+    if !VEH_HANDLE.load(Ordering::Acquire).is_null() {
         return Ok(());
     }
 
@@ -32,7 +33,7 @@ pub unsafe fn install_veh_handler(first: bool) -> crate::Result<()> {
         crate::bail!("AddVectoredExceptionHandler failed");
     }
 
-    unsafe { VEH_HANDLE = Some(handle) };
+    VEH_HANDLE.store(handle.cast(), Ordering::Release);
 
     Ok(())
 }
@@ -44,17 +45,16 @@ pub unsafe fn install_veh_handler(first: bool) -> crate::Result<()> {
 pub unsafe fn uninstall_veh_handler() -> crate::Result<()> {
     crate::debug!("Uninstalling VEH handler");
 
-    unsafe {
-        if let Some(handle) = VEH_HANDLE {
-            VEH_HANDLE = None;
-            if RemoveVectoredExceptionHandler(handle) != 0 {
-                Ok(())
-            } else {
-                crate::bail!("RemoveVectoredExceptionHandler failed");
-            }
-        } else {
-            crate::bail!("VEH handler is not installed");
-        }
+    let handle = VEH_HANDLE.swap(core::ptr::null_mut(), Ordering::AcqRel);
+
+    if handle.is_null() {
+        crate::bail!("VEH handler is not installed");
+    }
+
+    if unsafe { RemoveVectoredExceptionHandler(handle) } != 0 {
+        Ok(())
+    } else {
+        crate::bail!("RemoveVectoredExceptionHandler failed");
     }
 }
 
