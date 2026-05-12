@@ -187,6 +187,7 @@ hitocos2 = ["export_default_dll_main", "enable_text_patch"]
 hitocos = ["export_default_dll_main", "enable_text_patch"]
 old_minori = ["export_default_dll_main", "enable_patch"]
 nocturne = ["export_default_dll_main"]
+blackbox = ["export_default_dll_main", "enable_text_patch"]
 
 [dependencies]
 translate-macros.workspace = true
