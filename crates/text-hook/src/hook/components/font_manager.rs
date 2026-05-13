@@ -194,21 +194,22 @@ impl CreateFontIndirect for FontManagerSlot {
         }
 
         let logfona = unsafe { &*lplf };
-        let mut logfontw = unsafe { core::mem::zeroed::<LOGFONTW>() };
-
-        logfontw.lfHeight = logfona.lfHeight;
-        logfontw.lfWidth = logfona.lfWidth;
-        logfontw.lfEscapement = logfona.lfEscapement;
-        logfontw.lfOrientation = logfona.lfOrientation;
-        logfontw.lfWeight = logfona.lfWeight;
-        logfontw.lfItalic = logfona.lfItalic;
-        logfontw.lfUnderline = logfona.lfUnderline;
-        logfontw.lfStrikeOut = logfona.lfStrikeOut;
-        logfontw.lfCharSet = logfona.lfCharSet;
-        logfontw.lfOutPrecision = logfona.lfOutPrecision;
-        logfontw.lfClipPrecision = logfona.lfClipPrecision;
-        logfontw.lfQuality = logfona.lfQuality;
-        logfontw.lfPitchAndFamily = logfona.lfPitchAndFamily;
+        let mut logfontw = LOGFONTW {
+            lfHeight: logfona.lfHeight,
+            lfWidth: logfona.lfWidth,
+            lfEscapement: logfona.lfEscapement,
+            lfOrientation: logfona.lfOrientation,
+            lfWeight: logfona.lfWeight,
+            lfItalic: logfona.lfItalic,
+            lfUnderline: logfona.lfUnderline,
+            lfStrikeOut: logfona.lfStrikeOut,
+            lfCharSet: logfona.lfCharSet,
+            lfOutPrecision: logfona.lfOutPrecision,
+            lfClipPrecision: logfona.lfClipPrecision,
+            lfQuality: logfona.lfQuality,
+            lfPitchAndFamily: logfona.lfPitchAndFamily,
+            ..LOGFONTW::default()
+        };
 
         let face_u16 = unsafe {
             logfona

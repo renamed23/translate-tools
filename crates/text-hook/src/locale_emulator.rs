@@ -233,8 +233,10 @@ unsafe fn relaunch(process_info: *mut MlProcessInformation) -> crate::Result<()>
         crate::utils::win32::get_module_symbol_addr_from_handle(*loader, s!("LeCreateProcess"))?;
     let le_create_process: LeCreateProcessFn = unsafe { core::mem::transmute(proc) };
 
-    let mut startup_info: STARTUPINFOW = unsafe { core::mem::zeroed() };
-    startup_info.cb = core::mem::size_of::<STARTUPINFOW>() as u32;
+    let mut startup_info = STARTUPINFOW {
+        cb: core::mem::size_of::<STARTUPINFOW>() as u32,
+        ..STARTUPINFOW::default()
+    };
     let mut local_process_info = MlProcessInformation::default();
     let target_process_info = if process_info.is_null() {
         &mut local_process_info

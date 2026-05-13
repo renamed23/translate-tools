@@ -37,7 +37,7 @@ impl DefWindowProc for WindowTitleOverriderSlot {
                     return crate::call!(HOOK_DEF_WINDOW_PROC_A, h_wnd, u_msg, w_param, l_param);
                 }
 
-                let mut params_w: CREATESTRUCTW = core::mem::zeroed();
+                let mut params_w = CREATESTRUCTW::default();
 
                 debug_assert_eq!(
                     core::mem::size_of::<CREATESTRUCTA>(),
