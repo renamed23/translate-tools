@@ -11,7 +11,7 @@ use crate::{
         CREATE_FONT_I_OUT_PRECISION, CREATE_FONT_I_PITCH_AND_FAMILY, CREATE_FONT_I_QUALITY,
         FONT_FACE,
     },
-    utils::exts::slice_ext::WideSliceExt,
+    utils::exts::slice_ext::CommonSliceExt,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Hash)]
@@ -35,8 +35,7 @@ pub struct LogFont {
 impl Default for LogFont {
     fn default() -> Self {
         let mut face_name = [0u16; 32];
-        let face_u16 = FONT_FACE.with_null();
-        face_name[..face_u16.len()].copy_from_slice(face_u16.as_slice());
+        face_name.copy_min_from_slice_with_null(FONT_FACE);
 
         Self {
             height: CREATE_FONT_C_HEIGHT.unwrap_or(0),

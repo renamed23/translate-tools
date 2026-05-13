@@ -275,3 +275,48 @@ impl WideSliceExt for [u16] {
             .map(|s| s.as_bytes().to_wide_null_utf8()))
     }
 }
+
+pub trait CommonSliceExt<T> {
+    /// 自动适配长度的拷贝。
+    ///
+    /// 类似 memmove，允许 src 与 self 重叠。
+    ///
+    /// 返回实际拷贝的元素数量。
+    fn copy_min_from_slice(&mut self, src: &[T]) -> usize;
+
+    /// 自动适配长度的拷贝，并保证末尾为 `T::default()`。
+    ///
+    /// 类似 memmove，允许 src 与 self 重叠。
+    fn copy_min_from_slice_with_null(&mut self, src: &[T]) -> usize;
+}
+
+impl<T> CommonSliceExt<T> for [T]
+where
+    T: Copy + Default,
+{
+    fn copy_min_from_slice(&mut self, src: &[T]) -> usize {
+        let len = self.len().min(src.len());
+
+        unsafe {
+            core::ptr::copy(src.as_ptr(), self.as_mut_ptr(), len);
+        }
+
+        len
+    }
+
+    fn copy_min_from_slice_with_null(&mut self, src: &[T]) -> usize {
+        if self.is_empty() {
+            return 0;
+        }
+
+        let len = (self.len() - 1).min(src.len());
+
+        unsafe {
+            core::ptr::copy(src.as_ptr(), self.as_mut_ptr(), len);
+        }
+
+        self[len..].fill(T::default());
+
+        len
+    }
+}

@@ -30,7 +30,7 @@ use crate::{
     },
     utils::exts::{
         ptr_ext::PtrExt,
-        slice_ext::{ByteSliceExt, WideSliceExt},
+        slice_ext::{ByteSliceExt, CommonSliceExt, WideSliceExt},
     },
 };
 #[cfg(feature = "disable_forced_font")]
@@ -118,8 +118,7 @@ impl CreateFont for FontManagerSlot {
         #[cfg(feature = "enable_collect_host_font_config")]
         {
             let mut face_name = [0u16; 32];
-            let len = u16_slice.len();
-            face_name[..len].copy_from_slice(&u16_slice[..len]);
+            face_name.copy_min_from_slice_with_null(u16_slice);
 
             let log_font = crate::utils::log_font::LogFont {
                 height: c_height,
@@ -211,18 +210,15 @@ impl CreateFontIndirect for FontManagerSlot {
         logfontw.lfQuality = logfona.lfQuality;
         logfontw.lfPitchAndFamily = logfona.lfPitchAndFamily;
 
-        let face_u16 = {
-            let bytes = unsafe {
-                logfona
-                    .lfFaceName
-                    .as_ptr()
-                    .to_slice_until_null(logfona.lfFaceName.len() - 1) // 最后一个字节必须为null
-            };
-
-            bytes.to_wide_null(0)
+        let face_u16 = unsafe {
+            logfona
+                .lfFaceName
+                .as_ptr()
+                .to_slice_until_null(logfona.lfFaceName.len() - 1)
+                .to_wide(0)
         };
 
-        logfontw.lfFaceName[..face_u16.len()].copy_from_slice(face_u16.as_slice());
+        logfontw.lfFaceName.copy_min_from_slice_with_null(&face_u16);
 
         let ptr = &raw const logfontw;
         unsafe { Self::create_font_indirect_w(ptr) }
@@ -255,9 +251,7 @@ impl CreateFontIndirect for FontManagerSlot {
         debug!("Requested font name: {}", u16_slice.to_string_lossy());
 
         if should_replace_font_face(u16_slice) {
-            // `FONT_FACE` 长度确保不超过 LF_FACESIZE - 1，可以直接复制
-            let face_u16 = FONT_FACE.with_null();
-            logfontw.lfFaceName[..face_u16.len()].copy_from_slice(face_u16.as_slice());
+            logfontw.lfFaceName.copy_min_from_slice_with_null(FONT_FACE);
         }
 
         // 使用配置的参数覆盖 LOGFONTW 结构体的字段
