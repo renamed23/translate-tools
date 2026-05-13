@@ -188,20 +188,19 @@ pub fn generate_text_patch_data(input: TokenStream) -> syn::Result<TokenStream> 
     });
 
     let generated = quote! {
-        #[derive(Clone, Copy)]
-        pub(super) struct LookupResult {
-            pub translated: &'static str,
-            pub matched_index: Option<usize>,
-        }
+        use std::sync::atomic::{AtomicUsize, Ordering};
+
+        /// 上一次匹配的索引
+        static LAST_LOOKUP_INDEX: AtomicUsize = AtomicUsize::new(usize::MAX);
 
         /// 上下文无关的绝对 1:1 字典项（如名字、UI 固定词条）
-        pub(super) static DICT_PHF: ::phf::Map<&'static str, &'static str> =
+        static DICT_PHF: ::phf::Map<&'static str, &'static str> =
             ::phf::phf_map! {
                 #(#dict_phf_entries, )*
             };
 
         /// 正文中的无歧义原文 -> (文本索引, 译文)
-        pub(super) static TEXT_SINGLE_PHF: ::phf::Map<&'static str, (usize, &'static str)> =
+        static TEXT_SINGLE_PHF: ::phf::Map<&'static str, (usize, &'static str)> =
             ::phf::phf_map! {
                 #(#single_phf_entries, )*
             };
@@ -210,7 +209,7 @@ pub fn generate_text_patch_data(input: TokenStream) -> syn::Result<TokenStream> 
         ///
         /// 注意：这里按上下文位置保留全部候选项，即使多个候选项的译文文本完全相同，
         /// 也不会合并，因为它们对应的文本索引不同。
-        pub(super) static TEXT_MULTI_PHF: ::phf::Map<&'static str, &'static [(usize, &'static str)]> =
+        static TEXT_MULTI_PHF: ::phf::Map<&'static str, &'static [(usize, &'static str)]> =
             ::phf::phf_map! {
                 #(#multi_phf_entries, )*
             };
@@ -220,42 +219,43 @@ pub fn generate_text_patch_data(input: TokenStream) -> syn::Result<TokenStream> 
             last_index: Option<usize>,
         ) -> Option<(usize, &'static str)> {
             match last_index {
-                Some(last_index) => candidates.iter().copied().min_by_key(|(index, _)| {
-                    (index.abs_diff(last_index), *index)
-                }),
+                Some(last_index) => candidates
+                    .iter()
+                    .copied()
+                    .min_by_key(|(index, _)| (index.abs_diff(last_index), *index)),
                 None => candidates.first().copied(),
             }
         }
 
-        /// 带上下文的统一查找接口：先查 DICT，再查正文 1:1，最后按最近索引查正文 1:N。
-        pub(super) fn lookup_result(
-            original: &str,
-            last_index: Option<usize>,
-        ) -> Option<LookupResult> {
-            if let Some(translated) = DICT_PHF.get(original).copied() {
-                return Some(LookupResult {
-                    translated,
-                    matched_index: None,
-                });
-            }
-
-            if let Some((matched_index, translated)) = TEXT_SINGLE_PHF.get(original).copied() {
-                return Some(LookupResult {
-                    translated,
-                    matched_index: Some(matched_index),
-                });
-            }
-
-            let (matched_index, translated) = select_nearest(TEXT_MULTI_PHF.get(original)?, last_index)?;
-            Some(LookupResult {
-                translated,
-                matched_index: Some(matched_index),
-            })
+        fn get_last_lookup_index() -> Option<usize> {
+            let index = LAST_LOOKUP_INDEX.load(Ordering::Relaxed);
+            (index != usize::MAX).then_some(index)
         }
 
-        /// 统一查找接口
-        pub(super) fn lookup(original: &str) -> Option<&'static str> {
-            lookup_result(original, None).map(|result| result.translated)
+        fn set_last_lookup_index(index: usize) {
+            LAST_LOOKUP_INDEX.store(index, Ordering::Relaxed);
+        }
+
+        /// 带上下文的统一查找接口：先查 DICT，再查正文 1:1，最后按最近索引查正文 1:N。
+        pub(super) fn lookup_result(original_message: &str) -> Option<(&'static str, Option<usize>)> {
+            let last_index = get_last_lookup_index();
+
+            let result = if let Some(translated) = DICT_PHF.get(original_message).copied() {
+                (translated, None)
+            } else if let Some((matched_index, translated)) = TEXT_SINGLE_PHF.get(original_message).copied()
+            {
+                (translated, Some(matched_index))
+            } else {
+                let candidates = TEXT_MULTI_PHF.get(original_message)?;
+                let (matched_index, translated) = select_nearest(candidates, last_index)?;
+                (translated, Some(matched_index))
+            };
+
+            if let Some(index) = result.1 {
+                set_last_lookup_index(index);
+            }
+
+            Some(result)
         }
     };
 

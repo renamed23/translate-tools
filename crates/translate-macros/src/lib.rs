@@ -811,8 +811,11 @@ pub fn generated_exports_from_hijacked_dll(input: TokenStream) -> TokenStream {
 
 /// 生成文本补丁数据的编译时过程宏。
 ///
-/// 该宏在编译时读取“原文目录”和“译文目录”中同名的 JSON 文件，生成数个 PHF 映射表，
-/// 供运行时按“字典项优先、正文按上下文索引匹配”的方式快速查找译文。
+/// 该宏在编译时读取"原文目录"和"译文目录"中同名的 JSON 文件，生成数个 PHF 映射表，
+/// 供运行时按"字典项优先、正文按上下文索引匹配"的方式快速查找译文。
+///
+/// 查找状态（上一次匹配的正文索引）由生成模块内部通过 `AtomicUsize` 自行管理，
+/// 调用方无需关心上下文状态的传递。
 ///
 /// # 语法
 ///
@@ -843,12 +846,12 @@ pub fn generated_exports_from_hijacked_dll(input: TokenStream) -> TokenStream {
 ///
 /// 宏展开后会生成以下项：
 ///
-/// - `LookupResult`：查找结果结构，包含译文和命中的正文索引
 /// - `DICT_PHF`：上下文无关字典映射，类型为 `phf::Map<&'static str, &'static str>`
 /// - `TEXT_SINGLE_PHF`：无歧义正文映射，类型为 `phf::Map<&'static str, (usize, &'static str)>`
 /// - `TEXT_MULTI_PHF`：多候选正文映射，类型为 `phf::Map<&'static str, &'static [(usize, &'static str)]>`
-/// - `lookup_result(original, last_index)`：带上下文的统一查找接口
-/// - `lookup(original)`：不带上下文的兼容接口
+/// - `lookup_result(original_message: &str) -> Option<(&'static str, Option<usize>)>`：
+///   统一查找接口。返回值元组的第一个元素为译文，第二个元素为命中的正文索引
+///   （字典项命中时为 `None`，正文命中时为 `Some(index)`）
 ///
 /// # 处理规则
 ///
@@ -864,14 +867,9 @@ pub fn generated_exports_from_hijacked_dll(input: TokenStream) -> TokenStream {
 ///
 /// 运行时查找顺序为：
 ///
-/// 1. `DICT_PHF`
-/// 2. `TEXT_SINGLE_PHF`
-/// 3. `TEXT_MULTI_PHF`（结合 `last_index` 选择最近候选）
-///
-/// 当命中 `TEXT_MULTI_PHF` 时：
-///
-/// - 若提供 `last_index`，会选择与之距离最近的正文项
-/// - 若未提供 `last_index`，则默认选择第一个候选
+/// 1. `DICT_PHF`（命中后不更新上下文索引）
+/// 2. `TEXT_SINGLE_PHF`（命中后更新上下文索引）
+/// 3. `TEXT_MULTI_PHF`（结合上一次的上下文索引，按最近距离选择候选；命中后更新上下文索引）
 ///
 /// # 示例
 ///
@@ -880,7 +878,7 @@ pub fn generated_exports_from_hijacked_dll(input: TokenStream) -> TokenStream {
 ///     "texts/original" => "texts/chinese"
 /// }
 ///
-/// let translated = lookup("Hello world!").unwrap_or("Hello world!");
+/// let (translated, index) = lookup_result("Hello world!").unwrap_or(("Hello world!", None));
 /// ```
 #[proc_macro]
 pub fn generated_text_patch_data(input: TokenStream) -> TokenStream {
