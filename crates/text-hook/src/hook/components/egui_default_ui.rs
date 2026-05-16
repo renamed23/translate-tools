@@ -3,14 +3,10 @@ use crate::{hook::internal_hooks::OverlayRender, overlay::egui::components};
 #[allow(dead_code)]
 pub struct EguiDefaultUi;
 
-cfg_select! {
-    feature = "bind_egui_default_ui" => {
-        type EguiDefaultUiSlot = crate::hook::impls::HookImplType;
-    }
-    _ => {
-        type EguiDefaultUiSlot = EguiDefaultUi;
-    }
-}
+type EguiDefaultUiSlot = cfg_select! {
+    feature = "bind_egui_default_ui" => crate::hook::impls::HookImplType,
+    _ => EguiDefaultUi
+};
 
 impl OverlayRender for EguiDefaultUiSlot {
     #[cfg(feature = "enable_overlay")]

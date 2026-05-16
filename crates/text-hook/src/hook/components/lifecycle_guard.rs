@@ -3,14 +3,10 @@ use crate::hook::api_hooks::process::{ExitProcess, HOOK_EXIT_PROCESS};
 #[allow(dead_code)]
 pub struct LifecycleGuard;
 
-cfg_select! {
-    feature = "bind_lifecycle_guard" => {
-        type LifecycleGuardSlot = crate::hook::impls::HookImplType;
-    }
-    _ => {
-        type LifecycleGuardSlot = LifecycleGuard;
-    }
-}
+type LifecycleGuardSlot = cfg_select! {
+    feature = "bind_lifecycle_guard" => crate::hook::impls::HookImplType,
+    _ => LifecycleGuard
+};
 
 impl ExitProcess for LifecycleGuardSlot {
     unsafe fn exit_process(u_exit_code: u32) {

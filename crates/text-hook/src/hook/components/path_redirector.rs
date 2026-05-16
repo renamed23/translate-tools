@@ -12,14 +12,10 @@ use crate::{
 #[allow(dead_code)]
 pub struct PathRedirector;
 
-cfg_select! {
-    feature = "bind_path_redirector" => {
-        type PathRedirectorSlot = crate::hook::impls::HookImplType;
-    }
-    _ => {
-        type PathRedirectorSlot = PathRedirector;
-    }
-}
+type PathRedirectorSlot = cfg_select! {
+    feature = "bind_path_redirector" => crate::hook::impls::HookImplType,
+    _ => PathRedirector
+};
 
 impl CreateFile for PathRedirectorSlot {
     unsafe fn create_file_a(

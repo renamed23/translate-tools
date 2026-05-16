@@ -14,14 +14,10 @@ use crate::{
 #[allow(dead_code)]
 pub struct WindowTitleOverrider;
 
-cfg_select! {
-    feature = "bind_window_title_overrider" => {
-        type WindowTitleOverriderSlot = crate::hook::impls::HookImplType;
-    }
-    _ => {
-        type WindowTitleOverriderSlot = WindowTitleOverrider;
-    }
-}
+type WindowTitleOverriderSlot = cfg_select! {
+    feature = "bind_window_title_overrider" => crate::hook::impls::HookImplType,
+    _ => WindowTitleOverrider
+};
 
 impl DefWindowProc for WindowTitleOverriderSlot {
     unsafe fn def_window_proc_a(
@@ -54,13 +50,9 @@ impl DefWindowProc for WindowTitleOverriderSlot {
 
                 let _title_slice = (*params_a).lpszName.to_slice_until_null_scan();
 
-                cfg_select!(
-                    feature = "enable_window_title_override" => {
-                       let window_title = crate::constant::WINDOW_TITLE.with_null();
-                    }
-                    _ => {
-                       let window_title = _title_slice.to_wide_ansi().mapping_null();
-                    }
+                let window_title = cfg_select!(
+                    feature = "enable_window_title_override" => crate::constant::WINDOW_TITLE.with_null(),
+                    _ => _title_slice.to_wide_ansi().mapping_null()
                 );
 
                 params_w.lpszClass = class_name.as_ptr();
@@ -89,13 +81,9 @@ impl DefWindowProc for WindowTitleOverriderSlot {
 
                 let _text_slice = text_ptr.to_slice_until_null_scan();
 
-                cfg_select!(
-                    feature = "enable_window_title_override" => {
-                        let text = crate::constant::WINDOW_TITLE.with_null();
-                    }
-                    _ => {
-                        let text = _text_slice.to_wide_ansi().mapping_null();
-                    }
+                let text = cfg_select!(
+                    feature = "enable_window_title_override" => crate::constant::WINDOW_TITLE.with_null(),
+                    _ => _text_slice.to_wide_ansi().mapping_null()
                 );
 
                 #[cfg(feature = "enable_debug_output")]
@@ -145,13 +133,9 @@ impl DefWindowProc for WindowTitleOverriderSlot {
 
                 let mut modified_params: CREATESTRUCTW = core::ptr::read(params_w);
 
-                cfg_select!(
-                    feature = "enable_window_title_override" => {
-                        let window_title = crate::constant::WINDOW_TITLE.with_null();
-                    }
-                    _ => {
-                        let window_title = _title_slice.mapping_null();
-                    }
+                let window_title = cfg_select!(
+                    feature = "enable_window_title_override" => crate::constant::WINDOW_TITLE.with_null(),
+                    _ => _title_slice.mapping_null()
                 );
 
                 modified_params.lpszName = window_title.as_ptr();
@@ -178,13 +162,9 @@ impl DefWindowProc for WindowTitleOverriderSlot {
                     crate::debug!("Get raw window text: {raw_text}");
                 }
 
-                cfg_select!(
-                    feature = "enable_window_title_override" => {
-                        let text = crate::constant::WINDOW_TITLE.with_null();
-                    }
-                    _ => {
-                        let text = _text_slice.mapping_null();
-                    }
+                let text = cfg_select!(
+                    feature = "enable_window_title_override" => crate::constant::WINDOW_TITLE.with_null(),
+                    _ => _text_slice.mapping_null()
                 );
 
                 crate::call!(

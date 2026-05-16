@@ -22,14 +22,10 @@ use crate::{
 #[allow(dead_code)]
 pub struct UserInterfacePatcher;
 
-cfg_select! {
-    feature = "bind_user_interface_patcher" => {
-        type UserInterfacePatcherSlot = crate::hook::impls::HookImplType;
-    }
-    _ => {
-        type UserInterfacePatcherSlot = UserInterfacePatcher;
-    }
-}
+type UserInterfacePatcherSlot = cfg_select! {
+    feature = "bind_user_interface_patcher" => crate::hook::impls::HookImplType,
+    _ => UserInterfacePatcher
+};
 
 impl ModifyMenu for UserInterfacePatcherSlot {
     unsafe fn modify_menu_a(

@@ -11,14 +11,10 @@ use crate::{
 #[allow(dead_code)]
 pub struct AssetVirtualizer;
 
-cfg_select! {
-    feature = "bind_asset_virtualizer" => {
-        type AssetVirtualizerSlot = crate::hook::impls::HookImplType;
-    }
-    _ => {
-        type AssetVirtualizerSlot = AssetVirtualizer;
-    }
-}
+type AssetVirtualizerSlot = cfg_select! {
+    feature = "bind_asset_virtualizer" => crate::hook::impls::HookImplType,
+    _ => AssetVirtualizer
+};
 
 impl CreateFile for AssetVirtualizerSlot {
     unsafe fn create_file_a(

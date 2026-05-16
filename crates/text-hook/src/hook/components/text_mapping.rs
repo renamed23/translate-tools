@@ -24,14 +24,10 @@ use crate::{
 #[allow(dead_code)]
 pub struct TextMapping;
 
-cfg_select! {
-    feature = "bind_text_mapping" => {
-        type TextMappingSlot = crate::hook::impls::HookImplType;
-    }
-    _ => {
-        type TextMappingSlot = TextMapping;
-    }
-}
+type TextMappingSlot = cfg_select! {
+    feature = "bind_text_mapping" => crate::hook::impls::HookImplType,
+    _ => TextMapping
+};
 
 impl TextOut for TextMappingSlot {
     unsafe fn text_out_a(hdc: HDC, x: i32, y: i32, lp_string: PCSTR, c: i32) -> BOOL {

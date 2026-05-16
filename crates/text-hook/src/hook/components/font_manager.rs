@@ -45,14 +45,10 @@ use crate::{
 #[allow(dead_code)]
 pub struct FontManager;
 
-cfg_select! {
-    feature = "bind_font_manager" => {
-        type FontManagerSlot = crate::hook::impls::HookImplType;
-    }
-    _ => {
-        type FontManagerSlot = FontManager;
-    }
-}
+type FontManagerSlot = cfg_select! {
+    feature = "bind_font_manager" => crate::hook::impls::HookImplType,
+    _ => FontManager
+};
 
 impl CreateFont for FontManagerSlot {
     unsafe fn create_font_a(

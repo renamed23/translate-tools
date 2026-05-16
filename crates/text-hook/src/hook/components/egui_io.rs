@@ -5,14 +5,10 @@ use crate::{hook::internal_hooks::OverlayWndProc, overlay::with_overlay_context_
 #[allow(dead_code)]
 pub struct EguiIO;
 
-cfg_select! {
-    feature = "bind_egui_io" => {
-        type EguiIOSlot = crate::hook::impls::HookImplType;
-    }
-    _ => {
-        type EguiIOSlot =  EguiIO;
-    }
-}
+type EguiIOSlot = cfg_select! {
+    feature = "bind_egui_io" => crate::hook::impls::HookImplType,
+    _ => EguiIO
+};
 
 impl OverlayWndProc for EguiIOSlot {
     fn on_overlay_wnd_proc(
