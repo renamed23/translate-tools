@@ -910,7 +910,6 @@ version = "1.0.0"
 dependencies = [
  "anyhow",
  "bytemuck",
- "cfg-if",
  "const-str",
  "egui",
  "egui_glow",

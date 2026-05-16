@@ -1,4 +1,3 @@
-use cfg_if::cfg_if;
 use windows_sys::{
     Win32::{
         Foundation::{RECT, SIZE},
@@ -25,10 +24,11 @@ use crate::{
 #[allow(dead_code)]
 pub struct TextMapping;
 
-cfg_if! {
-    if #[cfg(feature = "bind_text_mapping")] {
+cfg_select! {
+    feature = "bind_text_mapping" => {
         type TextMappingSlot = crate::hook::impls::HookImplType;
-    } else {
+    }
+    _ => {
         type TextMappingSlot = TextMapping;
     }
 }
@@ -305,23 +305,24 @@ fn with_font<F, R>(_hdc: HDC, f: F) -> R
 where
     F: FnOnce() -> R,
 {
-    cfg_if!(
-        if #[cfg(feature = "enable_custom_font")] {
-            return crate::custom_font::with_font(_hdc, f);
-        } else {
-            return f();
+    cfg_select!(
+        feature = "enable_custom_font" => {
+            crate::custom_font::with_font(_hdc, f)
         }
-    );
+        _ => {
+            f()
+        }
+    )
 }
 
 /// 根据字符数计算传入ANSI字符串的字节长度
 fn get_byte_len(_ptr: *const u8, chars: usize) -> usize {
-    cfg_if!(
-        if #[cfg(feature = "assume_text_out_arg_c_is_byte_len")] {
-            return chars;
-        } else {
-            use crate::{code_cvt::byte_len, constant::ANSI_CODE_PAGE};
-            return byte_len(_ptr, chars, ANSI_CODE_PAGE as u16);
+    cfg_select!(
+        feature = "assume_text_out_arg_c_is_byte_len" => {
+            chars
         }
-    );
+        _ => {
+            crate::code_cvt::byte_len(_ptr, chars, crate::constant::ANSI_CODE_PAGE as u16)
+        }
+    )
 }

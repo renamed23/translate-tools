@@ -1,4 +1,3 @@
-use cfg_if::cfg_if;
 use windows_sys::{
     Win32::{Foundation::HANDLE, Security::SECURITY_ATTRIBUTES},
     core::PCSTR,
@@ -13,10 +12,11 @@ use crate::{
 #[allow(dead_code)]
 pub struct PathRedirector;
 
-cfg_if! {
-    if #[cfg(feature = "bind_path_redirector")] {
+cfg_select! {
+    feature = "bind_path_redirector" => {
         type PathRedirectorSlot = crate::hook::impls::HookImplType;
-    } else {
+    }
+    _ => {
         type PathRedirectorSlot = PathRedirector;
     }
 }

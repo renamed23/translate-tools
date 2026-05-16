@@ -1,7 +1,5 @@
-use cfg_if::cfg_if;
-
-cfg_if! {
-    if #[cfg(feature = "extract_text")]  {
+cfg_select! {
+    feature = "extract_text" => {
         use std::sync::{LazyLock, Mutex};
         static EXTRACTED_ITEMS: LazyLock<Mutex<indexmap::IndexSet<serde_json::Value>>> =
             LazyLock::new(|| Mutex::new(indexmap::IndexSet::new()));
@@ -26,7 +24,8 @@ cfg_if! {
 
             Ok(())
         }
-    } else {
+    }
+    _ => {
         mod text_patch_data {
             translate_macros::generated_text_patch_data!("assets/raw_text" => "assets/translated_text");
         }
@@ -53,13 +52,12 @@ cfg_if! {
 
 /// 处理文本，`text_extracting` 特性开启时存储提取条目，否则返回译文（如果有）
 pub fn lookup_or_store(message: &str) -> Option<&'static str> {
-    cfg_if! {
-        if #[cfg(feature = "extract_text")] {
+    cfg_select! {
+        feature = "extract_text" => {
             crate::text_patch::store_item(serde_json::json!({"message": message}));
             crate::debug!("Added item for message: {message}");
             None
-        } else {
-            crate::text_patch::lookup(message)
         }
+        _ => crate::text_patch::lookup(message)
     }
 }

@@ -1,20 +1,19 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use cfg_if::cfg_if;
-
 use crate::{
     debug,
     hook::{impls::HookImplType, internal_hooks::DelayedAttach},
 };
 
-cfg_if! {
-    if #[cfg(feature = "enable_delayed_attach_static")] {
+cfg_select! {
+    feature = "enable_delayed_attach_static" => {
         translate_macros::generate_entry_point_hook!(
             exe_dir = "assets/exe",
             config_path = "assets/config.json",
             handler_fn = entry_point
         );
-    } else {
+    }
+    _ => {
         static HOOK_ENTRY_POINT: std::sync::LazyLock<retour::GenericDetour<unsafe extern "C" fn()>> =
             std::sync::LazyLock::new(|| unsafe {
                 let entry_point_addr = crate::constant::ENTRY_POINT_RVA.unwrap_or_else(|| {
@@ -91,13 +90,12 @@ unsafe extern "C" fn entry_point() {
 /// 安装对程序主入口点的钩子，当入口点被调用时会执行延迟初始化操作。
 /// 这允许在程序完成基本初始化后进行安全的附加操作。
 pub fn enable_entry_point_hook() -> crate::Result<()> {
-    cfg_if! {
-        if #[cfg(feature = "enable_delayed_attach_static")] {
+    cfg_select! {
+        feature = "enable_delayed_attach_static" => {
             entry_point_init()?;
-        } else {
-            unsafe {
-                HOOK_ENTRY_POINT.enable()?;
-            };
+        }
+        _ => unsafe {
+            HOOK_ENTRY_POINT.enable()?;
         }
     }
 

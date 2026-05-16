@@ -1,4 +1,3 @@
-use cfg_if::cfg_if;
 use windows_sys::{
     Win32::{Foundation::HANDLE, Security::SECURITY_ATTRIBUTES},
     core::{PCSTR, PCWSTR},
@@ -12,10 +11,11 @@ use crate::{
 #[allow(dead_code)]
 pub struct AssetVirtualizer;
 
-cfg_if! {
-    if #[cfg(feature = "bind_asset_virtualizer")] {
+cfg_select! {
+    feature = "bind_asset_virtualizer" => {
         type AssetVirtualizerSlot = crate::hook::impls::HookImplType;
-    } else {
+    }
+    _ => {
         type AssetVirtualizerSlot = AssetVirtualizer;
     }
 }

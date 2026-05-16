@@ -1,4 +1,3 @@
-use cfg_if::cfg_if;
 use windows_sys::{
     Win32::{
         Foundation::{HWND, LPARAM, LRESULT, WPARAM},
@@ -23,10 +22,11 @@ use crate::{
 #[allow(dead_code)]
 pub struct UserInterfacePatcher;
 
-cfg_if! {
-    if #[cfg(feature = "bind_user_interface_patcher")] {
+cfg_select! {
+    feature = "bind_user_interface_patcher" => {
         type UserInterfacePatcherSlot = crate::hook::impls::HookImplType;
-    } else {
+    }
+    _ => {
         type UserInterfacePatcherSlot = UserInterfacePatcher;
     }
 }

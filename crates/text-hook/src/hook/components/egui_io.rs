@@ -1,4 +1,3 @@
-use cfg_if::cfg_if;
 use windows_sys::Win32::Foundation::{HWND, LPARAM, LRESULT, WPARAM};
 
 use crate::{hook::internal_hooks::OverlayWndProc, overlay::with_overlay_context_mut};
@@ -6,10 +5,11 @@ use crate::{hook::internal_hooks::OverlayWndProc, overlay::with_overlay_context_
 #[allow(dead_code)]
 pub struct EguiIO;
 
-cfg_if! {
-    if #[cfg(feature = "bind_egui_io")] {
+cfg_select! {
+    feature = "bind_egui_io" => {
         type EguiIOSlot = crate::hook::impls::HookImplType;
-    } else {
+    }
+    _ => {
         type EguiIOSlot =  EguiIO;
     }
 }

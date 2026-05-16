@@ -4,7 +4,6 @@ use std::{
     sync::{LazyLock, RwLock},
 };
 
-use cfg_if::cfg_if;
 #[cfg(feature = "disable_forced_font")]
 use windows_sys::Win32::{
     Foundation::LPARAM,
@@ -46,10 +45,11 @@ use crate::{
 #[allow(dead_code)]
 pub struct FontManager;
 
-cfg_if! {
-    if #[cfg(feature = "bind_font_manager")] {
+cfg_select! {
+    feature = "bind_font_manager" => {
         type FontManagerSlot = crate::hook::impls::HookImplType;
-    } else {
+    }
+    _ => {
         type FontManagerSlot = FontManager;
     }
 }
@@ -564,11 +564,12 @@ pub static COLLECTED_FONTS: LazyLock<RwLock<HashSet<crate::utils::log_font::LogF
     LazyLock::new(|| RwLock::new(HashSet::new()));
 
 fn should_replace_font_face(u16_slice: &[u16]) -> bool {
-    cfg_if!(
-        if #[cfg(feature = "disable_forced_font")] {
-            return FONT_FILTER.contains(&u16_slice);
-        } else {
-            return !FONT_FILTER.contains(&u16_slice);
+    cfg_select!(
+        feature = "disable_forced_font" => {
+           FONT_FILTER.contains(&u16_slice)
         }
-    );
+        _ => {
+            !FONT_FILTER.contains(&u16_slice)
+        }
+    )
 }

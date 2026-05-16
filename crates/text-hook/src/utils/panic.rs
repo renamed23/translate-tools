@@ -1,5 +1,5 @@
-cfg_if::cfg_if! {
-    if #[cfg(feature = "enable_debug_output")] {
+cfg_select! {
+   feature = "enable_debug_output" => {
         /// 设置自定义 panic hook，仅在启用 `enable_debug_output` 特性时有效
         /// 这个 hook 会使用 `debug!` 宏记录详细的 panic 信息
         pub fn set_debug_panic_hook() {
@@ -31,7 +31,8 @@ cfg_if::cfg_if! {
                 debug!(raw "=== PANIC END ===");
             }));
         }
-    } else {
+    }
+    _ => {
         /// 当未启用 "enable_debug_output" 特性时的空实现
         #[allow(dead_code)]
         pub fn set_debug_panic_hook() {

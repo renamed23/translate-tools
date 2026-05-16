@@ -1283,15 +1283,12 @@ pub fn generate_bitmap_font(input: TokenStream) -> TokenStream {
 /// 在 `delayed_attach.rs` 中：
 ///
 /// ```ignore
-/// cfg_if! {
-///     if #[cfg(feature = "enable_delayed_attach_static")] {
-///         translate_macros::generate_entry_point_hook!(
-///             exe_dir = "assets/exe",
-///             config_path = "assets/config.json",
-///             handler_fn = entry_point
-///         );
-///     }
-/// }
+/// #[cfg(feature = "enable_delayed_attach_static")]
+/// translate_macros::generate_entry_point_hook!(
+///     exe_dir = "assets/exe",
+///     config_path = "assets/config.json",
+///     handler_fn = entry_point
+/// );
 ///
 /// pub fn enable_entry_point_hook() -> crate::Result<()> {
 ///     // generate_entry_point_hook 生成了 entry_point_init 函数

@@ -1,14 +1,13 @@
-use cfg_if::cfg_if;
-
 use crate::{hook::internal_hooks::OverlayRender, overlay::egui::components};
 
 #[allow(dead_code)]
 pub struct EguiDefaultUi;
 
-cfg_if! {
-    if #[cfg(feature = "bind_egui_default_ui")] {
+cfg_select! {
+    feature = "bind_egui_default_ui" => {
         type EguiDefaultUiSlot = crate::hook::impls::HookImplType;
-    } else {
+    }
+    _ => {
         type EguiDefaultUiSlot = EguiDefaultUi;
     }
 }

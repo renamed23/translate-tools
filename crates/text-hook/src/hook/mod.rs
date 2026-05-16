@@ -10,14 +10,15 @@ mod hook_lists {
         use super::api_hooks::__file_stem_ident__::*;
     });
 
-    cfg_if::cfg_if! {
-        if #[cfg(feature = "enable_iat_hook_with_strip")] {
+    cfg_select! {
+        feature = "enable_iat_hook_with_strip" => {
             translate_macros::generate_hook_lists!(
                 "constant_assets/featured_hook_lists.json",
                 "assets/hook_lists.json",
                 exe_dir = "assets/exe"
             );
-        } else {
+        }
+        _ => {
             translate_macros::generate_hook_lists!(
                 "constant_assets/featured_hook_lists.json",
                 "assets/hook_lists.json",

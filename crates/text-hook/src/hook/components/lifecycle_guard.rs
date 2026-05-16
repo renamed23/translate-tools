@@ -1,14 +1,13 @@
-use cfg_if::cfg_if;
-
 use crate::hook::api_hooks::process::{ExitProcess, HOOK_EXIT_PROCESS};
 
 #[allow(dead_code)]
 pub struct LifecycleGuard;
 
-cfg_if! {
-    if #[cfg(feature = "bind_lifecycle_guard")] {
+cfg_select! {
+    feature = "bind_lifecycle_guard" => {
         type LifecycleGuardSlot = crate::hook::impls::HookImplType;
-    } else {
+    }
+    _ => {
         type LifecycleGuardSlot = LifecycleGuard;
     }
 }

@@ -1,5 +1,3 @@
-use cfg_if::cfg_if;
-
 use crate::utils::sha256_of_bytes;
 
 mod patch_data {
@@ -33,13 +31,12 @@ pub fn get_patch(src: &[u8]) -> Option<&'static [u8]> {
 /// - 非 `patch_extracting` 模式：返回 `Ok(Some(patch))` / `Ok(None)`。
 /// - `patch_extracting` 模式：尝试提取并返回 `Ok(None)`。
 pub fn get_patch_or_extract(src: &[u8]) -> crate::Result<Option<&'static [u8]>> {
-    cfg_if! {
-        if #[cfg(feature = "extract_patch")] {
+    cfg_select! {
+        feature = "extract_patch" => {
             extract_to_file(src)?;
             Ok(None)
-        } else {
-            Ok(get_patch(src))
         }
+        _ => Ok(get_patch(src))
     }
 }
 
