@@ -11,6 +11,7 @@ pub struct DetourAttr {
     pub export: Option<String>,
     pub fallback: Option<Expr>,
     pub calling_convention: Option<String>,
+    pub enable_hook_guard: bool,
 }
 
 pub fn parse_detour_attr(attr: &Attribute) -> syn::Result<Option<DetourAttr>> {
@@ -23,6 +24,7 @@ pub fn parse_detour_attr(attr: &Attribute) -> syn::Result<Option<DetourAttr>> {
     let mut export: Option<String> = None;
     let mut fallback: Option<Expr> = None;
     let mut calling_convention: Option<String> = None;
+    let mut enable_hook_guard: bool = true;
 
     attr.parse_nested_meta(|meta| {
         if let Some(ident) = meta.path.get_ident() {
@@ -42,6 +44,10 @@ pub fn parse_detour_attr(attr: &Attribute) -> syn::Result<Option<DetourAttr>> {
                         "calling_convention" => {
                             calling_convention = Some(litstr.value());
                         }
+                        "enable_hook_guard" => match litstr.value().parse::<bool>() {
+                            Ok(enable) => enable_hook_guard = enable,
+                            Err(e) => syn_bail!(litstr, "解析 enable_hook_guard 失败: {e}"),
+                        },
                         key => syn_bail!(litstr, "未知的key: {key}"),
                     }
                     return Ok(());
@@ -59,6 +65,7 @@ pub fn parse_detour_attr(attr: &Attribute) -> syn::Result<Option<DetourAttr>> {
             export,
             fallback,
             calling_convention,
+            enable_hook_guard,
         })),
         _ => syn_bail!(
             attr.path(),

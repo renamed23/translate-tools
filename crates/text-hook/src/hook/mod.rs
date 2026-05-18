@@ -1,9 +1,10 @@
 pub(crate) mod entry;
-pub(crate) mod internal_hooks;
+pub(crate) mod hook_guard;
 
 pub(crate) mod api_hooks;
 pub(crate) mod components;
 pub(crate) mod impls;
+pub(crate) mod internal_hooks;
 
 mod hook_lists {
     translate_macros::expand_by_files!("src/hook/api_hooks" => {
@@ -39,6 +40,7 @@ pub fn disable_hooks_from_lists() {
     hook_lists::disable_hooks_from_lists();
 }
 
+/// 调用该HOOK函数对应的原始函数
 #[macro_export]
 macro_rules! call {
     ($hook:ident, $($arg:tt)*) => {{

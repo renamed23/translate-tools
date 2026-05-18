@@ -112,8 +112,9 @@ pub fn byte_slice(input: TokenStream) -> TokenStream {
 /// 1. 一个 `pub unsafe extern "system" fn <wrapper_name>(...) -> Ret` 的 C-ABI 风格 wrapper，
 ///    wrapper 内部通过 `<crate::hook::impls::HookImplType as TraitName>::<method>(...)` 这种完全限定语法
 ///    转发到当前的 Hook 实现，以消除同名方法带来的分发歧义，并使用 `ffi_guard`
-///    或等价保护在 panic/unwind 时返回 `fallback` 指定的值；若内部返回 `Err(...)`，则自动回退到
-///    `crate::call!(HOOK_<METHOD>, ...)` 调用原始 HOOK。
+///    或等价保护在 panic/unwind 时返回 `fallback` 指定的值。
+///    若启用了 `enable_hook_guard`（默认），wrapper 会先检查 `HookGuard` 防止重入，
+///    重入时直接回退到 `crate::call!(HOOK_<METHOD>, ...)` 调用原始函数。
 ///
 ///    - 若 `detour` 属性中提供了 `export = "..."`，则该值会作为生成 wrapper 的 **Rust 函数名**；
 ///    - 若未提供，则默认使用 trait 方法名；
@@ -136,6 +137,7 @@ pub fn byte_slice(input: TokenStream) -> TokenStream {
 ///         export = "text_out",                            // 可选，生成的 wrapper 的 Rust 函数名
 ///         fallback = "FALSE"                              // 可选，仅在 panic/unwind 时使用的回退值（字符串字面量，内部会解析为 Rust 表达式）
 ///         calling_convention = "system"                   // 可选，调用约定（字符串字面量），默认 "system"
+///         enable_hook_guard = "false"                     // 可选，是否启用 HookGuard 防重入（默认 "true"）
 ///     )]
 ///     unsafe fn text_out(hdc: HDC, x: c_int, y: c_int, lp: LPCSTR, c: c_int) -> BOOL;
 ///
@@ -182,6 +184,7 @@ pub fn detour_trait(attr: TokenStream, item: TokenStream) -> TokenStream {
 ///     dll = "gdi32.dll",                              // 必需，目标动态库名（字符串字面量）
 ///     symbol = "TextOutA",                            // 必需，目标导出符号名（字符串字面量）
 ///     fallback = "FALSE"                              // 可选，仅在 panic/unwind 时使用的回退值（字符串字面量，内部会解析为 Rust 表达式）
+///     enable_hook_guard = "false"                     // 可选，是否启用 HookGuard 防重入（默认 "true"）
 /// )]
 /// unsafe extern "system" fn text_out(hdc: HDC, x: c_int, y: c_int, lp: LPCSTR, c: c_int) -> BOOL;
 /// ```
@@ -191,8 +194,9 @@ pub fn detour_trait(attr: TokenStream, item: TokenStream) -> TokenStream {
 /// * `dll`：**必需**。目标模块名称（字符串字面量），用于运行时查找符号地址，例如 `"gdi32.dll"`。
 /// * `symbol`：**必需**。目标导出符号名（字符串字面量），例如 `"TextOutA"`。
 /// * `fallback`：可选。字符串字面量，内容将被解析为 Rust 表达式作为 wrapper 在捕获 panic/unwind 时的返回值。
-///   若函数内部返回 `Err(...)`，则会自动回退到 `crate::call!(HOOK_<FN>, ...)` 调用原始 HOOK。
 ///   建议显式提供 `fallback`；若不提供，宏默认用 `Default::default()`，但当返回类型不实现 `Default` 时会导致编译错误。
+/// * `enable_hook_guard`：可选，默认 `"true"`。启用后，wrapper 函数体开头会插入 `HookGuard` 防重入检查，
+///   重入时直接回退到 `crate::call!(HOOK_<FN>, ...)` 调用原始函数。
 #[proc_macro_attribute]
 pub fn detour_fn(attr: TokenStream, item: TokenStream) -> TokenStream {
     match impls::detour::detour_fn::detour_fn(attr.into(), item.into()) {

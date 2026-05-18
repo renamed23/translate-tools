@@ -28,6 +28,7 @@ pub fn detour_trait(_attr: TokenStream, item: TokenStream) -> syn::Result<TokenS
                 export,
                 fallback,
                 calling_convention,
+                enable_hook_guard,
             }) = detour_meta
             else {
                 continue;
@@ -96,16 +97,26 @@ pub fn detour_trait(_attr: TokenStream, item: TokenStream) -> syn::Result<TokenS
 
             let static_ident = generate_detour_ident(&method_ident);
 
+            let guard_tokens = if enable_hook_guard {
+                quote! {
+                    let Some(_hook_guard) = crate::hook::hook_guard::HookGuard::enter() else {
+                        return unsafe { crate::call!(#static_ident, #(#call_args_tokens),*) };
+                    };
+                }
+            } else {
+                TokenStream::new()
+            };
+
             // 生成 wrapper + static
             generated.extend(quote! {
                     // 自动生成：导出 wrapper，使用完全限定语法调用 trait 实现以消除方法分发歧义
                     #[translate_macros::ffi_guard(
-                        on_panic = #fallback_tokens,
-                        on_err = unsafe {crate::call!(#static_ident, #(#call_args_tokens),*)}
+                        on_panic = #fallback_tokens
                     )]
                     #[cfg_attr(feature = "export_hook_symbols", unsafe(no_mangle))]
                     pub unsafe extern #calling_convention fn #export_ident( #(#param_pairs_iter),* ) #output {
-                       unsafe {
+                        #guard_tokens
+                        unsafe {
                             <crate::hook::impls::HookImplType as #trait_name>::#method_ident( #(#call_args_tokens),* )
                         }
                     }

@@ -18,9 +18,10 @@ pub fn detour_fn(attr: TokenStream, item: TokenStream) -> syn::Result<TokenStrea
         export,
         fallback,
         calling_convention,
+        enable_hook_guard,
     } = parse_detour_attr(&attr)?.unwrap();
 
-    let item_fn = syn::parse2::<ItemFn>(item)?;
+    let mut item_fn = syn::parse2::<ItemFn>(item)?;
 
     if export.is_some() {
         syn_bail!(attr, "detour_fn 不允许使用 `export`");
@@ -38,16 +39,21 @@ pub fn detour_fn(attr: TokenStream, item: TokenStream) -> syn::Result<TokenStrea
 
     let fn_ty_tokens = quote! {#unsafety #abi fn(#inputs) #output};
 
-    let call_args = item_fn.sig.inputs.iter().filter_map(|arg| match arg {
-        syn::FnArg::Receiver(_) => None,
-        syn::FnArg::Typed(pt) => Some(match &*pt.pat {
-            syn::Pat::Ident(pat_ident) => {
-                let ident = &pat_ident.ident;
-                quote! { #ident }
-            }
-            pat => quote! { #pat },
-        }),
-    });
+    let call_args: Vec<TokenStream> = item_fn
+        .sig
+        .inputs
+        .iter()
+        .filter_map(|arg| match arg {
+            syn::FnArg::Receiver(_) => None,
+            syn::FnArg::Typed(pt) => Some(match &*pt.pat {
+                syn::Pat::Ident(pat_ident) => {
+                    let ident = &pat_ident.ident;
+                    quote! { #ident }
+                }
+                pat => quote! { #pat },
+            }),
+        })
+        .collect();
 
     // fallback：若 attr 给出就用它，否则 Default::default()
     let fallback_tokens = if let Some(expr) = fallback {
@@ -63,11 +69,20 @@ pub fn detour_fn(attr: TokenStream, item: TokenStream) -> syn::Result<TokenStrea
     let fn_ident = item_fn.sig.ident.clone();
     let static_ident = generate_detour_ident(&fn_ident);
 
+    if enable_hook_guard {
+        let call_args_iter = call_args.iter();
+        let guard_stmt: syn::Stmt = parse_quote! {
+            let Some(_hook_guard) = crate::hook::hook_guard::HookGuard::enter() else {
+                return unsafe { crate::call!(#static_ident, #(#call_args_iter),*) };
+            };
+        };
+        item_fn.block.stmts.insert(0, guard_stmt);
+    }
+
     Ok(quote! {
         // 原函数
         #[translate_macros::ffi_guard(
-            on_panic = #fallback_tokens,
-            on_err = unsafe {crate::call!(#static_ident, #(#call_args),*)}
+            on_panic = #fallback_tokens
         )]
         #[cfg_attr(feature = "export_hook_symbols", unsafe(no_mangle))]
         #item_fn
