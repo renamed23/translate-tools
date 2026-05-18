@@ -5,7 +5,7 @@ use core::cell::Cell;
 /// 假设有一个HOOK函数 `CreateFileW`
 /// - 直接调用 `CreateFileW(...)` 可能进入HOOK逻辑，也可能进入原始函数逻辑，
 ///   通过该守卫可保证在进入HOOK逻辑后，所有函数调用均进入原始函数逻辑
-/// - 调用 `crate::call!(CreateFileW, ...)` 保证绝对进入原始函数逻辑
+/// - 调用 `crate::call!(HOOK_CREATE_FILE_W, ...)` 保证绝对进入原始函数逻辑
 /// - 调用 `HookImplType::create_file_w(...)` 保证绝对进入HOOK逻辑
 ///
 /// 在所有情况下，都应该使用后两种调用方式，但是如果使用第三方代码，比如标准库，
