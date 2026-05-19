@@ -12,8 +12,8 @@ pub trait DefWindowProc {
     #[detour(
         dll = "user32.dll",
         symbol = "DefWindowProcA",
-        fallback = "0",
-        enable_hook_guard = "false"
+        fallback = 0,
+        enable_hook_guard = false
     )]
     unsafe fn def_window_proc_a(
         h_wnd: HWND,
@@ -25,8 +25,8 @@ pub trait DefWindowProc {
     #[detour(
         dll = "user32.dll",
         symbol = "DefWindowProcW",
-        fallback = "0",
-        enable_hook_guard = "false"
+        fallback = 0,
+        enable_hook_guard = false
     )]
     unsafe fn def_window_proc_w(
         h_wnd: HWND,
@@ -41,8 +41,8 @@ pub trait ModifyMenu {
     #[detour(
         dll = "user32.dll",
         symbol = "ModifyMenuA",
-        fallback = "0",
-        enable_hook_guard = "false"
+        fallback = 0,
+        enable_hook_guard = false
     )]
     unsafe fn modify_menu_a(
         h_menu: HMENU,
@@ -58,8 +58,8 @@ pub trait AppendMenu {
     #[detour(
         dll = "user32.dll",
         symbol = "AppendMenuA",
-        fallback = "0",
-        enable_hook_guard = "false"
+        fallback = 0,
+        enable_hook_guard = false
     )]
     unsafe fn append_menu_a(
         h_menu: HMENU,
@@ -74,8 +74,8 @@ pub trait MessageBox {
     #[detour(
         dll = "user32.dll",
         symbol = "MessageBoxA",
-        fallback = "0",
-        enable_hook_guard = "false"
+        fallback = 0,
+        enable_hook_guard = false
     )]
     unsafe fn message_box_a(
         h_wnd: HWND,
@@ -90,8 +90,8 @@ pub trait SetDlgItemText {
     #[detour(
         dll = "user32.dll",
         symbol = "SetDlgItemTextA",
-        fallback = "0",
-        enable_hook_guard = "false"
+        fallback = 0,
+        enable_hook_guard = false
     )]
     unsafe fn set_dlg_item_text_a(h_dlg: HWND, n_id_dlg_item: i32, lp_string: *const u8) -> BOOL;
 }
@@ -101,8 +101,8 @@ pub trait SetWindowText {
     #[detour(
         dll = "user32.dll",
         symbol = "SetWindowTextA",
-        fallback = "0",
-        enable_hook_guard = "false"
+        fallback = 0,
+        enable_hook_guard = false
     )]
     unsafe fn set_window_text_a(h_wnd: HWND, lp_string: *const u8) -> BOOL;
 }
@@ -112,8 +112,8 @@ pub trait SendMessage {
     #[detour(
         dll = "user32.dll",
         symbol = "SendMessageA",
-        fallback = "0",
-        enable_hook_guard = "false"
+        fallback = 0,
+        enable_hook_guard = false
     )]
     unsafe fn send_message_a(h_wnd: HWND, msg: u32, w_param: WPARAM, l_param: LPARAM) -> LRESULT;
 }
@@ -123,8 +123,8 @@ pub trait PropertySheet {
     #[detour(
         dll = "comctl32.dll",
         symbol = "PropertySheetA",
-        fallback = "0",
-        enable_hook_guard = "false"
+        fallback = 0,
+        enable_hook_guard = false
     )]
     unsafe fn property_sheet_a(
         ppsh: *const windows_sys::Win32::UI::Controls::PROPSHEETHEADERA_V2,

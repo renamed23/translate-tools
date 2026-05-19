@@ -4,7 +4,7 @@ use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use serde_json::Value;
 use syn::{
-    LitByteStr, LitStr, Token,
+    Ident, LitByteStr, LitStr, Token,
     parse::{Parse, ParseStream},
 };
 
@@ -20,16 +20,48 @@ struct PathInput {
 
 impl Parse for PathInput {
     fn parse(input: ParseStream) -> syn::Result<Self> {
-        let resource_dir: LitStr = input.parse()?;
-        let _comma: Token![,] = input.parse()?;
-        let config_path: LitStr = input.parse()?;
-
+        let mut resource_dir = None;
+        let mut config_path = None;
         let mut output = None;
 
-        if input.peek(Token![,]) {
-            input.parse::<Token![,]>()?;
-            output = Some(input.parse()?);
+        while !input.is_empty() {
+            let key: Ident = input.parse()?;
+            let _eq: Token![=] = input.parse()?;
+
+            match key.to_string().as_str() {
+                "resource_dir" => {
+                    if resource_dir.is_some() {
+                        syn_bail!(key, "重复的 `resource_dir`");
+                    }
+                    resource_dir = Some(input.parse::<LitStr>()?);
+                }
+                "config_path" => {
+                    if config_path.is_some() {
+                        syn_bail!(key, "重复的 `config_path`");
+                    }
+                    config_path = Some(input.parse::<LitStr>()?);
+                }
+                "output_path" => {
+                    if output.is_some() {
+                        syn_bail!(key, "重复的 `output_path`");
+                    }
+                    output = Some(input.parse::<LitStr>()?);
+                }
+                other => syn_bail!(
+                    key,
+                    "未知参数 `{other}`, 预期 `resource_dir`, `config_path`, 或 `output_path`"
+                ),
+            }
+
+            if input.peek(Token![,]) {
+                input.parse::<Token![,]>()?;
+            }
         }
+
+        let resource_dir =
+            resource_dir.ok_or_else(|| input.error("未指定 `resource_dir` 参数"))?;
+        let config_path =
+            config_path.ok_or_else(|| input.error("未指定 `config_path` 参数"))?;
 
         Ok(PathInput {
             resource_dir,

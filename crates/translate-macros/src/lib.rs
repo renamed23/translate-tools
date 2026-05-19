@@ -134,10 +134,10 @@ pub fn byte_slice(input: TokenStream) -> TokenStream {
 ///     #[detour(
 ///         dll = "gdi32.dll",                              // 必需，目标动态库名（字符串字面量）
 ///         symbol = "TextOutA",                            // 必需，目标导出符号名（字符串字面量）
-///         export = "text_out",                            // 可选，生成的 wrapper 的 Rust 函数名
-///         fallback = "FALSE"                              // 可选，仅在 panic/unwind 时使用的回退值（字符串字面量，内部会解析为 Rust 表达式）
-///         calling_convention = "system"                   // 可选，调用约定（字符串字面量），默认 "system"
-///         enable_hook_guard = "false"                     // 可选，是否启用 HookGuard 防重入（默认 "true"）
+///         export = "text_out",                            // 可选，生成的 wrapper 的 Rust 函数名（字符串字面量）
+///         fallback = FALSE,                               // 可选，仅在 panic/unwind 时使用的回退值（直接 Rust 表达式）
+///         calling_convention = "system",                  // 可选，调用约定（字符串字面量），默认 "system"
+///         enable_hook_guard = false                       // 可选，是否启用 HookGuard 防重入（布尔字面量，默认 true）
 ///     )]
 ///     unsafe fn text_out(hdc: HDC, x: c_int, y: c_int, lp: LPCSTR, c: c_int) -> BOOL;
 ///
@@ -183,8 +183,8 @@ pub fn detour_trait(attr: TokenStream, item: TokenStream) -> TokenStream {
 /// #[detour_fn(
 ///     dll = "gdi32.dll",                              // 必需，目标动态库名（字符串字面量）
 ///     symbol = "TextOutA",                            // 必需，目标导出符号名（字符串字面量）
-///     fallback = "FALSE"                              // 可选，仅在 panic/unwind 时使用的回退值（字符串字面量，内部会解析为 Rust 表达式）
-///     enable_hook_guard = "false"                     // 可选，是否启用 HookGuard 防重入（默认 "true"）
+///     fallback = FALSE,                               // 可选，仅在 panic/unwind 时使用的回退值（直接 Rust 表达式）
+///     enable_hook_guard = false                       // 可选，是否启用 HookGuard 防重入（布尔字面量，默认 true）
 /// )]
 /// unsafe extern "system" fn text_out(hdc: HDC, x: c_int, y: c_int, lp: LPCSTR, c: c_int) -> BOOL;
 /// ```
@@ -193,9 +193,9 @@ pub fn detour_trait(attr: TokenStream, item: TokenStream) -> TokenStream {
 ///
 /// * `dll`：**必需**。目标模块名称（字符串字面量），用于运行时查找符号地址，例如 `"gdi32.dll"`。
 /// * `symbol`：**必需**。目标导出符号名（字符串字面量），例如 `"TextOutA"`。
-/// * `fallback`：可选。字符串字面量，内容将被解析为 Rust 表达式作为 wrapper 在捕获 panic/unwind 时的返回值。
+/// * `fallback`：可选。直接书写 Rust 表达式（无需引号包裹），作为 wrapper 在捕获 panic/unwind 时的返回值。
 ///   建议显式提供 `fallback`；若不提供，宏默认用 `Default::default()`，但当返回类型不实现 `Default` 时会导致编译错误。
-/// * `enable_hook_guard`：可选，默认 `"true"`。启用后，wrapper 函数体开头会插入 `HookGuard` 防重入检查，
+/// * `enable_hook_guard`：可选，默认 `true`。原生布尔字面量（`true`/`false`）。启用后，wrapper 函数体开头会插入 `HookGuard` 防重入检查，
 ///   重入时直接回退到 `crate::call!(HOOK_<FN>, ...)` 调用原始函数。
 #[proc_macro_attribute]
 pub fn detour_fn(attr: TokenStream, item: TokenStream) -> TokenStream {
@@ -1137,16 +1137,16 @@ pub fn generate_hook_lists(input: TokenStream) -> TokenStream {
 /// # 语法
 ///
 /// ```ignore
-/// generate_resource_pack!(resource_dir, config_path);
-/// generate_resource_pack!(resource_dir, config_path, output_path);
+/// generate_resource_pack!(resource_dir = "path", config_path = "path");
+/// generate_resource_pack!(resource_dir = "path", config_path = "path", output_path = "path");
 /// ```
 ///
 /// # 参数
 ///
-/// - `resource_dir`: 资源文件所在的目录路径（相对于 `Cargo.toml` 的字符串字面量）。
-/// - `config_path`: JSON 配置文件路径（相对于 `Cargo.toml` 的字符串字面量），
+/// - `resource_dir`：**必需**。资源文件所在的目录路径（相对于 `Cargo.toml` 的字符串字面量）。
+/// - `config_path`：**必需**。JSON 配置文件路径（相对于 `Cargo.toml` 的字符串字面量），
 ///   文件中必须包含 `RESOURCE_PACK_NAME` 字段用于指定资源包名称。
-/// - `output_path`（可选）: 若提供，资源包将输出为外部文件而非嵌入二进制；
+/// - `output_path`：可选。若提供，资源包将输出为外部文件而非嵌入二进制；
 ///   运行时将从该路径加载 `.pak` 文件。
 ///
 /// # 生成的模块内容

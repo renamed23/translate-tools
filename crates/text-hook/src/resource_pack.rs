@@ -3,13 +3,16 @@ use std::path::Path;
 mod pack {
     cfg_select! {
         feature = "embed_resource_pack" => {
-            translate_macros::generate_resource_pack!("assets/resource_pack", "assets/config.json");
+            translate_macros::generate_resource_pack!(
+                resource_dir = "assets/resource_pack",
+                config_path = "assets/config.json"
+            );
         }
         _ => {
             translate_macros::generate_resource_pack!(
-                "assets/resource_pack",
-                "assets/config.json",
-                "assets/dist"
+                resource_dir = "assets/resource_pack",
+                config_path = "assets/config.json",
+                output_path = "assets/dist"
             );
         }
     }

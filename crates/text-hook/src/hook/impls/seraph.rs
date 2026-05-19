@@ -73,7 +73,7 @@ unsafe fn to_string(app_name: PCSTR, key_name: PCSTR) -> (String, String) {
 #[detour_fn(
     dll = "kernel32.dll",
     symbol = "GetPrivateProfileStringA",
-    fallback = "0u32"
+    fallback = 0u32
 )]
 pub unsafe extern "system" fn get_private_profile_string_a(
     lp_app_name: PCSTR,
@@ -131,7 +131,7 @@ pub unsafe extern "system" fn get_private_profile_string_a(
 #[detour_fn(
     dll = "kernel32.dll",
     symbol = "GetPrivateProfileIntA",
-    fallback = "n_default as _"
+    fallback = n_default as _
 )]
 unsafe extern "system" fn get_private_profile_int_a(
     lp_app_name: PCSTR,

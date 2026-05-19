@@ -1,7 +1,7 @@
 use translate_macros::detour_trait;
 use windows_sys::{
     Win32::{
-        Foundation::HANDLE,
+        Foundation::{FALSE, HANDLE, INVALID_HANDLE_VALUE},
         Security::SECURITY_ATTRIBUTES,
         Storage::FileSystem::{WIN32_FIND_DATAA, WIN32_FIND_DATAW},
         System::IO::OVERLAPPED,
@@ -14,7 +14,7 @@ pub trait CreateFile {
     #[detour(
         dll = "kernel32.dll",
         symbol = "CreateFileA",
-        fallback = "windows_sys::Win32::Foundation::INVALID_HANDLE_VALUE"
+        fallback = INVALID_HANDLE_VALUE
     )]
     unsafe fn create_file_a(
         lp_file_name: PCSTR,
@@ -29,7 +29,7 @@ pub trait CreateFile {
     #[detour(
         dll = "kernel32.dll",
         symbol = "CreateFileW",
-        fallback = "windows_sys::Win32::Foundation::INVALID_HANDLE_VALUE"
+        fallback = INVALID_HANDLE_VALUE
     )]
     unsafe fn create_file_w(
         lp_file_name: PCWSTR,
@@ -48,7 +48,7 @@ pub trait ReadFile {
     #[detour(
         dll = "kernel32.dll",
         symbol = "ReadFile",
-        fallback = "windows_sys::Win32::Foundation::FALSE"
+        fallback = FALSE
     )]
     unsafe fn read_file(
         h_file: HANDLE,
@@ -64,7 +64,7 @@ pub trait CloseHandle {
     #[detour(
         dll = "kernel32.dll",
         symbol = "CloseHandle",
-        fallback = "windows_sys::Win32::Foundation::FALSE"
+        fallback = FALSE
     )]
     unsafe fn close_handle(h_object: HANDLE) -> BOOL;
 }
@@ -74,7 +74,7 @@ pub trait FindFirstFile {
     #[detour(
         dll = "kernel32.dll",
         symbol = "FindFirstFileA",
-        fallback = "windows_sys::Win32::Foundation::INVALID_HANDLE_VALUE"
+        fallback = INVALID_HANDLE_VALUE
     )]
     unsafe fn find_first_file_a(
         lp_file_name: PCSTR,
@@ -84,7 +84,7 @@ pub trait FindFirstFile {
     #[detour(
         dll = "kernel32.dll",
         symbol = "FindFirstFileW",
-        fallback = "windows_sys::Win32::Foundation::INVALID_HANDLE_VALUE"
+        fallback = INVALID_HANDLE_VALUE
     )]
     unsafe fn find_first_file_w(
         lp_file_name: PCWSTR,
@@ -97,7 +97,7 @@ pub trait FindNextFile {
     #[detour(
         dll = "kernel32.dll",
         symbol = "FindNextFileA",
-        fallback = "windows_sys::Win32::Foundation::FALSE"
+        fallback = FALSE
     )]
     unsafe fn find_next_file_a(
         h_find_file: HANDLE,
@@ -107,7 +107,7 @@ pub trait FindNextFile {
     #[detour(
         dll = "kernel32.dll",
         symbol = "FindNextFileW",
-        fallback = "windows_sys::Win32::Foundation::FALSE"
+        fallback = FALSE
     )]
     unsafe fn find_next_file_w(
         h_find_file: HANDLE,
@@ -120,7 +120,7 @@ pub trait FindClose {
     #[detour(
         dll = "kernel32.dll",
         symbol = "FindClose",
-        fallback = "windows_sys::Win32::Foundation::FALSE"
+        fallback = FALSE
     )]
     unsafe fn find_close(h_find_file: HANDLE) -> BOOL;
 }

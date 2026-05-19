@@ -33,7 +33,7 @@ impl ProcessAttach for CompletsHook {
 
 const EXPECTED: &str = const_str::concat!("Software\\", ARG_REG_PATH, "\\savedata");
 
-#[detour_fn(dll = "advapi32.dll", symbol = "RegOpenKeyExA", fallback = "1")]
+#[detour_fn(dll = "advapi32.dll", symbol = "RegOpenKeyExA", fallback = 1)]
 unsafe extern "system" fn reg_open_key_ex_a(
     hkey: HKEY,
     lpsubkey: PCSTR,
@@ -76,7 +76,7 @@ unsafe extern "system" fn reg_open_key_ex_a(
     }
 }
 
-#[detour_fn(dll = "advapi32.dll", symbol = "RegCreateKeyExA", fallback = "1")]
+#[detour_fn(dll = "advapi32.dll", symbol = "RegCreateKeyExA", fallback = 1)]
 unsafe extern "system" fn reg_create_key_ex_a(
     hkey: HKEY,
     lpsubkey: PCSTR,

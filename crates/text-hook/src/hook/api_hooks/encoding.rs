@@ -3,7 +3,7 @@ use windows_sys::core::{BOOL, PCSTR, PCWSTR, PSTR, PWSTR};
 
 #[detour_trait]
 pub trait MultiByteToWideChar {
-    #[detour(dll = "kernel32.dll", symbol = "MultiByteToWideChar", fallback = "0")]
+    #[detour(dll = "kernel32.dll", symbol = "MultiByteToWideChar", fallback = 0)]
     unsafe fn multi_byte_to_wide_char(
         code_page: u32,
         dw_flags: u32,
@@ -16,7 +16,7 @@ pub trait MultiByteToWideChar {
 
 #[detour_trait]
 pub trait WideCharToMultiByte {
-    #[detour(dll = "kernel32.dll", symbol = "WideCharToMultiByte", fallback = "0")]
+    #[detour(dll = "kernel32.dll", symbol = "WideCharToMultiByte", fallback = 0)]
     unsafe fn wide_char_to_multi_byte(
         code_page: u32,
         dw_flags: u32,
