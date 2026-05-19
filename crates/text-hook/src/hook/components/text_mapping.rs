@@ -32,7 +32,7 @@ type TextMappingSlot = cfg_select! {
 impl TextOut for TextMappingSlot {
     unsafe fn text_out_a(hdc: HDC, x: i32, y: i32, lp_string: PCSTR, c: i32) -> BOOL {
         unsafe {
-            let byte_len = get_byte_len(lp_string, c as usize);
+            let byte_len = get_byte_len(lp_string, c.max(0) as usize);
 
             let input_slice = lp_string.to_slice(byte_len);
             let buf = input_slice.to_wide_ansi().mapping();
@@ -51,7 +51,7 @@ impl TextOut for TextMappingSlot {
 
     unsafe fn text_out_w(hdc: HDC, x: i32, y: i32, lp_string: PCWSTR, c: i32) -> BOOL {
         unsafe {
-            let input_slice = lp_string.to_slice(c as usize);
+            let input_slice = lp_string.to_slice(c.max(0) as usize);
 
             let buf = input_slice.mapping();
 
@@ -150,7 +150,7 @@ impl GetTextExtentPoint32 for TextMappingSlot {
         lp_size: *mut SIZE,
     ) -> BOOL {
         unsafe {
-            let byte_len = get_byte_len(lp_string, c as usize);
+            let byte_len = get_byte_len(lp_string, c.max(0) as usize);
 
             let input_slice = lp_string.to_slice(byte_len);
             let buf = input_slice.to_wide_ansi().mapping();
@@ -177,7 +177,7 @@ impl GetTextExtentPoint32 for TextMappingSlot {
         lp_size: *mut SIZE,
     ) -> BOOL {
         unsafe {
-            let input_slice = lp_string.to_slice(c as usize);
+            let input_slice = lp_string.to_slice(c.max(0) as usize);
 
             let buf = input_slice.mapping();
 
