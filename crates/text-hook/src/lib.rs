@@ -44,6 +44,9 @@ pub(crate) mod locale_emulator;
 #[cfg(feature = "enable_resource_pack")]
 pub(crate) mod resource_pack;
 
+#[cfg(feature = "enable_vfs")]
+pub(crate) mod vfs;
+
 #[cfg(feature = "enable_storage")]
 pub(crate) mod storage;
 

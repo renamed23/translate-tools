@@ -1,0 +1,8 @@
+[
+  {
+    "source": "{exe_dir}/**/*.*",
+    "target": "{resource_pack_dir}/**/*.*",
+    "mode": "fallback",
+    "cfg": "feature = \"enable_resource_pack\""
+  }
+]

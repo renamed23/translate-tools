@@ -132,24 +132,6 @@ fn build_scenarios() -> Vec<Scenario> {
             run_x64: true,
         },
         Scenario {
-            name: "default_impl/bind_asset_virtualizer/off".to_string(),
-            features: feature_set(
-                all_functional_impl_base(),
-                &["default_impl"],
-                &["bind_asset_virtualizer"],
-            ),
-            run_x64: true,
-        },
-        Scenario {
-            name: "default_impl/bind_asset_virtualizer/on".to_string(),
-            features: feature_set(
-                all_functional_impl_base(),
-                &["default_impl", "bind_asset_virtualizer"],
-                &[],
-            ),
-            run_x64: true,
-        },
-        Scenario {
             name: "default_impl/bind_font_manager/off".to_string(),
             features: feature_set(
                 all_functional_impl_base(),
@@ -182,19 +164,15 @@ fn build_scenarios() -> Vec<Scenario> {
             run_x64: true,
         },
         Scenario {
-            name: "default_impl/bind_path_redirector/off".to_string(),
-            features: feature_set(
-                all_functional_impl_base(),
-                &["default_impl"],
-                &["bind_path_redirector"],
-            ),
+            name: "default_impl/bind_vfs/off".to_string(),
+            features: feature_set(all_functional_impl_base(), &["default_impl"], &["bind_vfs"]),
             run_x64: true,
         },
         Scenario {
-            name: "default_impl/bind_path_redirector/on".to_string(),
+            name: "default_impl/bind_vfs/on".to_string(),
             features: feature_set(
                 all_functional_impl_base(),
-                &["default_impl", "bind_path_redirector"],
+                &["default_impl", "bind_vfs"],
                 &[],
             ),
             run_x64: true,
@@ -639,6 +617,7 @@ fn all_functional_impl_base() -> &'static [&'static str] {
         "export_default_dll_main",
         "enable_locale_emulator",
         "export_hook_symbols",
+        "enable_vfs",
     ]
 }
 

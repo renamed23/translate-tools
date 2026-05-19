@@ -131,7 +131,7 @@ pub fn generate_bitmap_font(input: TokenStream) -> syn::Result<TokenStream> {
     let atlas_height = cursor_y + row_height;
 
     if atlas_height > 8192 {
-        return Err(syn_err2!("atlas 高度 {} 超出限制", atlas_height));
+        syn_bail2!("atlas 高度 {} 超出限制", atlas_height);
     }
 
     // --------------------------------

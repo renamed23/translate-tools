@@ -1,13 +1,5 @@
 {
-  "feature = \"bind_path_redirector\"": {
-    "trait": [
-      "CreateFile"
-    ],
-    "fn": [
-      "CreateFileA"
-    ]
-  },
-  "feature = \"bind_asset_virtualizer\"": {
+  "feature = \"bind_vfs\"": {
     "trait": [
       "CreateFile"
     ],

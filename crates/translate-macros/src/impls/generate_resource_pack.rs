@@ -48,7 +48,6 @@ pub fn generate_resource_pack(input: TokenStream) -> syn::Result<TokenStream> {
     let temp_dir_name = format!("text_hook_resource_pack_{pack_name}");
     let pack_file_name = format!("{pack_name}.pak");
     let files = collect_resource_files(&parsed, &resource_dir_path)?;
-    let paths: Vec<&str> = files.iter().map(|(p, _)| p.as_str()).collect();
     let cat_data = build_cat_data(&files);
     let original_len = cat_data.len();
     let is_compressed = parsed.output.is_none() && original_len > 80 * 1024;
@@ -58,7 +57,6 @@ pub fn generate_resource_pack(input: TokenStream) -> syn::Result<TokenStream> {
 
     Ok(generate_resource_pack_tokens(
         &temp_dir_name,
-        paths,
         data_loading_code,
         decompression_code,
     ))
@@ -180,28 +178,20 @@ fn build_decompression_code(is_compressed: bool, original_len: usize) -> TokenSt
 
 fn generate_resource_pack_tokens(
     temp_dir_name: &str,
-    paths: Vec<&str>,
     data_loading_code: TokenStream,
     decompression_code: TokenStream,
 ) -> TokenStream {
-    let phf_entries = paths.iter().map(|&p| quote! { #p });
-
     quote! {
         use std::io::Write;
 
-        pub(super) fn get_temp_dir() -> &'static std::path::Path {
+        pub(super) fn get_temp_dir() -> &'static ::std::path::Path {
             static TEMP_DIR: ::std::sync::LazyLock<::std::path::PathBuf> = ::std::sync::LazyLock::new(|| {
-                std::env::temp_dir().join(#temp_dir_name)
+                use crate::utils::exts::slice_ext::WideSliceExt;
+                crate::utils::win32::get_temp_dir(false)
+                    .map_or_else(|_| ::std::path::PathBuf::from("."), |v| v.to_path_buf())
+                    .join(#temp_dir_name)
             });
             TEMP_DIR.as_ref()
-        }
-
-        pub(super) static RESOURCE_PATHS: phf::Set<&'static str> = phf::phf_set! {
-            #(#phf_entries),*
-        };
-
-        pub(super) fn is_resource(path: &str) -> bool {
-            RESOURCE_PATHS.contains(path)
         }
 
         pub(super) fn extract() -> crate::Result<()> {
@@ -210,7 +200,7 @@ fn generate_resource_pack_tokens(
                 cleanup()?;
             }
 
-            std::fs::create_dir_all(temp_dir)?;
+            ::std::fs::create_dir_all(temp_dir)?;
 
             // 加载数据 (内存或文件)
             #data_loading_code
@@ -221,7 +211,7 @@ fn generate_resource_pack_tokens(
             while offset < data.len() {
                 let path_len = u32::from_le_bytes(data[offset..offset+4].try_into()?) as usize;
                 offset += 4;
-                let path = std::str::from_utf8(&data[offset..offset+path_len])?;
+                let path = ::std::str::from_utf8(&data[offset..offset+path_len])?;
                 offset += path_len;
                 let content_len = u64::from_le_bytes(data[offset..offset+8].try_into()?) as usize;
                 offset += 8;
@@ -230,9 +220,9 @@ fn generate_resource_pack_tokens(
 
                 let file_path = temp_dir.join(path);
                 if let Some(parent) = file_path.parent() {
-                    std::fs::create_dir_all(parent)?;
+                    ::std::fs::create_dir_all(parent)?;
                 }
-                std::fs::write(&file_path, content)?;
+                ::std::fs::write(&file_path, content)?;
             }
 
             Ok(())
@@ -241,7 +231,7 @@ fn generate_resource_pack_tokens(
         pub(super) fn cleanup() -> crate::Result<()> {
             let temp_dir = get_temp_dir();
             if temp_dir.exists() {
-                std::fs::remove_dir_all(temp_dir)?;
+                ::std::fs::remove_dir_all(temp_dir)?;
             }
             Ok(())
         }

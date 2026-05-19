@@ -1,6 +1,5 @@
 use std::{
     collections::HashMap,
-    fs,
     path::PathBuf,
     sync::{LazyLock, RwLock},
 };
@@ -19,7 +18,7 @@ static STORAGE: LazyLock<RwLock<Storage>> = LazyLock::new(|| {
     let path = PathBuf::from(STORAGE_PATH);
 
     let data = if path.exists() {
-        match fs::read_to_string(&path) {
+        match std::fs::read_to_string(&path) {
             Ok(content) => match ron::from_str(&content) {
                 Ok(parsed) => parsed,
                 Err(e) => {
@@ -79,7 +78,7 @@ pub fn flush() -> crate::Result<()> {
     let config = ron::ser::to_string_pretty(&lock.data, PrettyConfig::default())
         .map_err(|e| crate::anyhow!("RON serialization error: {e}"))?;
 
-    fs::write(STORAGE_PATH, config).map_err(|e| crate::anyhow!("File write error: {e}"))?;
+    std::fs::write(STORAGE_PATH, config).map_err(|e| crate::anyhow!("File write error: {e}"))?;
     lock.dirty = false;
 
     Ok(())

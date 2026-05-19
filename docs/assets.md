@@ -33,8 +33,6 @@
   "CREATE_FONT_I_PITCH_AND_FAMILY": 49,
   "WINDOW_TITLE": "游戏窗口",
   "HIJACKED_DLL_PATH": "some_path/your_dll.dll",
-  "REDIRECTION_SRC_PATH": "DATA2.TCD",
-  "REDIRECTION_TARGET_PATH": "DATA_chs.TCD",
   "RESOURCE_PACK_NAME": "MOZU_chs",
   "HWBP_REG": "crate::utils::hwbp::HwReg::Dr2",
   "HWBP_TYPE": "crate::utils::hwbp::HwBreakpointType::Execute",
@@ -208,3 +206,73 @@ DLL会`inline hook`入口点，然后加载被劫持的DLL，并获取导出函�
 - `padding`: 位图每个字符的padding
 - `texture_max_width`：位图纹理的最大宽度
 - `chars`：需要添加到位图里的字符，内部会进行去重
+
+
+## vfs_rules.json
+
+VFS (Virtual File System) 规则配置, 用于将源路径重定向到目标路径。对文件访问进行透明拦截, 无需修改游戏逻辑。
+
+```json
+[
+  {
+    "source": "{cwd}/data/**/*.*",
+    "target": "{cwd}/data_chs/**/*.*",
+    "mode": "fallback",
+    "cfg": "feature = \"enable_resource_pack\""
+  },
+  {
+    "source": "{cwd}/MPX/*.*",
+    "target": "{cwd}/MPX_chs/*.*",
+    "mode": "force"
+  }
+]
+```
+
+### 字段说明
+
+- **`source`** (必填): 源路径模式, 用于匹配被拦截的文件路径。支持变量占位符和 glob 通配符。
+- **`target`** (必填): 目标路径模板, 匹配成功后替换的目标路径。捕获的通配符内容会填充到模板对应位置。
+- **`mode`** (必填): 映射模式, 取值为 `"fallback"` 或 `"force"`。
+  - `"fallback"`: 目标文件不存在时回退到源路径, 不做重定向。
+  - `"force"`: 无条件重定向, 不管目标文件是否存在。
+- **`cfg`** (可选): 条件编译守卫, 值为完整的 cfg 表达式 (如 `feature = "enable_resource_pack"`)。带此字段的规则仅在对应 feature 启用时生效。
+
+### 变量占位符
+
+路径中可以使用以下变量, 运行时自动替换为实际路径:
+
+| 变量 | 说明 |
+|------|------|
+| `{cwd}` | 当前工作目录 |
+| `{temp_dir}` | 系统临时目录 |
+| `{exe_dir}` | 游戏可执行文件所在目录 |
+| `{resource_pack_dir}` | 资源包解压目录 (需 `enable_resource_pack` 特性) |
+
+> 变量替换后, 路径中的 `\` 会自动统一为 `/`, 匹配时不区分大小写。
+
+### Glob 模式
+
+每个路径段 (以 `/` 分隔) 可以为以下三种形式:
+
+| 形式 | 匹配行为 |
+|------|----------|
+| 字面量段 (如 `data`, `MPX`) | 精确匹配 (不区分大小写) |
+| `*` 通配段 (如 `*.png`, `name.*`) | 匹配该层单个路径段, 记 1 个捕获组 |
+| `*.*` | 匹配该层含 `.` 的路径段, 记 2 个捕获组 |
+| `**` 递归通配 | 匹配零个或多个路径段 (含 `/`), 记 1 个捕获组 |
+
+> `source` 中 `*` 和 `**` 捕获的内容会按顺序填入 `target` 对应位置的 `*`/`**` 中。例如 `source: "a/*/b"` 匹配 `a/foo/b` → `target: "x/*/y"` → 输出 `x/foo/y`。
+
+### 路径校验规则
+
+过程宏在编译期会校验 `source` 和 `target` 的合法性, 以下写法会被拒绝:
+
+- **分隔符**: 必须使用 `/`, 禁止 `\\` (如 `a\\b\\*.png`)
+- **递归通配**: 整个模式最多允许一个 `**` (如 `**/**/**` 非法)
+- **通配段 `*` 数量**: 每个非 `**` 段最多一个 `*`, 特殊允许 `*.*` (恰好两个 `*`)。
+  - 合法: `*.png`, `file.*`, `*.*`
+  - 非法: `*.*.*`, `a*b*c`, `**.png` (`**` 本身就是一段, 后面不能再跟 `.png`)
+- **字面量段**: 不含 `*` 的段不得出现 `*` 字符
+- **捕获组数量一致**: `source` 和 `target` 的捕获组总数必须相等。`*` 记 1 个, `*.*` 记 2 个, `**` 记 1 个。
+  - 合法: `source: "a/*/b"` / `target: "x/*/y"` (各 1 个捕获组)
+  - 非法: `source: "a/*.*"` / `target: "x/*"` (`source` 有 2 个, `target` 有 1 个)

@@ -252,7 +252,7 @@ fn process_template_with_repeat(
         match tt {
             TokenTree::Ident(id) if id == "__repeat__" => {
                 if i >= tokens.len() {
-                    return Err(syn_err!(id, "`__repeat__` 后必须紧跟括号参数"));
+                    syn_bail!(id, "`__repeat__` 后必须紧跟括号参数");
                 }
                 let next = tokens[i].clone();
                 i += 1;
@@ -313,11 +313,11 @@ fn replace_tokens(ts: TokenStream, r: Replacement) -> syn::Result<TokenStream> {
                 match name.as_str() {
                     "__concat__" => {
                         if i >= tokens.len() {
-                            return Err(syn_err!(
+                            syn_bail!(
                                 id,
                                 "`__concat__` 后必须紧跟括号参数，如 `__concat__(\"a\", \
                                  __file_stem_str__)`",
-                            ));
+                            );
                         }
                         let next = tokens[i].clone();
                         i += 1;

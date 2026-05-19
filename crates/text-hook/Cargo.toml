@@ -14,17 +14,14 @@ crate-type = ["cdylib"]
 
 # 如下 bind_* 系列 feature 将特定组件绑定到 HookImplType--------
 
-# 启用资产虚拟化文件系统，Hook CreateFile 相关函数，如果命中到资源包里的资产文件，会重定向到资源包临时目录
-bind_asset_virtualizer = ["enable_resource_pack"]
+# 绑定虚拟文件系统，会HOOK相关文件函数来实现自定义路径映射
+bind_vfs = ["enable_vfs"]
 # Hook CreateFont 相关函数实现字体管理，使用 disable_forced_font 控制字体过滤的行为
 bind_font_manager = []
 # 通过 HOOK ExitProcess 以及相关函数
 # 实现对应于 PROCESS_ATTACH 阶段的清理工作
 # 默认不会执行清理，因为进程内资源系统可以正确进行清理回收
 bind_lifecycle_guard = []
-# Hook `CreateFileA`，将匹配 `REDIRECTION_SRC_PATH` 的文件重定向到 `REDIRECTION_TARGET_PATH`
-# 目前的实现十分简陋，需要确保 `REDIRECTION_SRC_PATH`，`REDIRECTION_TARGET_PATH`均为ascii
-bind_path_redirector = []
 # Hook `GDI` 相关的绘制函数，并将文本中的替身字符转换为正常字符，映射表由`translate_macros::generate_mapping_data!`生成
 # 使用 assume_text_out_arg_c_is_byte_len，将认为输入参数C是字节长度而不是字符长度
 bind_text_mapping = []
@@ -79,7 +76,10 @@ auto_apply_1337_patch_on_hwbp_hit = [
     "enable_x64dbg_1337_patch",
 ]
 
-# 启用运行期数据读取和存储，需要开启 bind_lifecycle_guard 或者显式调用 cleanup 才能正确保存数据
+# 启用虚拟文件系统，通过 `assets/vfs_rules.json` 来指定路径映射的规则
+# 关于 `assets/vfs_rules.json` 的写法，请参考 `docs/assets.md`
+enable_vfs = []
+# 启用运行期数据读取和存储，需要同时开启 `bind_lifecycle_guard` 或者显式调用 `cleanup` 才能正确保存数据
 enable_storage = ["dep:ron"]
 # 启用 overlay 的 egui 集成，依赖 OpenGL overlay
 enable_overlay_egui = ["enable_overlay_gl", "dep:egui", "dep:egui_glow"]
@@ -103,10 +103,9 @@ enable_hwbp_from_constants = ["enable_veh", "enable_delayed_attach"]
 enable_veh = []
 # 扫描 assets/resource_pack 生成资源包
 # 在DLL attach时，会将资源包解压到临时目录中
-# 在DLL detach时，会将临时目录删除
-# 若exe所在目录的同名文件存在于临时目录中
-# 则重定向到临时目录中，否则直接转发
-enable_resource_pack = ["dep:path-clean"]
+# 在DLL attach clean时，会将临时目录删除
+# 需要同时开启 `bind_vfs` 或者显式调用vfs的HOOK函数才能正确工作
+enable_resource_pack = ["enable_vfs"]
 # 内嵌资源包而不是外置
 embed_resource_pack = ["enable_resource_pack"]
 # 使用IAT HOOK，并且会根据 `assets/exe` 的PE文件导入表
@@ -119,7 +118,7 @@ enable_iat_hook = []
 
 # 截获并替换文本数据
 enable_text_patch = []
-# 提取文本而不是替换文本，需要开启 bind_lifecycle_guard 或者显式调用 cleanup 才能将原文输出
+# 提取文本而不是替换文本，需要同时开启 `bind_lifecycle_guard` 或者显式调用 `cleanup` 才能将原文输出
 extract_text = ["enable_text_patch"]
 # 截获并替换patch数据
 enable_patch = []
@@ -229,7 +228,7 @@ indexmap = { version = "2", features = ["serde"] }
 ntapi = "0.4"
 scopeguard = "1"
 const-str = "1"
-path-clean = { version = "1", optional = true }
+path-clean = "1"
 ruzstd = "0.8"
 glow = "0.17"
 bytemuck = { version = "1.25", features = ["derive"] }

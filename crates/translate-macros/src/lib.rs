@@ -1154,8 +1154,6 @@ pub fn generate_hook_lists(input: TokenStream) -> TokenStream {
 /// 宏会生成一个包含以下内容的内部模块：
 ///
 /// - `get_temp_dir()`: 返回资源提取的临时目录路径（`&'static Path`）。
-/// - `RESOURCE_PATHS`: 包含所有资源相对路径的 `phf::Set<&'static str>` 静态集合。
-/// - `is_resource(path: &str) -> bool`: 检查给定路径是否为资源包中的文件。
 /// - `extract() -> Result<()>`: 将资源提取到临时目录，自动处理压缩解压。
 /// - `cleanup() -> Result<()>`: 清理临时目录。
 #[proc_macro]
@@ -1311,6 +1309,48 @@ pub fn generate_bitmap_font(input: TokenStream) -> TokenStream {
 #[proc_macro]
 pub fn generate_entry_point_hook(input: TokenStream) -> TokenStream {
     match impls::generate_entry_point_hook::generate_entry_point_hook(input.into()) {
+        Ok(ts) => ts.into(),
+        Err(err) => err.into_compile_error().into(),
+    }
+}
+
+/// 从 VFS 路径映射规则 JSON 生成编译期规则常量。
+///
+/// 该宏读取一个或多个 JSON 文件, 将所有规则合并生成 `VFS_RULES` 常量数组。
+/// 调用方需在同一模块中定义 `RawVfsRule` 结构体、`VfsMode` 枚举和 `get_vfs_mode!` 宏。
+///
+/// # 语法
+///
+/// ```ignore
+/// generate_vfs_rules!("assets/vfs_rules.json", "constant_assets/vfs_rules.json");
+/// ```
+///
+/// # JSON 格式
+///
+/// 每个 JSON 文件为一个规则数组, 每条规则包含:
+///
+/// - `source`: 源路径模式, 支持 `{cwd}`, `{temp_dir}`, `{resource_pack_dir}` 等变量及 glob (`*`, `**`)
+/// - `target`: 目标路径模板
+/// - `mode`: `"fallback"` (目标不存在则回退) 或 `"force"` (强制映射)
+/// - `cfg`: 可选, 为该项添加 `#[cfg(...)]` 守卫, 值为完整的 cfg 条件表达式 (如 `feature = "embed_resource_pack"`)
+///
+/// # 路径模式约束
+///
+/// 编译期会对 `source` 和 `target` 路径模式进行校验:
+///
+/// - 路径分隔符必须使用 `/`, 禁止 `\\`
+/// - 整个模式中 `**` 最多出现一次, 拒绝 `**/**/**` 等重复写法
+/// - 含 `*` 的 glob 段(非 `**`) 每段允许一个 `*` (`*.ext`, `name.*`), 或两个 `*` 仅限 `*.*`
+/// - 不含 `*` 的字面量段不得出现 `*`
+/// - `source` 和 `target` 的捕获组 (`*` 为 1 个, `*.*` 为 2 个, `**` 为 1 个) 数量必须一致
+///
+/// # 生成内容
+///
+/// 生成一个 `pub const VFS_RULES: &[RawVfsRule]` 常量数组, 每条规则调用 `get_vfs_mode!(mode)` 转换模式。
+/// 带 `cfg` 字段的条目会包裹 `#[cfg(...)]`。
+#[proc_macro]
+pub fn generate_vfs_rules(input: TokenStream) -> TokenStream {
+    match impls::generate_vfs_rules::generate_vfs_rules(input.into()) {
         Ok(ts) => ts.into(),
         Err(err) => err.into_compile_error().into(),
     }

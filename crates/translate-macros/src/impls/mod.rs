@@ -14,4 +14,5 @@ pub(crate) mod generate_patch_data;
 pub(crate) mod generate_patch_fn_from_1337;
 pub(crate) mod generate_resource_pack;
 pub(crate) mod generate_text_patch_data;
+pub(crate) mod generate_vfs_rules;
 pub(crate) mod search_hook_impls;

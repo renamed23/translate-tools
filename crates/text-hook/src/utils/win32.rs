@@ -147,6 +147,25 @@ pub fn get_current_dir(add_null: bool) -> crate::Result<Vec<u16>> {
     })
 }
 
+/// 获取临时目录路径
+pub fn get_temp_dir(add_null: bool) -> crate::Result<Vec<u16>> {
+    use windows_sys::Win32::Storage::FileSystem::GetTempPathW;
+
+    fetch_win32_string(add_null, |ptr, size| unsafe {
+        crate::debug!("GetTempPathW fetch_win32_string {size}");
+
+        let k = GetTempPathW(size as u32, ptr) as usize;
+
+        if k == 0 {
+            FetchResult::Error(GetLastError())
+        } else if k > size {
+            FetchResult::Required(k)
+        } else {
+            FetchResult::Success(k)
+        }
+    })
+}
+
 /// 加载被劫持的DLL库
 ///
 /// 此函数用于加载DLL，支持两种模式：

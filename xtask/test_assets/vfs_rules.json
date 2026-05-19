@@ -1,0 +1,7 @@
+[
+    {
+        "source": "{cwd}/MPX/*.*",
+        "target": "{cwd}/MPX_chs/*.*",
+        "mode": "fallback"
+    }
+]

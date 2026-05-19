@@ -45,8 +45,6 @@
     "type": "&str"
   },
   "HIJACKED_DLL_PATH": "some_path/your_dll.dll",
-  "REDIRECTION_SRC_PATH": "B.FL4",
-  "REDIRECTION_TARGET_PATH": "FLOWERS_CHS.FL4",
   "RESOURCE_PACK_NAME": "MOZU_chs",
   "HWBP_REG": "crate::utils::hwbp::HwReg::Dr2",
   "HWBP_TYPE": "crate::utils::hwbp::HwBreakpointType::Execute",

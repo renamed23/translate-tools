@@ -28,13 +28,13 @@ pub fn sha256_of_bytes(data: &[u8]) -> [u8; 32] {
     arr
 }
 
-/// 获取可执行文件所在目录的路径，若失败将会 panic
+/// 获取可执行文件所在目录的路径
 pub fn get_executable_dir() -> &'static Path {
     static EXECUTABLE_DIR: LazyLock<PathBuf> = LazyLock::new(|| {
         crate::utils::win32::get_module_file_name(core::ptr::null_mut(), false)
             .ok()
             .and_then(|p| p.to_path_buf().parent().map(Path::to_path_buf))
-            .expect("Failed to get executable directory")
+            .unwrap_or_else(|| PathBuf::from("."))
     });
 
     &EXECUTABLE_DIR

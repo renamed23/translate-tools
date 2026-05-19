@@ -58,9 +58,7 @@ pub fn ffi_guard(attr: TokenStream, item: TokenStream) -> syn::Result<TokenStrea
     let return_kind = ReturnKind::from_return_type(&func.sig.output);
 
     if matches!(return_kind, ReturnKind::Result(_)) && on_err.is_none() {
-        return Err(syn_err2!(
-            "返回类型为 Result 时必须提供 on_err 或 on_err_or_panic 配置"
-        ));
+        syn_bail2!("返回类型为 Result 时必须提供 on_err 或 on_err_or_panic 配置");
     }
 
     if let Some(output) = return_kind.try_flatten_result() {
