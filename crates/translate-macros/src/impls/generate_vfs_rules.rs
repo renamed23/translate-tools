@@ -337,3 +337,122 @@ fn validate_pattern(pattern: &str, field_name: &str) -> syn::Result<()> {
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_count_pattern_captures() {
+        // 0 捕获
+        assert_eq!(count_pattern_captures("abc/def"), 0);
+        assert_eq!(count_pattern_captures(""), 0);
+
+        // 1 捕获
+        assert_eq!(count_pattern_captures("abc/*"), 1);
+        assert_eq!(count_pattern_captures("*.ext"), 1);
+        assert_eq!(count_pattern_captures("abc*def"), 1);
+        assert_eq!(count_pattern_captures("**"), 1);
+        assert_eq!(count_pattern_captures("a/**/b"), 1);
+
+        // 2 捕获
+        assert_eq!(count_pattern_captures("*.*"), 2);
+        assert_eq!(count_pattern_captures("a/*.*"), 2);
+        assert_eq!(count_pattern_captures("a/*/*"), 2);
+
+        // 混合捕获
+        assert_eq!(count_pattern_captures("a/**/b/*.json"), 2);
+    }
+
+    #[test]
+    fn test_validate_path_vars_success() {
+        // 合法变量测试
+        assert!(validate_path_vars("foo/{cwd}/bar", "test").is_ok());
+        assert!(validate_path_vars("{temp_dir}/myapp", "test").is_ok());
+        assert!(validate_path_vars("path/to/{exe_dir}", "test").is_ok());
+        assert!(validate_path_vars("{resource_pack_dir}/assets", "test").is_ok());
+        assert!(validate_path_vars("no_vars_at_all", "test").is_ok());
+    }
+
+    #[test]
+    fn test_validate_path_vars_failures() {
+        // 未知变量
+        let res = validate_path_vars("{unknown_var}/foo", "test");
+        assert!(res.is_err());
+        assert!(res.unwrap_err().to_string().contains("包含未知变量"));
+
+        // 空变量
+        let res = validate_path_vars("foo/{}/bar", "test");
+        assert!(res.is_err());
+        assert!(res.unwrap_err().to_string().contains("包含空变量"));
+
+        // 未闭合的左括号
+        let res = validate_path_vars("foo/{cwd", "test");
+        assert!(res.is_err());
+        assert!(res.unwrap_err().to_string().contains("中的变量未闭合"));
+
+        // 非法嵌套
+        let res = validate_path_vars("foo/{a{b}}bar", "test");
+        assert!(res.is_err());
+        assert!(res.unwrap_err().to_string().contains("包含非法嵌套"));
+
+        // 未匹配的右括号
+        let res = validate_path_vars("foo/cwd}", "test");
+        assert!(res.is_err());
+        assert!(res.unwrap_err().to_string().contains("包含未匹配的"));
+    }
+
+    #[test]
+    fn test_validate_dir_path() {
+        // 正常路径
+        assert!(validate_dir_path("{cwd}/my_dir").is_ok());
+
+        // 边界：空路径
+        let res = validate_dir_path("");
+        assert!(res.is_err());
+        assert!(res.unwrap_err().to_string().contains("路径不能为空"));
+
+        // 边界：包含反斜杠
+        let res = validate_dir_path("foo\\bar");
+        assert!(res.is_err());
+        assert!(res.unwrap_err().to_string().contains("包含非法分隔符"));
+
+        // 边界：包含通配符
+        let res = validate_dir_path("foo/*/bar");
+        assert!(res.is_err());
+        assert!(res.unwrap_err().to_string().contains("包含非法通配符"));
+    }
+
+    #[test]
+    fn test_validate_pattern_success() {
+        // 允许的常规 glob 模式
+        assert!(validate_pattern("abc/def", "source").is_ok());
+        assert!(validate_pattern("abc/*.ext", "source").is_ok());
+        assert!(validate_pattern("abc/name.*", "source").is_ok());
+        assert!(validate_pattern("abc/*.*", "source").is_ok());
+        assert!(validate_pattern("abc/**/def", "source").is_ok());
+    }
+
+    #[test]
+    fn test_validate_pattern_failures() {
+        // 空路径
+        assert!(validate_pattern("", "source").is_err());
+
+        // 包含反斜杠
+        assert!(validate_pattern("foo\\*", "source").is_err());
+
+        // 多个 ** 级联或分散在不同段
+        let res = validate_pattern("a/**/**/b", "source");
+        assert!(res.is_err());
+        assert!(res.unwrap_err().to_string().contains("最多允许一个"));
+
+        // 单段中出现多余的 * （不满足 *.ext, name.*, *.* 等白名单写法）
+        let res = validate_pattern("abc/a*b*c", "source");
+        assert!(res.is_err());
+        assert!(res.unwrap_err().to_string().contains("包含 2 个 `*`"));
+
+        // 类似于 ** 但多了其他字符的非法写法（例如 abc/**a）也会被星号计数器和段校验拦截
+        let res = validate_pattern("abc/**a/def", "source");
+        assert!(res.is_err());
+    }
+}

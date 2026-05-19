@@ -149,8 +149,13 @@ pub fn try_redirect(path: &Path) -> crate::Result<Option<PathBuf>> {
 
             match rule.mode {
                 VfsMode::Fallback => {
-                    if target_path.try_exists().unwrap_or(false) {
-                        return Ok(Some(target_path));
+                    match target_path.try_exists() {
+                        Ok(true) => return Ok(Some(target_path)),
+                        Ok(false) => (),
+                        Err(e) => crate::debug!(
+                            "VFS error: try exists for '{}' failed with {e}",
+                            target_path.display()
+                        ),
                     }
                     crate::debug!("VFS fallback: target not found, using original path");
                     return Ok(None);

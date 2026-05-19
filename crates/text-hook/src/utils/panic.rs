@@ -33,7 +33,7 @@ cfg_select! {
         }
     }
     _ => {
-        /// 当未启用 "enable_debug_output" 特性时的空实现
+        /// 当未启用 `enable_debug_output` 特性时的空实现
         #[allow(dead_code)]
         pub fn set_debug_panic_hook() {
             // 不设置任何 panic hook，保持默认行为

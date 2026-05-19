@@ -3,7 +3,7 @@ pub(crate) mod debug_impl {
     use std::sync::Once;
 
     use windows_sys::Win32::{
-        Foundation::{GetLastError, NTSTATUS, RtlNtStatusToDosError},
+        Foundation::GetLastError,
         Globalization::CP_UTF8,
         System::{
             Console::{AllocConsole, SetConsoleCP, SetConsoleOutputCP},
@@ -50,14 +50,6 @@ pub(crate) mod debug_impl {
     pub fn get_last_error_message() -> Option<String> {
         unsafe {
             let error_code = GetLastError();
-            get_last_error_message_from_ec(error_code)
-        }
-    }
-
-    /// 将 NTSTATUS 转换为系统错误消息。
-    pub fn get_last_error_message_from_ntstatus(status: NTSTATUS) -> Option<String> {
-        unsafe {
-            let error_code = RtlNtStatusToDosError(status);
             get_last_error_message_from_ec(error_code)
         }
     }
@@ -152,16 +144,6 @@ macro_rules! print_last_error_message {
         #[cfg(feature = "enable_debug_output")]
         {
             if let Some(msg) = $crate::debug_output::debug_impl::get_last_error_message_from_ec($ec)
-            {
-                $crate::debug!("[system error]: {}", msg);
-            }
-        }
-    }};
-    (nt $ntstatus:expr) => {{
-        #[cfg(feature = "enable_debug_output")]
-        {
-            if let Some(msg) =
-                $crate::debug_output::debug_impl::get_last_error_message_from_ntstatus($ntstatus)
             {
                 $crate::debug!("[system error]: {}", msg);
             }

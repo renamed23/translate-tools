@@ -4,7 +4,6 @@ pub(crate) mod hwbp;
 pub(crate) mod interner;
 pub(crate) mod log_font;
 pub(crate) mod mem;
-pub(crate) mod nt;
 pub(crate) mod panic;
 pub(crate) mod raii_wrapper;
 pub(crate) mod win32;

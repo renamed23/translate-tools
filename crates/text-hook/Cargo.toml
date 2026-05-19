@@ -192,7 +192,6 @@ blackbox = ["export_default_dll_main", "enable_text_patch"]
 translate-macros.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-tap.workspace = true
 sha2.workspace = true
 
 windows-sys = { version = "0.61", features = [
@@ -225,7 +224,6 @@ windows-sys = { version = "0.61", features = [
 retour = { git = "https://github.com/renamed23/retour-rs", branch = "self-use" }
 phf = { version = "0.13", features = ["macros"] }
 indexmap = { version = "2", features = ["serde"] }
-ntapi = "0.4"
 scopeguard = "1"
 const-str = "1"
 path-clean = "1"
