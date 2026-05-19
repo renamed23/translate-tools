@@ -1,3 +1,5 @@
+use std::collections::{HashMap, HashSet};
+
 use proc_macro2::TokenStream;
 use quote::quote;
 use serde::Deserialize;
@@ -14,6 +16,8 @@ struct VfsRuleEntry {
     mode: String,
     #[serde(default)]
     cfg: Option<String>,
+    #[serde(default)]
+    create_dirs: Option<Vec<String>>,
 }
 
 pub fn generate_vfs_rules(input: TokenStream) -> syn::Result<TokenStream> {
@@ -29,12 +33,16 @@ pub fn generate_vfs_rules(input: TokenStream) -> syn::Result<TokenStream> {
     }
 
     let entries = make_rule_entries(&all_rules)?;
+    let create_dirs = collect_create_dirs(&all_rules)?;
 
     let output = quote! {
         pub const VFS_RULES: &[RawVfsRule] = &[
             #(#entries),*
         ];
 
+        pub const CREATE_DIRS: &[&str] = &[
+            #(#create_dirs),*
+        ];
     };
 
     Ok(output)
@@ -87,6 +95,169 @@ fn make_rule_entries(rules: &[VfsRuleEntry]) -> syn::Result<Vec<TokenStream>> {
         .collect()
 }
 
+/// 编译期收集并去重 `create_dirs`，生成 `CREATE_DIRS` 常量数组的 token 序列。
+///
+/// 规则:
+/// - 同一 `(cfg, path)` 去重（一个 path 下给定 cfg 只保留一次）
+/// - 不同 `cfg` 下的同一 path 各自保留（`any(a, b)` 语义）
+/// - 无条件条目覆盖条件条目：若存在无 `cfg` 的 path，则丢弃所有带 `cfg` 的同 path 项
+fn collect_create_dirs(rules: &[VfsRuleEntry]) -> syn::Result<Vec<TokenStream>> {
+    let mut seen: HashSet<(Option<&str>, &str)> = HashSet::new();
+    let mut unconditional: HashSet<&str> = HashSet::new();
+    let mut items: Vec<(Option<&str>, &str)> = Vec::new();
+
+    // 第一步：先收集无条件项，并做合法性校验与基本去重
+    for rule in rules {
+        if let Some(ref dirs) = rule.create_dirs {
+            let cfg_ref: Option<&str> = rule.cfg.as_deref();
+            for dir in dirs {
+                let dir_str = dir.as_str();
+                validate_dir_path(dir_str)?;
+
+                if cfg_ref.is_none() {
+                    unconditional.insert(dir_str);
+                }
+            }
+        }
+    }
+
+    // 第二步：严格按照用户原始物理顺序进行有效条目装载，确保生成顺序100%稳定
+    for rule in rules {
+        if let Some(ref dirs) = rule.create_dirs {
+            let cfg_ref: Option<&str> = rule.cfg.as_deref();
+            for dir in dirs {
+                let dir_str = dir.as_str();
+
+                // 如果已经有无条件项，带条件的直接不进队列
+                if cfg_ref.is_some() && unconditional.contains(dir_str) {
+                    continue;
+                }
+
+                // 依靠插入判定进行严格的 (cfg, path) 物理去重
+                if seen.insert((cfg_ref, dir_str)) {
+                    items.push((cfg_ref, dir_str));
+                }
+            }
+        }
+    }
+
+    let mut tokens = Vec::with_capacity(items.len());
+    let mut cfg_cache: HashMap<&str, TokenStream> = HashMap::new();
+
+    for (cfg, dir) in items {
+        if let Some(cfg_str) = cfg {
+            let cfg_expr = if let Some(ts) = cfg_cache.get(cfg_str) {
+                ts.clone()
+            } else {
+                let ts = parse_cfg_expr(cfg_str)?;
+                cfg_cache.insert(cfg_str, ts.clone());
+                ts
+            };
+
+            tokens.push(quote! {
+                #[cfg(#cfg_expr)]
+                #dir
+            });
+        } else {
+            tokens.push(quote! {
+                #dir
+            });
+        }
+    }
+
+    Ok(tokens)
+}
+
+const ALLOWED_PATH_VARS: &[&str] = &["cwd", "temp_dir", "exe_dir", "resource_pack_dir"];
+
+/// 校验路径中的 `{var}` 占位符是否合法。
+///
+/// 允许:
+/// - `{cwd}`
+/// - `{temp_dir}`
+/// - `{exe_dir}`
+/// - `{resource_pack_dir}`
+///
+/// 禁止:
+/// - 未知变量
+/// - 空变量 `{}`
+/// - 未闭合 `{abc`
+/// - 多余 `}`
+/// - 嵌套 `{a{b}}`
+fn validate_path_vars(path: &str, field_name: &str) -> syn::Result<()> {
+    let mut chars = path.char_indices().peekable();
+
+    while let Some((i, c)) = chars.next() {
+        match c {
+            '{' => {
+                // 寻找闭合的 '}'
+                let start = i + 1;
+                let mut end = None;
+
+                // 检查内部是否有嵌套的 '{' 或者直接找到 '}'
+                while let Some(&(next_i, next_c)) = chars.peek() {
+                    if next_c == '{' {
+                        syn_bail2!("{field_name} 路径 `{path}` 包含非法嵌套 `{{`");
+                    }
+                    if next_c == '}' {
+                        end = Some(next_i);
+                        chars.next(); // 消耗掉 '}'
+                        break;
+                    }
+                    chars.next();
+                }
+
+                let end_i = match end {
+                    Some(pos) => pos,
+                    None => syn_bail2!("{field_name} 路径 `{path}` 中的变量未闭合"),
+                };
+
+                // 因为是通过 char_indices 拿到的物理位置，切片绝对安全
+                let var = &path[start..end_i];
+
+                if var.is_empty() {
+                    syn_bail2!("{field_name} 路径 `{path}` 包含空变量 `{{}}`");
+                }
+
+                if !ALLOWED_PATH_VARS.contains(&var) {
+                    syn_bail2!(
+                        "{field_name} 路径 `{path}` 包含未知变量 `{{{var}}}`，允许的变量: {}",
+                        ALLOWED_PATH_VARS.join(", ")
+                    );
+                }
+            }
+            '}' => {
+                syn_bail2!("{field_name} 路径 `{path}` 包含未匹配的 `}}`");
+            }
+            _ => {}
+        }
+    }
+
+    Ok(())
+}
+
+/// 校验目录路径：
+///
+/// 规则:
+/// - 禁止 `*`（glob 无意义）
+/// - 禁止 `\\`
+/// - 禁止空串
+/// - 只允许白名单 `{var}`
+fn validate_dir_path(path: &str) -> syn::Result<()> {
+    validate_path_vars(path, "create_dirs")?;
+
+    if path.is_empty() {
+        syn_bail2!("create_dirs 路径不能为空");
+    }
+    if path.contains('\\') {
+        syn_bail2!("create_dirs 路径 `{path}` 包含非法分隔符 `\\`, 请使用 `/`");
+    }
+    if path.contains('*') {
+        syn_bail2!("create_dirs 路径 `{path}` 包含非法通配符 `*`, 目录路径不支持 glob");
+    }
+    Ok(())
+}
+
 /// 统计 pattern 中的 capture 数量
 ///
 /// 规则:
@@ -113,14 +284,19 @@ fn count_pattern_captures(pattern: &str) -> usize {
         .sum()
 }
 
-/// 编译期校验 VFS 路径模式, 拒绝所有会导致运行时 pattern 解析出错的非法写法。
+/// 编译期校验 VFS 路径模式，拒绝所有会导致运行时 pattern 解析出错的非法写法。
 ///
 /// 规则:
 /// - 路径分隔符必须严格使用 `/`, 禁止 `\\`
 /// - 整个模式中 `**` 最多出现一次
-/// - 含 `*` 的非 `**` 段(glob 段), 允许一个 `*` (`*.ext`, `name.*`), 或两个 `*` 仅限 `*.*`
+/// - 含 `*` 的非 `**` 段(glob 段), 允许:
+///   - 一个 `*` (`*.ext`, `name.*`)
+///   - 两个 `*` 仅限 `*.*`
 /// - 不含 `*` 的字面量段不能出现 `*`
+/// - 只允许白名单 `{var}`
 fn validate_pattern(pattern: &str, field_name: &str) -> syn::Result<()> {
+    validate_path_vars(pattern, field_name)?;
+
     if pattern.contains('\\') {
         syn_bail2!("{field_name} 路径 `{pattern}` 包含非法分隔符 `\\`, 请使用 `/`");
     }

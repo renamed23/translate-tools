@@ -1333,6 +1333,8 @@ pub fn generate_entry_point_hook(input: TokenStream) -> TokenStream {
 /// - `target`: 目标路径模板
 /// - `mode`: `"fallback"` (目标不存在则回退) 或 `"force"` (强制映射)
 /// - `cfg`: 可选, 为该项添加 `#[cfg(...)]` 守卫, 值为完整的 cfg 条件表达式 (如 `feature = "embed_resource_pack"`)
+/// - `create_dirs`: 可选, 字符串数组。预创建的目录路径, 支持变量占位符, 禁止 glob 通配符 (`*`),
+///   路径分隔符须用 `/`。受 `cfg` 守卫控制。
 ///
 /// # 路径模式约束
 ///
@@ -1343,6 +1345,9 @@ pub fn generate_entry_point_hook(input: TokenStream) -> TokenStream {
 /// - 含 `*` 的 glob 段(非 `**`) 每段允许一个 `*` (`*.ext`, `name.*`), 或两个 `*` 仅限 `*.*`
 /// - 不含 `*` 的字面量段不得出现 `*`
 /// - `source` 和 `target` 的捕获组 (`*` 为 1 个, `*.*` 为 2 个, `**` 为 1 个) 数量必须一致
+/// - `create_dirs` 中的路径须使用 `/` 分隔, 且禁止出现 `*`
+/// - 变量占位符仅限 `{cwd}`, `{temp_dir}`, `{exe_dir}`, `{resource_pack_dir}`,
+///   拒绝未知变量、空变量 `{}`、未闭合/未匹配的花括号、嵌套花括号 `{a{b}}`
 ///
 /// # 生成内容
 ///

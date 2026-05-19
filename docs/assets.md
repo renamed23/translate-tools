@@ -218,12 +218,14 @@ VFS (Virtual File System) 规则配置, 用于将源路径重定向到目标路�
     "source": "{cwd}/data/**/*.*",
     "target": "{cwd}/data_chs/**/*.*",
     "mode": "fallback",
+    "create_dirs": ["{cwd}/data_chs/sub1", "{cwd}/data_chs/sub2"],
     "cfg": "feature = \"enable_resource_pack\""
   },
   {
-    "source": "{cwd}/MPX/*.*",
-    "target": "{cwd}/MPX_chs/*.*",
-    "mode": "force"
+    "source": "{exe_dir}/save/*.*",
+    "target": "{exe_dir}/save_chs/*.*",
+    "mode": "force",
+    "create_dirs": ["{exe_dir}/save_chs"]
   }
 ]
 ```
@@ -236,6 +238,7 @@ VFS (Virtual File System) 规则配置, 用于将源路径重定向到目标路�
   - `"fallback"`: 目标文件不存在时回退到源路径, 不做重定向。
   - `"force"`: 无条件重定向, 不管目标文件是否存在。
 - **`cfg`** (可选): 条件编译守卫, 值为完整的 cfg 表达式 (如 `feature = "enable_resource_pack"`)。带此字段的规则仅在对应 feature 启用时生效。
+- **`create_dirs`** (可选): 字符串数组。规则生效前预创建的目标目录路径。支持变量占位符 (`{cwd}` 等), 禁止 glob 通配符, 分隔符须用 `/`。受 `cfg` 守卫控制。同一规则内的 `create_dirs` 共享该规则的 `cfg`；若不同 `cfg` 的规则指定了同一目录路径, 则在各自的 `cfg` 条件下分别创建（类似 `any(a, b)` 语义）。
 
 ### 变量占位符
 
@@ -249,6 +252,8 @@ VFS (Virtual File System) 规则配置, 用于将源路径重定向到目标路�
 | `{resource_pack_dir}` | 资源包解压目录 (需 `enable_resource_pack` 特性) |
 
 > 变量替换后, 路径中的 `\` 会自动统一为 `/`, 匹配时不区分大小写。
+>
+> 以上四种为编译期白名单，任何未列出的 `{var}` 会触发编译错误。
 
 ### Glob 模式
 
@@ -276,3 +281,9 @@ VFS (Virtual File System) 规则配置, 用于将源路径重定向到目标路�
 - **捕获组数量一致**: `source` 和 `target` 的捕获组总数必须相等。`*` 记 1 个, `*.*` 记 2 个, `**` 记 1 个。
   - 合法: `source: "a/*/b"` / `target: "x/*/y"` (各 1 个捕获组)
   - 非法: `source: "a/*.*"` / `target: "x/*"` (`source` 有 2 个, `target` 有 1 个)
+- **目录路径**: `create_dirs` 中的路径禁止出现 `*` 和 `\\`, 且不能为空。
+  - 合法: `{cwd}/data_chs/sub`, `{temp_dir}/cache`
+  - 非法: `{cwd}/data_*`, `C:\\data`
+- **变量占位符**: `source`, `target`, `create_dirs` 中的所有 `{var}` 占位符仅限以下四种:
+  `{cwd}`, `{temp_dir}`, `{exe_dir}`, `{resource_pack_dir}`。
+  拒绝未知变量（如 `{foobar}`）、空变量 `{}`、未闭合花括号 `{abc`、孤立花括号 `}`、嵌套 `{a{b}}`。

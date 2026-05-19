@@ -111,6 +111,14 @@ fn resolve_rule(raw: &RawVfsRule, vars: &HashMap<String, String>) -> ResolvedRul
 /// 全局编译后的规则表
 static RULES: LazyLock<Vec<ResolvedRule>> = LazyLock::new(|| {
     let vars = default_vars();
+
+    for dir in rules::CREATE_DIRS {
+        let expanded = expand_vars(dir, &vars);
+        if let Err(e) = std::fs::create_dir_all(&expanded) {
+            crate::debug!("VFS create_dir_all failed for `{expanded}`: {e}");
+        }
+    }
+
     rules::VFS_RULES
         .iter()
         .map(|raw| resolve_rule(raw, &vars))
