@@ -9,7 +9,6 @@ type EguiDefaultUiSlot = cfg_select! {
 };
 
 impl OverlayRender for EguiDefaultUiSlot {
-    #[cfg(feature = "enable_overlay")]
     fn on_overlay_render(context: &mut crate::overlay::OverlayContext) -> crate::Result<()> {
         context.egui.clear([0.0, 0.0, 0.0, 0.0]);
 

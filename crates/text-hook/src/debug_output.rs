@@ -91,40 +91,38 @@ macro_rules! fn_name {
 #[macro_export]
 macro_rules! debug {
     (raw $($arg:tt)*) => {{
-        #[cfg(feature = "enable_debug_output")]
-        {
-            $crate::debug_output::debug_impl::debug(
-                format_args!($($arg)*)
-            );
-        }
-
-        #[cfg(not(feature = "enable_debug_output"))]
-        {
-            #[allow(unreachable_code, clippy::let_unit_value)]
-            if false {
-                let _ = format_args!($($arg)*);
+        cfg_select! {
+            feature = "enable_debug_output" => {
+                $crate::debug_output::debug_impl::debug(
+                    format_args!($($arg)*)
+                );
+            }
+            _ => {
+                #[allow(unreachable_code, clippy::let_unit_value)]
+                if false {
+                    let _ = format_args!($($arg)*);
+                }
             }
         }
     }};
 
     ($($arg:tt)*) => {{
-        #[cfg(feature = "enable_debug_output")]
-        {
-            $crate::debug_output::debug_impl::debug(
-                format_args!(
-                    "[{}:{}] {}",
-                    $crate::fn_name!(),
-                    line!(),
-                    format_args!($($arg)*)
-                )
-            );
-        }
-
-        #[cfg(not(feature = "enable_debug_output"))]
-        {
-            #[allow(unreachable_code, clippy::let_unit_value)]
-            if false {
-                let _ = format_args!($($arg)*);
+        cfg_select! {
+            feature = "enable_debug_output" => {
+                $crate::debug_output::debug_impl::debug(
+                    format_args!(
+                        "[{}:{}] {}",
+                        $crate::fn_name!(),
+                        line!(),
+                        format_args!($($arg)*)
+                    )
+                );
+            },
+            _ => {
+                #[allow(unreachable_code, clippy::let_unit_value)]
+                if false {
+                    let _ = format_args!($($arg)*);
+                }
             }
         }
     }};

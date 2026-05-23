@@ -36,11 +36,6 @@ impl CreateFile for VfsSlot {
 
             match crate::vfs::try_redirect(&path) {
                 Ok(Some(target)) => {
-                    crate::debug!(
-                        "VFS: {} -> {}",
-                        path.to_string_lossy(),
-                        target.to_string_lossy()
-                    );
                     return crate::call!(
                         HOOK_CREATE_FILE_W,
                         target.to_wide_null().as_ptr(),
@@ -53,10 +48,7 @@ impl CreateFile for VfsSlot {
                     );
                 }
                 Err(e) => {
-                    crate::debug!(
-                        "VFS redirect failed for {}: {e:?}",
-                        path.to_string_lossy()
-                    );
+                    crate::debug!("VFS redirect failed for {}: {e:?}", path.to_string_lossy());
                 }
                 _ => {}
             }
@@ -88,11 +80,6 @@ impl CreateFile for VfsSlot {
 
             match crate::vfs::try_redirect(&path) {
                 Ok(Some(target)) => {
-                    crate::debug!(
-                        "VFS: {} -> {}",
-                        path.to_string_lossy(),
-                        target.to_string_lossy()
-                    );
                     return crate::call!(
                         HOOK_CREATE_FILE_W,
                         target.to_wide_null().as_ptr(),
@@ -105,10 +92,7 @@ impl CreateFile for VfsSlot {
                     );
                 }
                 Err(e) => {
-                    crate::debug!(
-                        "VFS redirect failed for {}: {e:?}",
-                        path.to_string_lossy()
-                    );
+                    crate::debug!("VFS redirect failed for {}: {e:?}", path.to_string_lossy());
                 }
                 _ => {}
             }

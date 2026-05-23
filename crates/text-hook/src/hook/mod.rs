@@ -44,14 +44,9 @@ pub fn disable_hooks_from_lists() {
 #[macro_export]
 macro_rules! call {
     ($hook:ident, $($arg:tt)*) => {{
-        #[cfg(not(feature = "enable_iat_hook"))]
-        {
-            $hook.call($($arg)*)
-        }
-
-        #[cfg(feature = "enable_iat_hook")]
-        {
-            $hook.orig()($($arg)*)
+        cfg_select! {
+            feature = "enable_iat_hook" => $hook.orig()($($arg)*),
+            _ => $hook.call($($arg)*)
         }
     }};
 }
