@@ -365,4 +365,51 @@ mod tests {
         let caps = matcher.match_path("a/b/b/apple.txt").unwrap();
         assert_eq!(caps, vec!["b", "apple"]);
     }
+
+    #[test]
+    fn test_vfs_redirect_capture_and_win32_wildcards() {
+        // 核心场景：用户发起 FindFirst 搜索 "virtual/storage/*.txt" 或者是含有 "?" 的 "virtual/storage/file?.txt"
+        // 我们的路由匹配器只需通过 `*` 捕捉到含有 Win32 特殊字符的文件名段，然后原封不动地填入底层物理路径模板中！
+        let matcher = PatternMatcher::compile("virtual/storage/*");
+        let template = PatternTemplate::compile("d:/real_shares/data/*");
+
+        // 1. 用户想找带 `?` 的文件：例如传入已被规范化的 "virtual/storage/data?.db"
+        let input_with_question = "virtual/storage/data?.db";
+        let caps_q = matcher.match_path(input_with_question).unwrap();
+        assert_eq!(caps_q, vec!["data?.db"]); // 完美捕获带 `?` 的文件名
+
+        // 填充至重定向目标模板中，产生最终可以直接喂给系统原生 FindFirstFileW 的物理路径
+        let real_path_q = template.fill(&caps_q);
+        assert_eq!(real_path_q, "d:/real_shares/data/data?.db");
+
+        // 2. 用户想找带常规 `*` 的文件：例如传入已被规范化的 "virtual/storage/*.log"
+        let input_with_star = "virtual/storage/*.log";
+        let caps_s = matcher.match_path(input_with_star).unwrap();
+        assert_eq!(caps_s, vec!["*.log"]);
+
+        let real_path_s = template.fill(&caps_s);
+        assert_eq!(real_path_s, "d:/real_shares/data/*.log");
+    }
+
+    #[test]
+    fn test_vfs_redirect_normalized_path_compatibility() {
+        // 假设拦截的原始 Win32 请求为： r"\\?\C:\VFS\Mount\Logs\ERR?.TXT"
+        // 经清理后为 "c:/vfs/mount/logs/err?.txt"
+        let matcher = PatternMatcher::compile("c:/vfs/mount/**/logs/*");
+        let template = PatternTemplate::compile("e:/physical_drive/app_data/**/logs/*");
+
+        let clean_input = "c:/vfs/mount/production/srv1/logs/err?.txt";
+        let caps = matcher.match_path(clean_input).unwrap();
+
+        // 捕获组1 为 `**` 的内容 -> "production/srv1"
+        // 捕获组2 为 `*` 的内容  -> "err?.txt"
+        assert_eq!(caps, vec!["production/srv1", "err?.txt"]);
+
+        let final_physical_search_path = template.fill(&caps);
+        // 这个最终路径可以直接被包装层拿去调用内核的 FindFirstFileW 遍历真实磁盘了
+        assert_eq!(
+            final_physical_search_path,
+            "e:/physical_drive/app_data/production/srv1/logs/err?.txt"
+        );
+    }
 }
