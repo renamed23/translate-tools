@@ -113,7 +113,7 @@ fn run_unit_tests(shell: &Shell) -> anyhow::Result<()> {
 
     let features = feature_set(all_functional_impl_base(), &["default_impl"], &[]);
     let features_str = features.join(",");
-    println!("  执行 Test: cargo test -p text-hook --lib --features {}", features_str);
+    println!("  执行 Test: cargo test -p text-hook --lib --features {features_str}",);
     cmd!(
         shell,
         "cargo test --package text-hook --lib --quiet --features {features_str}"

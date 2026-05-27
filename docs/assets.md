@@ -210,7 +210,7 @@ DLL会`inline hook`入口点，然后加载被劫持的DLL，并获取导出函�
 
 ## vfs_rules.json
 
-VFS (Virtual File System) 规则配置, 用于将源路径重定向到目标路径。对文件访问进行透明拦截, 无需修改游戏逻辑。
+VFS (Virtual File System) 规则配置, 用于将源路径重定向到目标路径。对文件访问与目录枚举进行透明拦截（`CreateFile`、`FindFirstFile`/`FindFirstFileEx`/`FindNextFile`/`FindClose`）, 无需修改游戏逻辑。
 
 ```json
 [
@@ -235,8 +235,10 @@ VFS (Virtual File System) 规则配置, 用于将源路径重定向到目标路�
 - **`source`** (必填): 源路径模式, 用于匹配被拦截的文件路径。支持变量占位符和 glob 通配符。
 - **`target`** (必填): 目标路径模板, 匹配成功后替换的目标路径。捕获的通配符内容会填充到模板对应位置。
 - **`mode`** (必填): 映射模式, 取值为 `"fallback"` 或 `"force"`。
-  - `"fallback"`: 目标文件不存在时回退到源路径, 不做重定向。
-  - `"force"`: 无条件重定向, 不管目标文件是否存在。
+  - `"fallback"`:
+    - 对 `CreateFile`：目标文件不存在时回退到源路径, 不做重定向。
+    - 对目录枚举（`FindFirstFile` 等）：合并源和目标两端的枚举结果, 重复文件名以目标优先。
+  - `"force"`: 无条件重定向, 不管目标是否存在。
 - **`cfg`** (可选): 条件编译守卫, 值为完整的 cfg 表达式 (如 `feature = "enable_resource_pack"`)。带此字段的规则仅在对应 feature 启用时生效。
 - **`create_dirs`** (可选): 字符串数组。规则生效前预创建的目标目录路径。支持变量占位符 (`{cwd}` 等), 禁止 glob 通配符, 分隔符须用 `/`。受 `cfg` 守卫控制。同一规则内的 `create_dirs` 共享该规则的 `cfg`；若不同 `cfg` 的规则指定了同一目录路径, 则在各自的 `cfg` 条件下分别创建（类似 `any(a, b)` 语义）。
 

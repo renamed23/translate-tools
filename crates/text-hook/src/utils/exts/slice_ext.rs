@@ -49,6 +49,9 @@ pub trait ByteSliceExt {
     /// 在当前字节序列末尾追加一个 `0u8` 终止符。
     fn with_null(&self) -> Vec<u8>;
 
+    /// 转换为 `&[i8]` 切片。
+    fn as_i8_slice(&self) -> &[i8];
+
     /// 获取补丁数据或执行提取。
     #[cfg(feature = "enable_patch")]
     fn get_patch_or_extract(&self) -> crate::Result<Option<&'static [u8]>>;
@@ -92,6 +95,10 @@ impl ByteSliceExt for [u8] {
         v.extend_from_slice(self);
         v.push(0);
         v
+    }
+
+    fn as_i8_slice(&self) -> &[i8] {
+        unsafe { core::slice::from_raw_parts(self.as_ptr().cast::<i8>(), self.len()) }
     }
 
     #[cfg(feature = "enable_patch")]
@@ -297,6 +304,11 @@ where
     fn copy_min_from_slice(&mut self, src: &[T]) -> usize {
         let len = self.len().min(src.len());
 
+        #[cfg(feature = "enable_debug_output")]
+        if src.len() > self.len() {
+            crate::debug!("truncated: src({}) > dst({})", src.len(), self.len());
+        }
+
         unsafe {
             core::ptr::copy(src.as_ptr(), self.as_mut_ptr(), len);
         }
@@ -309,7 +321,13 @@ where
             return 0;
         }
 
-        let len = (self.len() - 1).min(src.len());
+        let max_copy = self.len() - 1;
+        let len = max_copy.min(src.len());
+
+        #[cfg(feature = "enable_debug_output")]
+        if src.len() > max_copy {
+            crate::debug!("truncated: src({}) > dst({}) - 1", src.len(), self.len());
+        }
 
         unsafe {
             core::ptr::copy(src.as_ptr(), self.as_mut_ptr(), len);

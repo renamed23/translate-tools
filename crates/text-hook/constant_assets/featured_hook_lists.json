@@ -1,11 +1,22 @@
 {
   "feature = \"bind_vfs\"": {
     "trait": [
-      "CreateFile"
+      "CreateFile",
+      "FindFirstFile",
+      "FindNextFile",
+      "FindClose",
+      "FindFirstFileEx"
     ],
     "fn": [
       "CreateFileA",
-      "CreateFileW"
+      "CreateFileW",
+      "FindFirstFileA",
+      "FindFirstFileW",
+      "FindFirstFileExA",
+      "FindFirstFileExW",
+      "FindNextFileA",
+      "FindNextFileW",
+      "FindClose"
     ]
   },
   "feature = \"bind_font_manager\"": {

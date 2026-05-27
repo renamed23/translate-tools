@@ -3,7 +3,9 @@ use windows_sys::{
     Win32::{
         Foundation::{FALSE, HANDLE, INVALID_HANDLE_VALUE},
         Security::SECURITY_ATTRIBUTES,
-        Storage::FileSystem::{WIN32_FIND_DATAA, WIN32_FIND_DATAW},
+        Storage::FileSystem::{
+            FINDEX_INFO_LEVELS, FINDEX_SEARCH_OPS, WIN32_FIND_DATAA, WIN32_FIND_DATAW,
+        },
         System::IO::OVERLAPPED,
     },
     core::{BOOL, PCSTR, PCWSTR},
@@ -89,6 +91,37 @@ pub trait FindFirstFile {
     unsafe fn find_first_file_w(
         lp_file_name: PCWSTR,
         lp_find_file_data: *mut WIN32_FIND_DATAW,
+    ) -> HANDLE;
+}
+
+#[detour_trait]
+pub trait FindFirstFileEx {
+    #[detour(
+        dll = "kernel32.dll",
+        symbol = "FindFirstFileExA",
+        fallback = INVALID_HANDLE_VALUE
+    )]
+    unsafe fn find_first_file_ex_a(
+        lp_file_name: PCSTR,
+        f_info_level_id: FINDEX_INFO_LEVELS,
+        lp_find_file_data: *mut core::ffi::c_void,
+        f_search_op: FINDEX_SEARCH_OPS,
+        lp_search_filter: *mut core::ffi::c_void,
+        dw_additional_flags: u32,
+    ) -> HANDLE;
+
+    #[detour(
+        dll = "kernel32.dll",
+        symbol = "FindFirstFileExW",
+        fallback = INVALID_HANDLE_VALUE
+    )]
+    unsafe fn find_first_file_ex_w(
+        lp_file_name: PCWSTR,
+        f_info_level_id: FINDEX_INFO_LEVELS,
+        lp_find_file_data: *mut core::ffi::c_void,
+        f_search_op: FINDEX_SEARCH_OPS,
+        lp_search_filter: *mut core::ffi::c_void,
+        dw_additional_flags: u32,
     ) -> HANDLE;
 }
 

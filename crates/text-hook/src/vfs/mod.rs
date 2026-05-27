@@ -1,13 +1,15 @@
 mod pattern;
 
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     path::{Path, PathBuf},
     sync::LazyLock,
 };
 
+use windows_sys::Win32::Storage::FileSystem::WIN32_FIND_DATAW;
+
 use crate::{
-    utils::exts::slice_ext::WideSliceExt,
+    utils::exts::{ptr_ext::PtrExt, slice_ext::WideSliceExt},
     vfs::pattern::{PatternMatcher, PatternTemplate},
 };
 
@@ -125,14 +127,16 @@ static RULES: LazyLock<Vec<ResolvedRule>> = LazyLock::new(|| {
         .collect()
 });
 
-/// 尝试将 path 重定向到 VFS 规则中定义的目标路径
-///
-/// 返回 `Some(target_path)` 表示命中规则并成功映射, `None` 表示未命中任何规则
-/// 或 fallback 模式下目标文件不存在。
-///
-/// `target_path` 已经转为 `\\?\` 格式（如为绝对路径），可直接传给 Win32 API。
-pub fn try_redirect(path: &Path) -> crate::Result<Option<PathBuf>> {
+struct RedirectResult {
+    target_path: PathBuf,
+    mode: VfsMode,
+}
+
+/// 在规则表中查找匹配的路径规则，返回目标路径和模式。
+fn resolve_redirect(path: &Path) -> Option<RedirectResult> {
     let clean_path = normalize_path_to_string(path);
+
+    crate::debug!("VFS resolve: {clean_path}");
 
     for rule in RULES.iter() {
         if let Some(captures) = rule.matcher.match_path(&clean_path) {
@@ -146,28 +150,94 @@ pub fn try_redirect(path: &Path) -> crate::Result<Option<PathBuf>> {
             );
 
             let target_path = to_windows_path(&target_str);
-
-            match rule.mode {
-                VfsMode::Fallback => {
-                    match target_path.try_exists() {
-                        Ok(true) => return Ok(Some(target_path)),
-                        Ok(false) => (),
-                        Err(e) => crate::debug!(
-                            "VFS error: try exists for '{}' failed with {e}",
-                            target_path.display()
-                        ),
-                    }
-                    crate::debug!("VFS fallback: target not found, using original path");
-                    return Ok(None);
-                }
-                VfsMode::Force => {
-                    return Ok(Some(target_path));
-                }
-            }
+            return Some(RedirectResult {
+                target_path,
+                mode: rule.mode,
+            });
         }
     }
 
-    Ok(None)
+    None
+}
+
+/// 尝试将 path 重定向到 VFS 规则中定义的目标路径
+///
+/// 返回 `Some(target_path)` 表示命中规则并成功映射, `None` 表示未命中任何规则
+/// 或 fallback 模式下目标文件不存在。
+///
+/// `target_path` 已经转为 `\\?\` 格式（如为绝对路径），可直接传给 Win32 API。
+pub fn try_redirect(path: &Path) -> crate::Result<Option<PathBuf>> {
+    let Some(RedirectResult { target_path, mode }) = resolve_redirect(path) else {
+        return Ok(None);
+    };
+
+    crate::debug!("calling `try_redirect` with mode: {mode:?}");
+
+    match mode {
+        VfsMode::Force => Ok(Some(target_path)),
+        VfsMode::Fallback => {
+            if target_path.try_exists()? {
+                Ok(Some(target_path))
+            } else {
+                crate::debug!("VFS fallback: target not found, using original path");
+                Ok(None)
+            }
+        }
+    }
+}
+
+/// 从 `WIN32_FIND_DATAW` 中提取文件名（用于去重比较）。
+fn extract_filename(data: &WIN32_FIND_DATAW) -> String {
+    let cfile = unsafe {
+        data.cFileName
+            .as_ptr()
+            .to_slice_until_null(data.cFileName.len() - 1)
+    };
+    cfile.to_string_lossy().to_ascii_lowercase()
+}
+
+/// 对 `FindFirstFile` 系列 API 执行 VFS 路径重定向与文件枚举。
+///
+/// `get_snapshot` 接受一个路径，调用原生 API（如 `FindFirstFileW` 或
+/// `FindFirstFileExW`）并返回该路径匹配的所有 `WIN32_FIND_DATAW` 条目。
+///
+/// 返回 `None` 表示无规则命中，调用方应直接 fallback 到原函数。
+///
+/// - Force 模式下仅使用重定向后的路径调用 `get_snapshot`。
+/// - Fallback 模式下合并两端结果，重复文件名以重定向优先。
+pub fn try_enum<F>(path: &Path, get_snapshot: F) -> crate::Result<Option<Vec<WIN32_FIND_DATAW>>>
+where
+    F: Fn(&Path) -> crate::Result<Vec<WIN32_FIND_DATAW>>,
+{
+    let Some(RedirectResult { target_path, mode }) = resolve_redirect(path) else {
+        return Ok(None);
+    };
+
+    crate::debug!("calling `try_enum` with mode: {mode:?}");
+
+    match mode {
+        VfsMode::Force => get_snapshot(&target_path).map(Some),
+        VfsMode::Fallback => {
+            let original = get_snapshot(path).unwrap_or_default();
+            let redirected = get_snapshot(&target_path).unwrap_or_default();
+
+            let mut seen = HashSet::new();
+            let mut result = Vec::with_capacity(original.len() + redirected.len());
+
+            for entry in redirected {
+                seen.insert(extract_filename(&entry));
+                result.push(entry);
+            }
+
+            for entry in original {
+                if seen.insert(extract_filename(&entry)) {
+                    result.push(entry);
+                }
+            }
+
+            Ok(Some(result))
+        }
+    }
 }
 
 /// 将路径转为绝对路径字符串并进行规范化
