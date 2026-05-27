@@ -215,15 +215,15 @@ VFS (Virtual File System) 规则配置, 用于将源路径重定向到目标路�
 ```json
 [
   {
-    "source": "{cwd}/data/**/*.*",
-    "target": "{cwd}/data_chs/**/*.*",
+    "source": "{cwd}/data/**/*",
+    "target": "{cwd}/data_chs/**/*",
     "mode": "fallback",
     "create_dirs": ["{cwd}/data_chs/sub1", "{cwd}/data_chs/sub2"],
     "cfg": "feature = \"enable_resource_pack\""
   },
   {
-    "source": "{exe_dir}/save/*.*",
-    "target": "{exe_dir}/save_chs/*.*",
+    "source": "{exe_dir}/save/*",
+    "target": "{exe_dir}/save_chs/*",
     "mode": "force",
     "create_dirs": ["{exe_dir}/save_chs"]
   }
