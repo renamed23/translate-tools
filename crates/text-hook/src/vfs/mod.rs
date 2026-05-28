@@ -59,15 +59,17 @@ fn default_vars() -> Vec<(&'static str, String)> {
         .to_string_lossy()
         .into_owned();
 
-    vars.push(("{cwd}", to_unix_clean_path_string(&cwd)));
-    vars.push(("{temp_dir}", to_unix_clean_path_string(&temp)));
-    vars.push(("{exe_dir}", to_unix_clean_path_string(&exe_dir)));
+    vars.push(("{cwd}", cwd));
+    vars.push(("{temp_dir}", temp));
+    vars.push(("{exe_dir}", exe_dir));
 
     #[cfg(feature = "enable_resource_pack")]
     {
         vars.push((
             "{resource_pack_dir}",
-            to_unix_clean_path_string(&crate::resource_pack::get_temp_dir().to_string_lossy()),
+            crate::resource_pack::get_temp_dir()
+                .to_string_lossy()
+                .into_owned(),
         ));
     }
 
@@ -88,12 +90,12 @@ fn expand_vars(template: &str, vars: &[(&'static str, String)]) -> String {
 
 /// 将 `RawVfsRule` 编译为 `ResolvedRule`
 fn resolve_rule(raw: &RawVfsRule, vars: &[(&'static str, String)]) -> ResolvedRule {
-    let source = expand_vars(raw.source, vars);
-    let target = expand_vars(raw.target, vars);
+    let clean_source = to_unix_clean_path_string(&expand_vars(raw.source, vars));
+    let clean_target = to_unix_clean_path_string(&expand_vars(raw.target, vars));
 
     ResolvedRule {
-        matcher: PatternMatcher::compile(&source),
-        template: PatternTemplate::compile(&target),
+        matcher: PatternMatcher::compile(&clean_source),
+        template: PatternTemplate::compile(&clean_target),
         mode: raw.mode,
     }
 }

@@ -2,10 +2,10 @@
 #[derive(Debug, Clone)]
 enum Segment {
     /// 精确匹配 (不含 `*`)
-    Literal(String),
+    Literal(Box<str>),
     /// 包含单个 `*` 的段 (如 `*.png`, `name.*`, `*`)
     /// `*` 匹配的部分会被提取为一个捕获组
-    Wildcard { prefix: String, suffix: String },
+    Wildcard { prefix: Box<str>, suffix: Box<str> },
     /// 特殊允许的 `*.*`，拆分为两个捕获组 (stem 和 ext)
     StarDotStar,
     /// `**` (匹配零个或多个路径段, 含 `/`)
@@ -43,20 +43,30 @@ impl CaptureRange<'_> {
 
 impl PatternMatcher {
     /// 编译 source 模式字符串
+    ///
+    /// 要求：
+    /// - 输入已经标准化
+    /// - `/` 分隔
+    /// - ASCII lower-case
     pub fn compile(source: &str) -> Self {
         Self {
             segments: parse_pattern(source),
         }
     }
 
-    /// 匹配标准化后的路径, 返回每个捕获段的内容
+    /// 匹配标准化后的路径
+    ///
+    /// 要求：
+    /// - 输入已经标准化
+    /// - `/` 分隔
+    /// - ASCII lower-case
     pub fn match_path(&self, normalized_path: &str) -> Option<Vec<String>> {
         let path_segs: Vec<&str> = normalized_path
             .split('/')
             .filter(|s| !s.is_empty())
             .collect();
 
-        // 预分配容量，*.* 会产生 2 个 capture，所以稍微留点冗余
+        // *.* 会产生两个 capture，稍微多留点空间
         let mut captures = Vec::with_capacity(self.segments.len() * 2);
 
         if match_segments(&self.segments, 0, &path_segs, 0, &mut captures) {
@@ -69,20 +79,33 @@ impl PatternMatcher {
 
 impl PatternTemplate {
     /// 编译 target 模板字符串
+    ///
+    /// 要求：
+    /// - 输入已经标准化
+    /// - `/` 分隔
+    /// - ASCII lower-case
     pub fn compile(target: &str) -> Self {
         Self {
             segments: parse_pattern(target),
         }
     }
 
-    /// 用捕获段填充模板, 生成目标路径
+    /// 用捕获段填充模板
     pub fn fill(&self, captures: &[String]) -> String {
         fill_template(&self.segments, captures)
     }
 }
 
 /// 解析模式字符串为 Segment 序列
-/// 依赖于过程宏已经排除了非法输入 (`*.*.*`, `**.png` 等)
+///
+/// 依赖于过程宏已经排除了非法输入：
+///
+/// - `*.*.*`
+/// - `**.png`
+/// - 多个 `**`
+/// - 等等
+///
+/// 输入已经保证为 ASCII lower-case。
 fn parse_pattern(pattern: &str) -> Vec<Segment> {
     pattern
         .split('/')
@@ -93,19 +116,25 @@ fn parse_pattern(pattern: &str) -> Vec<Segment> {
             } else if part == "*.*" {
                 Segment::StarDotStar
             } else if let Some((prefix, suffix)) = part.split_once('*') {
-                // 这个分支完美覆盖 `*.png`, `name.*`, 以及纯 `*`
                 Segment::Wildcard {
-                    prefix: prefix.to_string(),
-                    suffix: suffix.to_string(),
+                    prefix: prefix.into(),
+                    suffix: suffix.into(),
                 }
             } else {
-                Segment::Literal(part.to_string())
+                Segment::Literal(part.into())
             }
         })
         .collect()
 }
 
-/// 递归匹配段序列 (Zero-Allocation 回溯)
+/// 递归匹配段序列
+///
+/// 要求：
+///
+/// - path 已经 ASCII lower-case
+/// - pattern 也已经 ASCII lower-case
+///
+/// 因此这里不再进行任何 lowercase 分配。
 fn match_segments<'a>(
     segments: &[Segment],
     si: usize,
@@ -113,66 +142,72 @@ fn match_segments<'a>(
     pi: usize,
     captures: &mut Vec<CaptureRange<'a>>,
 ) -> bool {
+    // 完全匹配成功
     if si == segments.len() && pi == path_segs.len() {
         return true;
     }
 
+    // pattern 已结束，但 path 未结束
     if si >= segments.len() {
         return false;
     }
 
     match &segments[si] {
         Segment::Literal(lit) => {
-            if pi < path_segs.len() && path_segs[pi].eq_ignore_ascii_case(lit) {
+            if pi < path_segs.len() && path_segs[pi] == lit.as_ref() {
                 match_segments(segments, si + 1, path_segs, pi + 1, captures)
             } else {
                 false
             }
         }
         Segment::Wildcard { prefix, suffix } => {
-            if pi < path_segs.len() {
-                let current_seg = path_segs[pi];
-                let current_lower = current_seg.to_ascii_lowercase();
-                let pre = prefix.to_ascii_lowercase();
-                let suf = suffix.to_ascii_lowercase();
+            if pi >= path_segs.len() {
+                return false;
+            }
 
-                if current_lower.starts_with(&pre)
-                    && current_lower.ends_with(&suf)
-                    && current_lower.len() >= pre.len() + suf.len()
-                {
-                    // 精准切割出中间被 `*` 匹配的部分
-                    let capture_len = current_seg.len() - prefix.len() - suffix.len();
-                    let capture_str = &current_seg[prefix.len()..prefix.len() + capture_len];
+            let current_seg = path_segs[pi];
 
-                    captures.push(CaptureRange::Single(capture_str));
-                    if match_segments(segments, si + 1, path_segs, pi + 1, captures) {
-                        return true;
-                    }
-                    captures.pop();
+            if current_seg.starts_with(prefix.as_ref())
+                && current_seg.ends_with(suffix.as_ref())
+                && current_seg.len() >= prefix.len() + suffix.len()
+            {
+                let capture_start = prefix.len();
+                let capture_end = current_seg.len() - suffix.len();
+                let capture_str = &current_seg[capture_start..capture_end];
+
+                captures.push(CaptureRange::Single(capture_str));
+                if match_segments(segments, si + 1, path_segs, pi + 1, captures) {
+                    return true;
                 }
+                captures.pop();
             }
             false
         }
         Segment::StarDotStar => {
-            if pi < path_segs.len() {
-                let current_seg = path_segs[pi];
-                // 对于 *.*，以最后一个点作为分隔符拆分为 stem 和 ext 两个捕获组
-                if let Some((stem, ext)) = current_seg.rsplit_once('.') {
-                    captures.push(CaptureRange::Single(stem));
-                    captures.push(CaptureRange::Single(ext));
+            if pi >= path_segs.len() {
+                return false;
+            }
 
-                    if match_segments(segments, si + 1, path_segs, pi + 1, captures) {
-                        return true;
-                    }
+            let current_seg = path_segs[pi];
+            // 用最后一个 '.' 分割
+            if let Some((stem, ext)) = current_seg.rsplit_once('.') {
+                captures.push(CaptureRange::Single(stem));
+                captures.push(CaptureRange::Single(ext));
 
-                    captures.pop();
-                    captures.pop();
+                if match_segments(segments, si + 1, path_segs, pi + 1, captures) {
+                    return true;
                 }
+
+                captures.pop();
+                captures.pop();
             }
             false
         }
         Segment::RecursiveWild => {
             let remaining = path_segs.len() - pi;
+
+            // 当前是非贪婪：
+            // 0 -> remaining
             for k in 0..=remaining {
                 captures.push(CaptureRange::Recursive(&path_segs[pi..pi + k]));
                 if match_segments(segments, si + 1, path_segs, pi + k, captures) {
@@ -187,11 +222,12 @@ fn match_segments<'a>(
 
 /// 用捕获段填充模板
 fn fill_template(segments: &[Segment], captures: &[String]) -> String {
-    let mut result = String::with_capacity(128); // 直接预分配容量，干掉中间 Vec 开销
+    let mut result = String::with_capacity(128);
     let mut cap_idx = 0;
 
-    for (i, seg) in segments.iter().enumerate() {
-        if i > 0 {
+    for seg in segments {
+        // 只有当结果集不为空时，才在段之间补 '/'
+        if !result.is_empty() {
             result.push('/');
         }
         match seg {
@@ -205,7 +241,6 @@ fn fill_template(segments: &[Segment], captures: &[String]) -> String {
                 result.push_str(suffix);
             }
             Segment::StarDotStar => {
-                // 特殊处理 *.*：连续消耗两个捕获组，并在中间强行插入 '.'
                 if let Some(stem) = captures.get(cap_idx) {
                     result.push_str(stem);
                     cap_idx += 1;
@@ -221,7 +256,7 @@ fn fill_template(segments: &[Segment], captures: &[String]) -> String {
                     if !cap.is_empty() {
                         result.push_str(cap);
                     } else if result.ends_with('/') {
-                        // 抵消掉刚才上面加入的多余的 '/'，解决双斜杠 Bug
+                        // 如果当前段匹配为空，且前面刚刚被迫推入了 '/'，则将其回滚
                         result.pop();
                     }
                     cap_idx += 1;
@@ -229,7 +264,6 @@ fn fill_template(segments: &[Segment], captures: &[String]) -> String {
             }
         }
     }
-
     result
 }
 
@@ -237,17 +271,6 @@ fn fill_template(segments: &[Segment], captures: &[String]) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_case_insensitive_literal_match() {
-        // 场景：宏已验证合法。测试基础字面量的大小写不敏感匹配
-        let matcher = PatternMatcher::compile("Src/Main.rs");
-
-        let caps = matcher.match_path("src/main.rs").unwrap();
-        assert!(caps.is_empty()); // 没有通配符，捕获组为空
-
-        assert!(matcher.match_path("src/main.rs.bak").is_none());
-    }
 
     #[test]
     fn test_wildcard_boundary_and_empty_capture() {
@@ -322,6 +345,21 @@ mod tests {
     }
 
     #[test]
+    fn test_fill_template_leading_recursive_wildcard_empty() {
+        // 场景：模板以 `**` 开头，且 `**` 捕获为空
+        // 原始代码由于 `i > 0` 判断，会导致渲染出 "/target/main.rs" 的前导斜杠 Bug
+        let matcher = PatternMatcher::compile("**/src/main.rs");
+        let template = PatternTemplate::compile("**/target/main.rs");
+
+        let caps = matcher.match_path("src/main.rs").unwrap();
+        assert_eq!(caps, vec![""]); // 捕获为空字符串
+
+        let filled = template.fill(&caps);
+        // 修复后必须是完美的 "target/main.rs"，不能有前导斜杠 '/'
+        assert_eq!(filled, "target/main.rs");
+    }
+
+    #[test]
     fn test_comprehensive_composition() {
         // 场景：宏已验证合法（捕获组数量均为 3 且类型对称）
         let matcher = PatternMatcher::compile("api/**/v1/*/*.*");
@@ -343,17 +381,12 @@ mod tests {
 
     #[test]
     fn test_utf8_char_boundary_safety() {
-        // 1. 测试前缀带有中文等非 ASCII 字符时，字节切片是否安全，会不会因 char_boundary 而 panic
+        // 测试前缀带有中文等非 ASCII 字符时，字节切片是否安全，会不会因 char_boundary 而 panic
         let matcher = PatternMatcher::compile("目录/*.jpg");
 
         // 匹配包含多字节字符的路径
         let caps = matcher.match_path("目录/中文.jpg").unwrap();
         assert_eq!(caps, vec!["中文"]);
-
-        // 2. 测试大小写不敏感转换时，由于特殊字符转换导致长度发生变化的边界（如德语 ß 变大写是 SS）
-        let matcher_macro = PatternMatcher::compile("prefix_*/file.txt");
-        let caps_macro = matcher_macro.match_path("PREFIX_ß/file.txt").unwrap();
-        assert_eq!(caps_macro, vec!["ß"]);
     }
 
     #[test]
