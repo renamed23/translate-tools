@@ -1,7 +1,7 @@
 mod pattern;
 
 use std::{
-    collections::{HashMap, HashSet},
+    collections::HashSet,
     path::{Path, PathBuf},
     sync::LazyLock,
 };
@@ -46,8 +46,8 @@ struct ResolvedRule {
 }
 
 /// 获取默认变量表
-fn default_vars() -> HashMap<String, String> {
-    let mut vars = HashMap::with_capacity(4);
+fn default_vars() -> Vec<(&'static str, String)> {
+    let mut vars = Vec::with_capacity(4);
 
     let cwd = crate::utils::win32::get_current_dir(false)
         .map_or_else(|_| ".".to_string(), |v| v.to_string_lossy());
@@ -59,23 +59,23 @@ fn default_vars() -> HashMap<String, String> {
         .to_string_lossy()
         .into_owned();
 
-    vars.insert("{cwd}".to_string(), to_unix_clean_path_string(&cwd));
-    vars.insert("{temp_dir}".to_string(), to_unix_clean_path_string(&temp));
-    vars.insert("{exe_dir}".to_string(), to_unix_clean_path_string(&exe_dir));
+    vars.push(("{cwd}", to_unix_clean_path_string(&cwd)));
+    vars.push(("{temp_dir}", to_unix_clean_path_string(&temp)));
+    vars.push(("{exe_dir}", to_unix_clean_path_string(&exe_dir)));
 
     #[cfg(feature = "enable_resource_pack")]
     {
-        vars.insert(
-            "{resource_pack_dir}".to_string(),
+        vars.push((
+            "{resource_pack_dir}",
             to_unix_clean_path_string(&crate::resource_pack::get_temp_dir().to_string_lossy()),
-        );
+        ));
     }
 
     vars
 }
 
 /// 将变量占位符替换为实际路径
-fn expand_vars(template: &str, vars: &HashMap<String, String>) -> String {
+fn expand_vars(template: &str, vars: &[(&'static str, String)]) -> String {
     let mut result = template.to_string();
     for (var, path) in vars {
         // 只有当确定存在时才进行分配替换，避免无意义的遍历开销
@@ -87,7 +87,7 @@ fn expand_vars(template: &str, vars: &HashMap<String, String>) -> String {
 }
 
 /// 将 `RawVfsRule` 编译为 `ResolvedRule`
-fn resolve_rule(raw: &RawVfsRule, vars: &HashMap<String, String>) -> ResolvedRule {
+fn resolve_rule(raw: &RawVfsRule, vars: &[(&'static str, String)]) -> ResolvedRule {
     let source = expand_vars(raw.source, vars);
     let target = expand_vars(raw.target, vars);
 
@@ -175,6 +175,7 @@ pub fn try_redirect(path: &Path) -> crate::Result<Option<PathBuf>> {
 }
 
 /// 从 `WIN32_FIND_DATAW` 中提取文件名（用于去重比较）。
+#[allow(dead_code)]
 fn extract_filename(data: &WIN32_FIND_DATAW) -> String {
     let cfile = unsafe {
         data.cFileName
@@ -193,6 +194,7 @@ fn extract_filename(data: &WIN32_FIND_DATAW) -> String {
 ///
 /// - Force 模式下仅使用重定向后的路径调用 `get_snapshot`。
 /// - Fallback 模式下合并两端结果，重复文件名以重定向优先。
+#[allow(dead_code)]
 pub fn try_enum<F>(path: &Path, get_snapshot: F) -> crate::Result<Option<Vec<WIN32_FIND_DATAW>>>
 where
     F: Fn(&Path) -> crate::Result<Vec<WIN32_FIND_DATAW>>,

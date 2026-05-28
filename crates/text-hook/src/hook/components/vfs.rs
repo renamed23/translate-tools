@@ -1,3 +1,4 @@
+#[cfg(feature = "enable_vfs_find_file")]
 use std::{
     collections::HashMap,
     path::Path,
@@ -8,31 +9,38 @@ use std::{
 };
 
 use windows_sys::{
+    Win32::{Foundation::HANDLE, Security::SECURITY_ATTRIBUTES},
+    core::{PCSTR, PCWSTR},
+};
+#[cfg(feature = "enable_vfs_find_file")]
+use windows_sys::{
     Win32::{
         Foundation::{
-            ERROR_FILE_NOT_FOUND, ERROR_NO_MORE_FILES, FALSE, GetLastError, HANDLE,
-            INVALID_HANDLE_VALUE, SetLastError, TRUE,
+            ERROR_FILE_NOT_FOUND, ERROR_NO_MORE_FILES, FALSE, GetLastError, INVALID_HANDLE_VALUE,
+            SetLastError, TRUE,
         },
-        Security::SECURITY_ATTRIBUTES,
         Storage::FileSystem::{
             FINDEX_INFO_LEVELS, FINDEX_SEARCH_OPS, FindExInfoStandard, FindExSearchNameMatch,
             WIN32_FIND_DATAA, WIN32_FIND_DATAW,
         },
     },
-    core::{BOOL, PCSTR, PCWSTR},
+    core::BOOL,
 };
 
+#[cfg(feature = "enable_vfs_find_file")]
+use crate::hook::api_hooks::filesystem::{
+    FindClose, FindFirstFile, FindFirstFileEx, FindNextFile, HOOK_FIND_CLOSE,
+    HOOK_FIND_FIRST_FILE_A, HOOK_FIND_FIRST_FILE_EX_A, HOOK_FIND_FIRST_FILE_EX_W,
+    HOOK_FIND_FIRST_FILE_W, HOOK_FIND_NEXT_FILE_A, HOOK_FIND_NEXT_FILE_W,
+};
+#[cfg(feature = "enable_vfs_find_file")]
+use crate::utils::exts::slice_ext::CommonSliceExt;
 use crate::{
-    hook::api_hooks::filesystem::{
-        CreateFile, FindClose, FindFirstFile, FindFirstFileEx, FindNextFile, HOOK_CREATE_FILE_W,
-        HOOK_FIND_CLOSE, HOOK_FIND_FIRST_FILE_A, HOOK_FIND_FIRST_FILE_EX_A,
-        HOOK_FIND_FIRST_FILE_EX_W, HOOK_FIND_FIRST_FILE_W, HOOK_FIND_NEXT_FILE_A,
-        HOOK_FIND_NEXT_FILE_W,
-    },
+    hook::api_hooks::filesystem::{CreateFile, HOOK_CREATE_FILE_W},
     utils::exts::{
         path_ext::PathExt,
         ptr_ext::PtrExt,
-        slice_ext::{ByteSliceExt, CommonSliceExt, WideSliceExt},
+        slice_ext::{ByteSliceExt, WideSliceExt},
     },
 };
 
@@ -114,6 +122,7 @@ impl CreateFile for VfsSlot {
     }
 }
 
+#[cfg(feature = "enable_vfs_find_file")]
 impl FindFirstFile for VfsSlot {
     unsafe fn find_first_file_a(
         lp_file_name: PCSTR,
@@ -191,6 +200,7 @@ impl FindFirstFile for VfsSlot {
     }
 }
 
+#[cfg(feature = "enable_vfs_find_file")]
 impl FindFirstFileEx for VfsSlot {
     unsafe fn find_first_file_ex_a(
         lp_file_name: PCSTR,
@@ -311,6 +321,7 @@ impl FindFirstFileEx for VfsSlot {
     }
 }
 
+#[cfg(feature = "enable_vfs_find_file")]
 impl FindNextFile for VfsSlot {
     unsafe fn find_next_file_a(
         h_find_file: HANDLE,
@@ -363,6 +374,7 @@ impl FindNextFile for VfsSlot {
     }
 }
 
+#[cfg(feature = "enable_vfs_find_file")]
 impl FindClose for VfsSlot {
     unsafe fn find_close(h_find_file: HANDLE) -> BOOL {
         if FIND_SNAPSHOTS.remove(h_find_file) {
@@ -373,13 +385,16 @@ impl FindClose for VfsSlot {
     }
 }
 
+#[cfg(feature = "enable_vfs_find_file")]
 static FIND_SNAPSHOTS: LazyLock<FindSnapshotMap> = LazyLock::new(FindSnapshotMap::new);
 
+#[cfg(feature = "enable_vfs_find_file")]
 struct FindSnapshot {
     entries: Vec<WIN32_FIND_DATAW>,
     cursor: usize,
 }
 
+#[cfg(feature = "enable_vfs_find_file")]
 impl FindSnapshot {
     fn new(entries: Vec<WIN32_FIND_DATAW>) -> Self {
         Self { entries, cursor: 1 }
@@ -392,8 +407,10 @@ impl FindSnapshot {
     }
 }
 
+#[cfg(feature = "enable_vfs_find_file")]
 struct FindSnapshotMap(Mutex<HashMap<isize, FindSnapshot>>);
 
+#[cfg(feature = "enable_vfs_find_file")]
 #[allow(clippy::large_enum_variant)]
 enum NextEntry {
     HandleNotFound,
@@ -401,6 +418,7 @@ enum NextEntry {
     Entry(WIN32_FIND_DATAW),
 }
 
+#[cfg(feature = "enable_vfs_find_file")]
 impl FindSnapshotMap {
     fn new() -> Self {
         Self(Mutex::new(HashMap::new()))
@@ -462,6 +480,7 @@ impl FindSnapshotMap {
     }
 }
 
+#[cfg(feature = "enable_vfs_find_file")]
 unsafe fn convert_find_data_w_to_a(src: &WIN32_FIND_DATAW, dst: &mut WIN32_FIND_DATAA) {
     let cfile = unsafe {
         src.cFileName
@@ -494,6 +513,7 @@ unsafe fn convert_find_data_w_to_a(src: &WIN32_FIND_DATAW, dst: &mut WIN32_FIND_
         .copy_min_from_slice_with_null(calt_a.as_i8_slice());
 }
 
+#[cfg(feature = "enable_vfs_find_file")]
 unsafe fn collect_snapshot_find_first_ex(
     path: &Path,
     f_info_level_id: FINDEX_INFO_LEVELS,

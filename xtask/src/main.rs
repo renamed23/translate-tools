@@ -198,10 +198,19 @@ fn build_scenarios() -> Vec<Scenario> {
             run_x64: true,
         },
         Scenario {
-            name: "default_impl/bind_vfs/on".to_string(),
+            name: "default_impl/bind_vfs/on_without_find_file".to_string(),
             features: feature_set(
                 all_functional_impl_base(),
                 &["default_impl", "bind_vfs"],
+                &["enable_vfs_find_file"],
+            ),
+            run_x64: true,
+        },
+        Scenario {
+            name: "default_impl/bind_vfs/on_with_find_file".to_string(),
+            features: feature_set(
+                all_functional_impl_base(),
+                &["default_impl", "bind_vfs", "enable_vfs_find_file"],
                 &[],
             ),
             run_x64: true,

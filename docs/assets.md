@@ -230,6 +230,10 @@ VFS (Virtual File System) 规则配置, 用于将源路径重定向到目标路�
 ]
 ```
 
+需要开启 `bind_vfs` 或者显式在自定义HOOK中调用相关函数才能生效。
+
+> 默认仅 Hook `CreateFile`，如果需要目录枚举相关 HOOK（`FindFirstFile` 等），还需额外开启 `enable_vfs_find_file` 特性。
+
 ### 字段说明
 
 - **`source`** (必填): 源路径模式, 用于匹配被拦截的文件路径。支持变量占位符和 glob 通配符。

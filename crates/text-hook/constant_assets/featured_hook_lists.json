@@ -1,15 +1,21 @@
 {
   "feature = \"bind_vfs\"": {
     "trait": [
-      "CreateFile",
-      "FindFirstFile",
-      "FindNextFile",
-      "FindClose",
-      "FindFirstFileEx"
+      "CreateFile"
     ],
     "fn": [
       "CreateFileA",
-      "CreateFileW",
+      "CreateFileW"
+    ]
+  },
+  "all(feature = \"bind_vfs\", feature = \"enable_vfs_find_file\")": {
+    "trait": [
+      "FindFirstFile",
+      "FindFirstFileEx",
+      "FindNextFile",
+      "FindClose"
+    ],
+    "fn": [
       "FindFirstFileA",
       "FindFirstFileW",
       "FindFirstFileExA",

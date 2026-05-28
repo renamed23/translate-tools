@@ -50,6 +50,10 @@ enable_egui_logger = ["enable_overlay_egui", "enable_debug_output"]
 # 开启 egui demo 组件的支持
 enable_egui_demo = ["enable_overlay_egui"]
 
+# 启用 VFS 的目录枚举钩子（FindFirstFile/FindFirstFileEx/FindNextFile/FindClose），
+# 与 bind_vfs 配合使用，默认不启用，仅保留 CreateFile 的钩子
+# 对于大部分游戏来说，CreateFile足够了
+enable_vfs_find_file = []
 # 启用收集宿主游戏的 GDI 字体的配置，可用于作为自定义字体配置的基础
 enable_collect_host_font_config = []
 # 开启后，仅对命中过滤器的字体执行替换；未命中过滤器的字体保持原样。
