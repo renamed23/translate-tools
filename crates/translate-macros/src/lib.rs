@@ -1317,7 +1317,7 @@ pub fn generate_entry_point_hook(input: TokenStream) -> TokenStream {
 /// 从 VFS 路径映射规则 JSON 生成编译期规则常量。
 ///
 /// 该宏读取一个或多个 JSON 文件, 将所有规则合并生成 `VFS_RULES` 常量数组。
-/// 调用方需在同一模块中定义 `RawVfsRule` 结构体、`VfsMode` 枚举和 `get_vfs_mode!` 宏。
+/// 调用方需在同一模块中定义 `RawVfsRule` 结构体和 `VfsMode` 枚举。
 ///
 /// # 语法
 ///
@@ -1351,7 +1351,7 @@ pub fn generate_entry_point_hook(input: TokenStream) -> TokenStream {
 ///
 /// # 生成内容
 ///
-/// 生成一个 `pub const VFS_RULES: &[RawVfsRule]` 常量数组, 每条规则调用 `get_vfs_mode!(mode)` 转换模式。
+/// 生成一个 `pub const VFS_RULES: &[RawVfsRule]` 常量数组, `mode` 字段由过程宏直接解析为 `VfsMode` 枚举变体。
 /// 带 `cfg` 字段的条目会包裹 `#[cfg(...)]`。
 #[proc_macro]
 pub fn generate_vfs_rules(input: TokenStream) -> TokenStream {

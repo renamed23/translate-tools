@@ -16,18 +16,6 @@ use crate::{
 mod rules {
     use super::{RawVfsRule, VfsMode};
 
-    macro_rules! get_vfs_mode {
-        ("fallback") => {
-            VfsMode::Fallback
-        };
-        ("force") => {
-            VfsMode::Force
-        };
-        ($s:literal) => {
-            compile_error!(concat!("非法的 VfsMode: ", stringify!($s)));
-        };
-    }
-
     translate_macros::generate_vfs_rules!(
         "assets/vfs_rules.json",
         "constant_assets/vfs_rules.json"

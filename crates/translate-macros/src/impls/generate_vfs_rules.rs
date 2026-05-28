@@ -48,6 +48,18 @@ pub fn generate_vfs_rules(input: TokenStream) -> syn::Result<TokenStream> {
     Ok(output)
 }
 
+/// 将 mode 字符串解析为 `VfsMode` 枚举变体的 TokenStream。
+fn resolve_vfs_mode(mode: &str) -> syn::Result<TokenStream> {
+    match mode {
+        "fallback" => Ok(quote! { VfsMode::Fallback }),
+        "force" => Ok(quote! { VfsMode::Force }),
+        other => syn_bail2!(
+            "非法的 VfsMode: `{}`, 期望 `fallback` 或 `force`",
+            other
+        ),
+    }
+}
+
 fn make_rule_entries(rules: &[VfsRuleEntry]) -> syn::Result<Vec<TokenStream>> {
     rules
         .iter()
@@ -69,7 +81,7 @@ fn make_rule_entries(rules: &[VfsRuleEntry]) -> syn::Result<Vec<TokenStream>> {
                 );
             }
 
-            let mode = rule.mode.as_str();
+            let mode_ident = resolve_vfs_mode(&rule.mode)?;
             let source = &rule.source;
             let target = &rule.target;
 
@@ -77,7 +89,7 @@ fn make_rule_entries(rules: &[VfsRuleEntry]) -> syn::Result<Vec<TokenStream>> {
                 RawVfsRule {
                     source: #source,
                     target: #target,
-                    mode: get_vfs_mode!(#mode),
+                    mode: #mode_ident,
                 }
             };
 
@@ -454,5 +466,34 @@ mod tests {
         // 类似于 ** 但多了其他字符的非法写法（例如 abc/**a）也会被星号计数器和段校验拦截
         let res = validate_pattern("abc/**a/def", "source");
         assert!(res.is_err());
+    }
+
+    #[test]
+    fn test_resolve_vfs_mode_success() {
+        let result = resolve_vfs_mode("fallback");
+        assert!(result.is_ok());
+        let tokens = result.unwrap().to_string();
+        assert!(tokens.contains("VfsMode") && tokens.contains("Fallback"));
+
+        let result = resolve_vfs_mode("force");
+        assert!(result.is_ok());
+        let tokens = result.unwrap().to_string();
+        assert!(tokens.contains("VfsMode") && tokens.contains("Force"));
+    }
+
+    #[test]
+    fn test_resolve_vfs_mode_failures() {
+        let result = resolve_vfs_mode("invalid");
+        assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("非法的 VfsMode"));
+
+        let result = resolve_vfs_mode("");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("非法的 VfsMode"));
+
+        let result = resolve_vfs_mode("FALLBACK");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("非法的 VfsMode"));
     }
 }
