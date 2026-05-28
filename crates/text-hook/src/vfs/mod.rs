@@ -273,3 +273,91 @@ fn to_windows_path(s: &str) -> PathBuf {
         PathBuf::from(s_win)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_to_unix_clean_path_string() {
+        // 1. 普通绝对路径与大小写、斜杠转换
+        assert_eq!(to_unix_clean_path_string(r"C:\Games\Data"), "c:/games/data");
+        assert_eq!(
+            to_unix_clean_path_string(r"d:/games/data/"),
+            "d:/games/data"
+        );
+
+        // 2. 长路径前缀剥离 (\\?\)
+        assert_eq!(
+            to_unix_clean_path_string(r"\\?\C:\Users\Admin"),
+            "c:/users/admin"
+        );
+        assert_eq!(
+            to_unix_clean_path_string(r"\\?\E:\Game/Mods/"),
+            "e:/game/mods"
+        );
+
+        // 3. UNC 长路径前缀剥离 (\\?\UNC\)
+        assert_eq!(
+            to_unix_clean_path_string(r"\\?\UNC\server\share\file"),
+            "server/share/file"
+        );
+
+        // 4. NT 设备路径前缀剥离 (\\.\)
+        assert_eq!(
+            to_unix_clean_path_string(r"\\.\PhysicalDrive0"),
+            "physicaldrive0"
+        );
+
+        // 5. 相对路径与末尾斜杠清理
+        assert_eq!(
+            to_unix_clean_path_string(r"local\path\to\/"),
+            "local/path/to"
+        );
+        assert_eq!(to_unix_clean_path_string("."), ".");
+    }
+
+    #[test]
+    fn test_to_windows_path() {
+        // 1. 普通绝对路径 -> 转换为带 \\?\ 前缀的 Windows 长路径
+        assert_eq!(
+            to_windows_path("C:/Games/Data"),
+            PathBuf::from(r"\\?\C:\Games\Data")
+        );
+        assert_eq!(
+            to_windows_path(r"D:\Games\Data"),
+            PathBuf::from(r"\\?\D:\Games\Data")
+        );
+
+        // 2. 已经是 \\?\ 前缀的绝对路径 -> 保持原样，仅规范化斜杠
+        assert_eq!(
+            to_windows_path(r"\\?\C:\Users\Admin"),
+            PathBuf::from(r"\\?\C:\Users\Admin")
+        );
+        assert_eq!(
+            to_windows_path(r"\\?/C:/Users/Admin"),
+            PathBuf::from(r"\\?\C:\Users\Admin")
+        );
+
+        // 3. 标准网络 UNC 路径 (\\server\share) -> 转换为 \\?\UNC\server\share
+        assert_eq!(
+            to_windows_path(r"\\server\share\file"),
+            PathBuf::from(r"\\?\UNC\server\share\file")
+        );
+        assert_eq!(
+            to_windows_path("//server/share/file"),
+            PathBuf::from(r"\\?\UNC\server\share\file")
+        );
+
+        // 4. 相对路径 -> 绝不添加 \\?\ 前缀，仅规范化斜杠
+        assert_eq!(
+            to_windows_path("relative/path/to/file"),
+            PathBuf::from(r"relative\path\to\file")
+        );
+        assert_eq!(
+            to_windows_path(r"some\local\dir"),
+            PathBuf::from(r"some\local\dir")
+        );
+        assert_eq!(to_windows_path("."), PathBuf::from("."));
+    }
+}
