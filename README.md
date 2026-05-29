@@ -250,7 +250,7 @@ IAT HOOK 在大部分情况下都能有效工作，但是如果发现IAT HOOK不
 
 ```powershell
 $env:RUSTFLAGS = "-C panic=immediate-abort -Z unstable-options"
-cargo build-text-hook -Z build-std --fetures default_impl,enable_debug_output
+cargo build-text-hook -Z build-std --features default_impl,enable_debug_output
 ```
 
 # 写自己的HOOK实现
