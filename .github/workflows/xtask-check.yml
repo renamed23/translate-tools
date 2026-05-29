@@ -27,5 +27,5 @@ jobs:
       - name: Rust 构建缓存
         uses: Swatinem/rust-cache@v2
 
-      - name: 运行 xtask check
-        run: cargo xtask check
+      - name: 运行 xtask test
+        run: cargo xtask test
