@@ -1,12 +1,14 @@
 [package]
-name = "xtask"
+name = "test_bin"
 version = "0.0.1"
 edition = "2024"
 license = "MIT"
-
+build = "build.rs"
 
 [dependencies]
 anyhow.workspace = true
+windows-sys.workspace = true
+
+[build-dependencies]
+anyhow.workspace = true
 cargo_metadata.workspace = true
-xshell = "0.2"
-fs_extra = "1"

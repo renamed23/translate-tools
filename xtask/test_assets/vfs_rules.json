@@ -1,7 +1,15 @@
 [
     {
-        "source": "{cwd}/MPX/*.*",
-        "target": "{cwd}/MPX_chs/*.*",
+        "source": "{cwd}/test_bin_assets/src_data/**/*",
+        "target": "{cwd}/test_bin_assets/dst_data/**/*",
         "mode": "fallback"
+    },
+    {
+        "source": "{cwd}/test_bin_assets/dont_exists/*",
+        "target": "{cwd}/test_bin_assets/force_data/*",
+        "mode": "force",
+        "create_dirs": [
+            "{cwd}/test_bin_assets/force_data"
+        ]
     }
 ]
