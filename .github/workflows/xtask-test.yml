@@ -1,13 +1,14 @@
-name: xtask-check
+name: xtask-test
 
 on:
   push:
     paths:
-      - "crates/text_hook/**"
+      - "crates/text-hook/**"
       - "crates/translate-macros/**"
       - "xtask/**"
       - "Cargo.toml"
       - "Cargo.lock"
+      - ".github/workflows/xtask-test.yml"
   workflow_dispatch:
 
 jobs:

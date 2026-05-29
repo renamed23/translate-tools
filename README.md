@@ -1,7 +1,7 @@
 # TRANSLATE-TOOLS
 
 [![MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/renamed23/translate-tools/blob/main/LICENSE)
-[![xtask-check](https://github.com/renamed23/translate-tools/actions/workflows/xtask-check.yml/badge.svg)](https://github.com/renamed23/translate-tools/actions/workflows/xtask-check.yml)
+[![xtask-test](https://github.com/renamed23/translate-tools/actions/workflows/xtask-test.yml/badge.svg)](https://github.com/renamed23/translate-tools/actions/workflows/xtask-test.yml)
 
 
 # 使用方式
@@ -81,6 +81,7 @@ DLL 必须注入到游戏的进程才可以发挥作用，`text-hook` 可以有�
 - [日繁替换](#日繁替换)
 - [修改字体](#修改字体)
 - [覆盖主窗口标题](#覆盖主窗口标题)
+- [VFS 虚拟文件系统](#vfs-虚拟文件系统)
 - [注入字体](#注入字体)
 - [转区运行](#转区运行)
 
@@ -221,6 +222,46 @@ cargo build-text-hook --features default_impl,enable_locale_emulator
 ```
 
 注意别忘了将LE的`LoaderDll.dll`，`LocaleEmulator.dll`复制到`text-hook`所在位置。
+
+### VFS 虚拟文件系统
+
+VFS (Virtual File System) 用于将游戏的文件访问透明地重定向到翻译后的资源，无需修改游戏逻辑。例如，将游戏的 `data/` 文件夹重定向到 `data_chs/`，游戏读包时就会自动读取汉化资源。
+
+在`crates/text-hook/assets`创建一个文件`vfs_rules.json`
+
+```json
+[
+  {
+    "source": "{cwd}/data/**/*",
+    "target": "{cwd}/data_chs/**/*",
+    "mode": "fallback",
+    "create_dirs": ["{cwd}/data_chs"]
+  },
+  {
+    "source": "{cwd}/save/*",
+    "target": "{cwd}/save_chs/*",
+    "mode": "force",
+    "create_dirs": ["{cwd}/save_chs"]
+  }
+]
+```
+
+- `"fallback"` 模式：目标文件存在时重定向，不存在时回退到源路径，适用于增量汉化。
+- `"force"` 模式：无条件重定向到目标路径，适用于完整替换。
+
+编译时需要添加 `bind_vfs`
+
+```powershell
+cargo build-text-hook --features default_impl,bind_vfs
+```
+
+默认只 Hook `CreateFile`（文件打开/读取）。如果游戏使用了 `FindFirstFile`/`FindNextFile` 等目录枚举 API，还需要额外添加 `enable_vfs_find_file`
+
+```powershell
+cargo build-text-hook --features default_impl,bind_vfs,enable_vfs_find_file
+```
+
+> 路径中可使用 `{cwd}`（工作目录）、`{temp_dir}`、`{exe_dir}`、`{resource_pack_dir}` 变量，编译时会校验合法性。详细规则参考 [docs/assets.md](docs/assets.md#vfs_rulesjson)。
 
 # 减少 DLL 大小
 
