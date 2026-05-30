@@ -47,7 +47,7 @@ impl PatternMatcher {
     /// 要求：
     /// - 输入已经标准化
     /// - `/` 分隔
-    /// - ASCII lower-case
+    /// - ASCII部分 lower-case
     pub fn compile(source: &str) -> Self {
         Self {
             segments: parse_pattern(source),
@@ -59,7 +59,7 @@ impl PatternMatcher {
     /// 要求：
     /// - 输入已经标准化
     /// - `/` 分隔
-    /// - ASCII lower-case
+    /// - ASCII部分 lower-case
     pub fn match_path(&self, normalized_path: &str) -> Option<Vec<String>> {
         let path_segs: Vec<&str> = normalized_path
             .split('/')
@@ -83,7 +83,7 @@ impl PatternTemplate {
     /// 要求：
     /// - 输入已经标准化
     /// - `/` 分隔
-    /// - ASCII lower-case
+    /// - ASCII部分 lower-case
     pub fn compile(target: &str) -> Self {
         Self {
             segments: parse_pattern(target),
@@ -105,7 +105,7 @@ impl PatternTemplate {
 /// - 多个 `**`
 /// - 等等
 ///
-/// 输入已经保证为 ASCII lower-case。
+/// 输入已经保证为 ASCII部分 lower-case。
 fn parse_pattern(pattern: &str) -> Vec<Segment> {
     pattern
         .split('/')
